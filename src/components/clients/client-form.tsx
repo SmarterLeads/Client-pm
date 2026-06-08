@@ -11,6 +11,15 @@ import { useActionToast } from "@/hooks/use-action-toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SheetFooter } from "@/components/ui/sheet";
+import {
+  SheetFormActions,
+  SheetFormBody,
+  SheetFormField,
+  sheetInputClassName,
+  sheetSelectClassName,
+  sheetTextareaClassName,
+} from "@/components/ui/sheet-form";
 import { Textarea } from "@/components/ui/textarea";
 import { CLIENT_STATUSES } from "@/lib/pm/constants";
 import { PmEnumValues } from "@/lib/types/enums";
@@ -52,20 +61,33 @@ export function ClientForm({
     router.push(`/clients/${state.clientId}`);
   }, [state.success, state.clientId, router, sheetMode, onCancel]);
 
+  const selectClass = sheetMode
+    ? sheetSelectClassName
+    : "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm dark:bg-input/30";
+  const inputClass = sheetMode ? sheetInputClassName : undefined;
+  const textareaClass = sheetMode ? sheetTextareaClassName : undefined;
+
   return (
     <form
       action={formAction}
-      className={sheetMode ? "space-y-6" : "mx-auto max-w-2xl space-y-8"}
+      className={
+        sheetMode
+          ? "flex min-h-0 flex-1 flex-col"
+          : "mx-auto max-w-2xl space-y-8"
+      }
     >
       {agencyId ? (
         <input type="hidden" name="agency_id" value={agencyId} />
       ) : (
-        <section className="space-y-4">
-          <h2 className="text-sm font-medium text-muted-foreground">Agency</h2>
+        <section className={sheetMode ? "contents" : "space-y-4"}>
+          {!sheetMode ? (
+            <h2 className="text-sm font-medium text-muted-foreground">Agency</h2>
+          ) : null}
           <Field
             id="agency_id"
             label="Agency"
             required
+            sheetMode={sheetMode}
             error={state.fieldErrors?.agency_id?.[0]}
           >
             <select
@@ -73,7 +95,7 @@ export function ClientForm({
               name="agency_id"
               required
               defaultValue=""
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm dark:bg-input/30"
+              className={selectClass}
             >
               <option value="" disabled>
                 Select an agency
@@ -96,187 +118,146 @@ export function ClientForm({
         </p>
       ) : null}
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-medium text-muted-foreground">Client</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            id="name"
-            label="Company name"
-            required
-            className="sm:col-span-2"
-            error={state.fieldErrors?.name?.[0]}
-          >
-            <Input id="name" name="name" required />
+      {sheetMode ? (
+        <SheetFormBody>
+          <Field id="name" label="Company name" required sheetMode error={state.fieldErrors?.name?.[0]}>
+            <Input id="name" name="name" required className={inputClass} />
           </Field>
-
-          <Field
-            id="status"
-            label="Status"
-            required
-            error={state.fieldErrors?.status?.[0]}
-          >
-            <select
-              id="status"
-              name="status"
-              required
-              defaultValue="prospect"
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm dark:bg-input/30"
-            >
+          <Field id="status" label="Status" required sheetMode error={state.fieldErrors?.status?.[0]}>
+            <select id="status" name="status" required defaultValue="prospect" className={selectClass}>
               {statuses.map((s) => (
-                <option key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </option>
+                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
               ))}
             </select>
           </Field>
-
-          <Field
-            id="rag_status"
-            label="RAG status"
-            required
-            error={state.fieldErrors?.rag_status?.[0]}
-          >
-            <select
-              id="rag_status"
-              name="rag_status"
-              required
-              defaultValue="green"
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm dark:bg-input/30"
-            >
+          <Field id="rag_status" label="RAG status" required sheetMode error={state.fieldErrors?.rag_status?.[0]}>
+            <select id="rag_status" name="rag_status" required defaultValue="green" className={selectClass}>
               {ragStatuses.map((r) => (
-                <option key={r} value={r}>
-                  {r.charAt(0).toUpperCase() + r.slice(1)}
-                </option>
+                <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
               ))}
             </select>
           </Field>
-
-          <Field
-            id="account_manager_id"
-            label="Account manager"
-            className="sm:col-span-2"
-            error={state.fieldErrors?.account_manager_id?.[0]}
-          >
-            <select
-              id="account_manager_id"
-              name="account_manager_id"
-              defaultValue=""
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm dark:bg-input/30"
-            >
+          <Field id="account_manager_id" label="Account manager" sheetMode error={state.fieldErrors?.account_manager_id?.[0]}>
+            <select id="account_manager_id" name="account_manager_id" defaultValue="" className={selectClass}>
               <option value="">Unassigned</option>
               {teamMembers.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name}
-                </option>
+                <option key={member.id} value={member.id}>{member.name}</option>
               ))}
             </select>
           </Field>
-
-          <Field
-            id="website_url"
-            label="Website URL"
-            className="sm:col-span-2"
-            error={state.fieldErrors?.website_url?.[0]}
-          >
-            <Input id="website_url" name="website_url" type="url" />
+          <Field id="website_url" label="Website URL" sheetMode error={state.fieldErrors?.website_url?.[0]}>
+            <Input id="website_url" name="website_url" type="url" className={inputClass} />
           </Field>
-
-          <Field
-            id="gmb_url"
-            label="Google My Business"
-            className="sm:col-span-2"
-            error={state.fieldErrors?.gmb_url?.[0]}
-          >
-            <Input id="gmb_url" name="gmb_url" type="url" />
+          <Field id="gmb_url" label="Google My Business" sheetMode error={state.fieldErrors?.gmb_url?.[0]}>
+            <Input id="gmb_url" name="gmb_url" type="url" className={inputClass} />
           </Field>
-
-          <Field
-            id="business_phone"
-            label="Business phone"
-            className="sm:col-span-2"
-            error={state.fieldErrors?.business_phone?.[0]}
-          >
-            <Input id="business_phone" name="business_phone" type="tel" />
+          <Field id="business_phone" label="Business phone" sheetMode error={state.fieldErrors?.business_phone?.[0]}>
+            <Input id="business_phone" name="business_phone" type="tel" className={inputClass} />
           </Field>
-
-          <Field
-            id="notes"
-            label="Notes"
-            className="sm:col-span-2"
-            error={state.fieldErrors?.notes?.[0]}
-          >
-            <Textarea id="notes" name="notes" rows={4} />
+          <Field id="notes" label="Notes" sheetMode error={state.fieldErrors?.notes?.[0]}>
+            <Textarea id="notes" name="notes" rows={4} className={textareaClass} />
           </Field>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          Primary contact
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            id="contact_first_name"
-            label="First name"
-            required
-            error={state.fieldErrors?.["primary_contact.first_name"]?.[0]}
-          >
-            <Input id="contact_first_name" name="contact_first_name" required />
+          <Field id="contact_first_name" label="First name" required sheetMode error={state.fieldErrors?.["primary_contact.first_name"]?.[0]}>
+            <Input id="contact_first_name" name="contact_first_name" required className={inputClass} />
           </Field>
-
-          <Field
-            id="contact_last_name"
-            label="Last name"
-            error={state.fieldErrors?.["primary_contact.last_name"]?.[0]}
-          >
-            <Input id="contact_last_name" name="contact_last_name" />
+          <Field id="contact_last_name" label="Last name" sheetMode error={state.fieldErrors?.["primary_contact.last_name"]?.[0]}>
+            <Input id="contact_last_name" name="contact_last_name" className={inputClass} />
           </Field>
-
-          <Field
-            id="contact_email"
-            label="Email"
-            error={state.fieldErrors?.["primary_contact.email"]?.[0]}
-          >
-            <Input id="contact_email" name="contact_email" type="email" />
+          <Field id="contact_email" label="Email" sheetMode error={state.fieldErrors?.["primary_contact.email"]?.[0]}>
+            <Input id="contact_email" name="contact_email" type="email" className={inputClass} />
           </Field>
-
-          <Field
-            id="contact_phone"
-            label="Phone"
-            error={state.fieldErrors?.["primary_contact.phone"]?.[0]}
-          >
-            <Input id="contact_phone" name="contact_phone" type="tel" />
+          <Field id="contact_phone" label="Phone" sheetMode error={state.fieldErrors?.["primary_contact.phone"]?.[0]}>
+            <Input id="contact_phone" name="contact_phone" type="tel" className={inputClass} />
           </Field>
-
-          <Field
-            id="contact_job_title"
-            label="Job title"
-            className="sm:col-span-2"
-            error={state.fieldErrors?.["primary_contact.job_title"]?.[0]}
-          >
-            <Input id="contact_job_title" name="contact_job_title" />
+          <Field id="contact_job_title" label="Job title" sheetMode error={state.fieldErrors?.["primary_contact.job_title"]?.[0]}>
+            <Input id="contact_job_title" name="contact_job_title" className={inputClass} />
           </Field>
-        </div>
-      </section>
+        </SheetFormBody>
+      ) : (
+        <>
+          <section className="space-y-4">
+            <h2 className="text-sm font-medium text-muted-foreground">Client</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="name" label="Company name" required className="sm:col-span-2" error={state.fieldErrors?.name?.[0]}>
+                <Input id="name" name="name" required />
+              </Field>
+              <Field id="status" label="Status" required error={state.fieldErrors?.status?.[0]}>
+                <select id="status" name="status" required defaultValue="prospect" className={selectClass}>
+                  {statuses.map((s) => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field id="rag_status" label="RAG status" required error={state.fieldErrors?.rag_status?.[0]}>
+                <select id="rag_status" name="rag_status" required defaultValue="green" className={selectClass}>
+                  {ragStatuses.map((r) => (
+                    <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field id="account_manager_id" label="Account manager" className="sm:col-span-2" error={state.fieldErrors?.account_manager_id?.[0]}>
+                <select id="account_manager_id" name="account_manager_id" defaultValue="" className={selectClass}>
+                  <option value="">Unassigned</option>
+                  {teamMembers.map((member) => (
+                    <option key={member.id} value={member.id}>{member.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field id="website_url" label="Website URL" className="sm:col-span-2" error={state.fieldErrors?.website_url?.[0]}>
+                <Input id="website_url" name="website_url" type="url" />
+              </Field>
+              <Field id="gmb_url" label="Google My Business" className="sm:col-span-2" error={state.fieldErrors?.gmb_url?.[0]}>
+                <Input id="gmb_url" name="gmb_url" type="url" />
+              </Field>
+              <Field id="business_phone" label="Business phone" className="sm:col-span-2" error={state.fieldErrors?.business_phone?.[0]}>
+                <Input id="business_phone" name="business_phone" type="tel" />
+              </Field>
+              <Field id="notes" label="Notes" className="sm:col-span-2" error={state.fieldErrors?.notes?.[0]}>
+                <Textarea id="notes" name="notes" rows={4} />
+              </Field>
+            </div>
+          </section>
+          <section className="space-y-4">
+            <h2 className="text-sm font-medium text-muted-foreground">Primary contact</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="contact_first_name" label="First name" required error={state.fieldErrors?.["primary_contact.first_name"]?.[0]}>
+                <Input id="contact_first_name" name="contact_first_name" required />
+              </Field>
+              <Field id="contact_last_name" label="Last name" error={state.fieldErrors?.["primary_contact.last_name"]?.[0]}>
+                <Input id="contact_last_name" name="contact_last_name" />
+              </Field>
+              <Field id="contact_email" label="Email" error={state.fieldErrors?.["primary_contact.email"]?.[0]}>
+                <Input id="contact_email" name="contact_email" type="email" />
+              </Field>
+              <Field id="contact_phone" label="Phone" error={state.fieldErrors?.["primary_contact.phone"]?.[0]}>
+                <Input id="contact_phone" name="contact_phone" type="tel" />
+              </Field>
+              <Field id="contact_job_title" label="Job title" className="sm:col-span-2" error={state.fieldErrors?.["primary_contact.job_title"]?.[0]}>
+                <Input id="contact_job_title" name="contact_job_title" />
+              </Field>
+            </div>
+          </section>
+        </>
+      )}
 
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className={cn(buttonVariants())}
-        >
-          {pending ? "Creating…" : "Create client"}
-        </button>
-        {sheetMode ? (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-        ) : (
+      {sheetMode ? (
+        <SheetFooter>
+          <SheetFormActions
+            primaryLabel="Create client"
+            pending={pending}
+            onCancel={onCancel}
+          />
+        </SheetFooter>
+      ) : (
+        <div className="flex gap-3">
+          <button type="submit" disabled={pending} className={cn(buttonVariants())}>
+            {pending ? "Creating…" : "Create client"}
+          </button>
           <Button type="button" variant="outline" render={<Link href="/clients" />}>
             Cancel
           </Button>
-        )}
-      </div>
+        </div>
+      )}
     </form>
   );
 }
@@ -287,6 +268,7 @@ function Field({
   required,
   error,
   className,
+  sheetMode = false,
   children,
 }: {
   id: string;
@@ -294,8 +276,23 @@ function Field({
   required?: boolean;
   error?: string;
   className?: string;
+  sheetMode?: boolean;
   children: React.ReactNode;
 }) {
+  if (sheetMode) {
+    return (
+      <SheetFormField
+        label={label}
+        required={required}
+        error={error}
+        htmlFor={id}
+        className={className}
+      >
+        {children}
+      </SheetFormField>
+    );
+  }
+
   return (
     <div className={className}>
       <Label htmlFor={id}>

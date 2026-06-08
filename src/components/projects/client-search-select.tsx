@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { sheetFieldLabelClassName } from "@/components/ui/sheet-form";
 import type { SelectOption } from "@/lib/queries/projects";
 
 type ClientSearchSelectProps = {
@@ -32,9 +32,9 @@ export function ClientSearchSelect({
 
   return (
     <div className="relative">
-      <Label htmlFor="client_search">
+      <label htmlFor="client_search" className={sheetFieldLabelClassName}>
         Client<span className="text-destructive"> *</span>
-      </Label>
+      </label>
       <Input
         id="client_search"
         list="client-options"
@@ -49,7 +49,7 @@ export function ClientSearchSelect({
           onClientSelect?.(nextId);
         }}
         placeholder="Search clients…"
-        className="mt-1.5"
+        className="mt-0 rounded-md px-3 py-2"
         autoComplete="off"
         required
       />

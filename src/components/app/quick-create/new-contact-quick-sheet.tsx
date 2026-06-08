@@ -7,17 +7,23 @@ import {
   type ClientFormState,
 } from "@/lib/actions/clients";
 import { useActionToast } from "@/hooks/use-action-toast";
-import { Button } from "@/components/ui/button";
+import { ClientSearchSelect } from "@/components/projects/client-search-select";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Sheet,
+  SheetBody,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  SheetFormActions,
+  SheetFormBody,
+  SheetFormField,
+  sheetInputClassName,
+} from "@/components/ui/sheet-form";
 import type { SelectOption } from "@/lib/queries/projects";
-import { ClientSearchSelect } from "@/components/projects/client-search-select";
 
 const initialState: ClientFormState = {};
 
@@ -61,86 +67,71 @@ export function NewContactQuickSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+      <SheetContent side="right">
         <SheetHeader>
           <SheetTitle>New contact</SheetTitle>
         </SheetHeader>
 
-        <form action={formAction} className="mt-6 space-y-4">
-          {state.error ? (
-            <p className="text-sm text-destructive" role="alert">
-              {state.error}
-            </p>
-          ) : null}
+        <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+          <SheetBody className="py-0">
+            <SheetFormBody>
+              {state.error ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {state.error}
+                </p>
+              ) : null}
 
-          <ClientSearchSelect
-            clients={clients}
-            onClientSelect={setClientId}
-          />
+              <ClientSearchSelect
+                clients={clients}
+                onClientSelect={setClientId}
+              />
 
-          <Field label="First name" required error={state.fieldErrors?.first_name?.[0]}>
-            <Input name="first_name" required />
-          </Field>
-          <Field label="Last name" error={state.fieldErrors?.last_name?.[0]}>
-            <Input name="last_name" />
-          </Field>
-          <Field label="Email" error={state.fieldErrors?.email?.[0]}>
-            <Input name="email" type="email" />
-          </Field>
-          <Field label="Phone" error={state.fieldErrors?.phone?.[0]}>
-            <Input name="phone" type="tel" />
-          </Field>
-          <Field label="Job title" error={state.fieldErrors?.job_title?.[0]}>
-            <Input name="job_title" />
-          </Field>
+              <SheetFormField
+                label="First name"
+                required
+                error={state.fieldErrors?.first_name?.[0]}
+              >
+                <Input name="first_name" required className={sheetInputClassName} />
+              </SheetFormField>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="is_primary"
-              value="true"
-              className="size-4 rounded border-input"
+              <SheetFormField label="Last name" error={state.fieldErrors?.last_name?.[0]}>
+                <Input name="last_name" className={sheetInputClassName} />
+              </SheetFormField>
+
+              <SheetFormField label="Email" error={state.fieldErrors?.email?.[0]}>
+                <Input name="email" type="email" className={sheetInputClassName} />
+              </SheetFormField>
+
+              <SheetFormField label="Phone" error={state.fieldErrors?.phone?.[0]}>
+                <Input name="phone" type="tel" className={sheetInputClassName} />
+              </SheetFormField>
+
+              <SheetFormField label="Job title" error={state.fieldErrors?.job_title?.[0]}>
+                <Input name="job_title" className={sheetInputClassName} />
+              </SheetFormField>
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="is_primary"
+                  value="true"
+                  className="size-4 rounded border-input"
+                />
+                Set as primary contact
+              </label>
+            </SheetFormBody>
+          </SheetBody>
+
+          <SheetFooter>
+            <SheetFormActions
+              primaryLabel="Create contact"
+              pending={pending}
+              primaryDisabled={!clientId}
+              onCancel={() => onOpenChange(false)}
             />
-            Set as primary contact
-          </label>
-
-          <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={pending || !clientId}>
-              {pending ? "Saving…" : "Create contact"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-          </div>
+          </SheetFooter>
         </form>
       </SheetContent>
     </Sheet>
-  );
-}
-
-function Field({
-  label,
-  required,
-  error,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Label>
-        {label}
-        {required ? <span className="text-destructive"> *</span> : null}
-      </Label>
-      <div className="mt-1.5">{children}</div>
-      {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}
-    </div>
   );
 }

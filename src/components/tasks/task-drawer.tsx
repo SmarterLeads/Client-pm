@@ -30,11 +30,12 @@ import type { TaskDetail } from "@/lib/queries/tasks";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { sheetFieldLabelClassName, sheetInputClassName, sheetSelectClassName, sheetTextareaClassName } from "@/components/ui/sheet-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { TeamMember } from "@/lib/types";
 import { closeTaskDrawer } from "@/lib/stores/task-drawer-store";
+import { cn } from "@/lib/utils";
 import { DELETE_TASK_CONFIRM_MESSAGE } from "@/lib/tasks/constants";
 import { PmEnumValues } from "@/lib/types/enums";
 import { XIcon } from "lucide-react";
@@ -198,43 +199,46 @@ export function TaskDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="Task details"
-        className="absolute top-0 right-0 flex h-full w-full max-w-[500px] flex-col overflow-hidden bg-popover text-popover-foreground shadow-xl"
+        className="absolute top-0 right-0 flex h-full w-full flex-col overflow-hidden border-l border-border bg-popover text-popover-foreground shadow-xl sm:w-[480px]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative z-10 flex shrink-0 items-center justify-end border-b border-border px-4 py-3">
+        <div className="relative shrink-0 border-b border-border px-6 pb-4 pt-6 pr-14">
+          <h2 className="text-lg font-semibold tracking-tight">Task details</h2>
+          {detail ? (
+            <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
+              {detail.project_name} · {detail.client_name}
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={handleClose}
-            className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon-sm" }),
+              "absolute top-4 right-4",
+            )}
           >
             <XIcon />
             <span className="sr-only">Close</span>
           </button>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
+        <div className="flex min-h-0 flex-1 flex-col px-6 pb-6">
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : !detail ? (
           <p className="text-sm text-destructive">{error ?? "Task not found."}</p>
         ) : (
-          <>
-            <div className="shrink-0 pt-4">
-              <h2 className="sr-only">Task details</h2>
-              <p className="text-xs text-muted-foreground">
-                {detail.project_name} · {detail.client_name}
-              </p>
+            <>
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto py-6">
               <Input
                 defaultValue={detail.task.title}
                 className="text-lg font-semibold"
+                aria-label="Task title"
                 onBlur={(e) => {
                   if (e.target.value.trim() && e.target.value !== detail.task.title) {
                     saveField({ title: e.target.value.trim() });
                   }
                 }}
               />
-            </div>
-
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-4">
               {error ? (
                 <p className="text-sm text-destructive" role="alert">
                   {error}
@@ -242,12 +246,13 @@ export function TaskDrawer({
               ) : null}
 
               <div>
-                <Label htmlFor="task_description">Description</Label>
+                <label className={sheetFieldLabelClassName} htmlFor="task_description">
+                  Description
+                </label>
                 <Textarea
                   id="task_description"
                   defaultValue={detail.task.description ?? ""}
-                  rows={3}
-                  className="mt-1.5"
+                  className={cn(sheetTextareaClassName, "mt-0")}
                   onBlur={(e) => {
                     const val = e.target.value.trim() || null;
                     if (val !== (detail.task.description ?? null)) {
@@ -286,12 +291,14 @@ export function TaskDrawer({
                   onChange={(v) => saveField({ assignee_id: v || null })}
                 />
                 <div>
-                  <Label htmlFor="due_date">Due date</Label>
+                  <label className={sheetFieldLabelClassName} htmlFor="due_date">
+                    Due date
+                  </label>
                   <Input
                     id="due_date"
                     type="date"
                     defaultValue={detail.task.due_date ?? ""}
-                    className="mt-1.5 h-8"
+                    className={sheetInputClassName}
                     onBlur={(e) =>
                       saveField({ due_date: e.target.value || null })
                     }
@@ -310,14 +317,16 @@ export function TaskDrawer({
                   onChange={(v) => saveField({ section_id: v || null })}
                 />
                 <div>
-                  <Label htmlFor="estimated_hours">Est. hours</Label>
+                  <label className={sheetFieldLabelClassName} htmlFor="estimated_hours">
+                    Est. hours
+                  </label>
                   <Input
                     id="estimated_hours"
                     type="number"
                     min={0}
                     step={0.5}
                     defaultValue={detail.task.estimated_hours ?? ""}
-                    className="mt-1.5 h-8"
+                    className={sheetInputClassName}
                     onBlur={(e) =>
                       saveField({
                         estimated_hours: e.target.value
@@ -389,7 +398,7 @@ export function TaskDrawer({
               </Tabs>
             </div>
 
-            <div className="shrink-0 border-t border-border pt-3">
+            <div className="shrink-0 border-t border-border pt-4">
               <Button
                 type="button"
                 variant="destructive"
@@ -421,11 +430,11 @@ function FieldSelect({
 }) {
   return (
     <div>
-      <Label>{label}</Label>
+      <label className={sheetFieldLabelClassName}>{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 h-8 w-full rounded-lg border border-input px-2.5 text-sm dark:bg-input/30"
+        className={sheetSelectClassName}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -724,24 +733,24 @@ function TimeLogSection({
       </div>
 
       {showForm ? (
-        <form action={formAction} className="space-y-3 rounded-lg border border-border p-3">
-          <div className="grid grid-cols-2 gap-2">
+        <form action={formAction} className="space-y-5 rounded-lg border border-border p-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="hours">Hours</Label>
-              <Input id="hours" name="hours" type="number" min={0} defaultValue={0} className="mt-1 h-8" />
+              <label htmlFor="hours" className={sheetFieldLabelClassName}>Hours</label>
+              <Input id="hours" name="hours" type="number" min={0} defaultValue={0} className={sheetInputClassName} />
             </div>
             <div>
-              <Label htmlFor="minutes">Minutes</Label>
-              <Input id="minutes" name="minutes" type="number" min={0} max={59} defaultValue={30} className="mt-1 h-8" />
+              <label htmlFor="minutes" className={sheetFieldLabelClassName}>Minutes</label>
+              <Input id="minutes" name="minutes" type="number" min={0} max={59} defaultValue={30} className={sheetInputClassName} />
             </div>
           </div>
           <div>
-            <Label htmlFor="logged_date">Date</Label>
-            <Input id="logged_date" name="logged_date" type="date" defaultValue={today} required className="mt-1 h-8" />
+            <label htmlFor="logged_date" className={sheetFieldLabelClassName}>Date</label>
+            <Input id="logged_date" name="logged_date" type="date" defaultValue={today} required className={sheetInputClassName} />
           </div>
           <div>
-            <Label htmlFor="time_description">Description</Label>
-            <Input id="time_description" name="description" className="mt-1 h-8" />
+            <label htmlFor="time_description" className={sheetFieldLabelClassName}>Description</label>
+            <Input id="time_description" name="description" className={sheetInputClassName} />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="billable" value="true" defaultChecked className="size-4 rounded" />

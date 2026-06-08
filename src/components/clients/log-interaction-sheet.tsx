@@ -10,21 +10,30 @@ import {
 import { useActionToast } from "@/hooks/use-action-toast";
 import { formatContactName } from "@/lib/clients/contact-utils";
 import { ClientSearchSelect } from "@/components/projects/client-search-select";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Sheet,
+  SheetBody,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  SheetFormActions,
+  SheetFormBody,
+  SheetFormField,
+  sheetInputClassName,
+  sheetSelectClassName,
+  sheetTextareaClassName,
+} from "@/components/ui/sheet-form";
 import { Textarea } from "@/components/ui/textarea";
 import { interactionTypeOptions } from "@/lib/interactions/display";
 import type { InteractionRow } from "@/lib/interactions/types";
 import type { SelectOption } from "@/lib/queries/projects";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { ClientContact } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const initialState: ClientFormState = {};
 const interactionChannels = PmEnumValues.interaction_channel;
@@ -112,7 +121,7 @@ export function LogInteractionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+      <SheetContent side="right">
         <SheetHeader>
           <SheetTitle>{sheetTitle}</SheetTitle>
         </SheetHeader>
@@ -120,142 +129,119 @@ export function LogInteractionSheet({
         <form
           key={`${interaction?.id ?? "new"}-${effectiveClientId}`}
           action={formAction}
-          className="mt-6 space-y-4"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          {state.error ? (
-            <p className="text-sm text-destructive" role="alert">
-              {state.error}
-            </p>
-          ) : null}
+          <SheetBody className="py-0">
+            <SheetFormBody>
+              {state.error ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {state.error}
+                </p>
+              ) : null}
 
-          {showClientPicker && clients ? (
-            <ClientSearchSelect
-              clients={clients}
-              onClientSelect={handleClientSelect}
-            />
-          ) : null}
+              {showClientPicker && clients ? (
+                <ClientSearchSelect
+                  clients={clients}
+                  onClientSelect={handleClientSelect}
+                />
+              ) : null}
 
-          <Field label="Type" required error={state.fieldErrors?.type?.[0]}>
-            <select
-              name="type"
-              required
-              defaultValue={interaction?.type ?? "meeting"}
-              className="h-8 w-full rounded-lg border border-input px-2.5 text-sm dark:bg-input/30"
-            >
-              {interactionTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
+              <SheetFormField label="Type" required error={state.fieldErrors?.type?.[0]}>
+                <select
+                  name="type"
+                  required
+                  defaultValue={interaction?.type ?? "meeting"}
+                  className={sheetSelectClassName}
+                >
+                  {interactionTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </SheetFormField>
 
-          <Field label="Channel" error={state.fieldErrors?.channel?.[0]}>
-            <select
-              name="channel"
-              defaultValue={interaction?.channel ?? ""}
-              className="h-8 w-full rounded-lg border border-input px-2.5 text-sm dark:bg-input/30"
-            >
-              <option value="">None</option>
-              {interactionChannels.map((c) => (
-                <option key={c} value={c}>
-                  {c.replace("_", " ").replace(/^\w/, (m) => m.toUpperCase())}
-                </option>
-              ))}
-            </select>
-          </Field>
+              <SheetFormField label="Channel" error={state.fieldErrors?.channel?.[0]}>
+                <select
+                  name="channel"
+                  defaultValue={interaction?.channel ?? ""}
+                  className={sheetSelectClassName}
+                >
+                  <option value="">None</option>
+                  {interactionChannels.map((c) => (
+                    <option key={c} value={c}>
+                      {c.replace("_", " ").replace(/^\w/, (m) => m.toUpperCase())}
+                    </option>
+                  ))}
+                </select>
+              </SheetFormField>
 
-          <Field label="Contact" error={state.fieldErrors?.contact_id?.[0]}>
-            <select
-              name="contact_id"
-              defaultValue={interaction?.contact_id ?? primaryId}
-              className="h-8 w-full rounded-lg border border-input px-2.5 text-sm dark:bg-input/30"
-            >
-              <option value="">No contact</option>
-              {contacts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {formatContactName(c)}
-                  {c.is_primary ? " (primary)" : ""}
-                </option>
-              ))}
-            </select>
-          </Field>
+              <SheetFormField label="Contact" error={state.fieldErrors?.contact_id?.[0]}>
+                <select
+                  name="contact_id"
+                  defaultValue={interaction?.contact_id ?? primaryId}
+                  className={sheetSelectClassName}
+                >
+                  <option value="">No contact</option>
+                  {contacts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {formatContactName(c)}
+                      {c.is_primary ? " (primary)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </SheetFormField>
 
-          <Field label="Summary" required error={state.fieldErrors?.summary?.[0]}>
-            <Input
-              name="summary"
-              required
-              maxLength={500}
-              defaultValue={interaction?.summary ?? ""}
-            />
-          </Field>
+              <SheetFormField label="Summary" required error={state.fieldErrors?.summary?.[0]}>
+                <Input
+                  name="summary"
+                  required
+                  maxLength={500}
+                  defaultValue={interaction?.summary ?? ""}
+                  className={sheetInputClassName}
+                />
+              </SheetFormField>
 
-          <Field label="Details" error={state.fieldErrors?.body?.[0]}>
-            <Textarea
-              name="body"
-              rows={4}
-              defaultValue={interaction?.body ?? ""}
-            />
-          </Field>
+              <SheetFormField label="Details" error={state.fieldErrors?.body?.[0]}>
+                <Textarea
+                  name="body"
+                  defaultValue={interaction?.body ?? ""}
+                  className={sheetTextareaClassName}
+                />
+              </SheetFormField>
 
-          <Field
-            label="Occurred at"
-            required
-            error={state.fieldErrors?.occurred_at?.[0]}
-          >
-            <Input
-              name="occurred_at"
-              type="datetime-local"
-              required
-              defaultValue={
-                interaction
-                  ? toDatetimeLocalValue(interaction.occurred_at)
-                  : newOccurredAtLocal()
+              <SheetFormField
+                label="Occurred at"
+                required
+                error={state.fieldErrors?.occurred_at?.[0]}
+              >
+                <Input
+                  name="occurred_at"
+                  type="datetime-local"
+                  required
+                  defaultValue={
+                    interaction
+                      ? toDatetimeLocalValue(interaction.occurred_at)
+                      : newOccurredAtLocal()
+                  }
+                  className={sheetInputClassName}
+                />
+              </SheetFormField>
+            </SheetFormBody>
+          </SheetBody>
+
+          <SheetFooter>
+            <SheetFormActions
+              primaryLabel={
+                isEditing ? "Save changes" : "Log interaction"
               }
+              pending={pending}
+              primaryDisabled={showClientPicker && !effectiveClientId}
+              onCancel={() => onOpenChange(false)}
             />
-          </Field>
-
-          <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={pending || (showClientPicker && !effectiveClientId)}>
-              {pending
-                ? "Saving…"
-                : isEditing
-                  ? "Save changes"
-                  : "Log interaction"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-          </div>
+          </SheetFooter>
         </form>
       </SheetContent>
     </Sheet>
-  );
-}
-
-function Field({
-  label,
-  required,
-  error,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Label>
-        {label}
-        {required ? <span className="text-destructive"> *</span> : null}
-      </Label>
-      <div className="mt-1.5">{children}</div>
-      {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}
-    </div>
   );
 }

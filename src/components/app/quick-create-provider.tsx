@@ -9,6 +9,7 @@ import { NewTaskQuickSheet } from "@/components/app/quick-create/new-task-quick-
 import { ProjectForm } from "@/components/projects/project-form";
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -196,19 +197,21 @@ function QuickCreateSheet({
     interaction: "New interaction",
   };
 
+  const isLarge = type === "client" || type === "project";
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+      <SheetContent side="right" size={isLarge ? "lg" : "default"}>
         <SheetHeader>
           <SheetTitle>{titles[type]}</SheetTitle>
         </SheetHeader>
-        <div className="mt-6">
+        <SheetBody className="flex min-h-0 flex-1 flex-col py-0">
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             children
           )}
-        </div>
+        </SheetBody>
       </SheetContent>
     </Sheet>
   );
