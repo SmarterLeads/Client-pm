@@ -1615,6 +1615,7 @@ export type Database = {
           agency_id: string
           client_type: string
           created_at: string
+          currency: string
           default_chart_mode: string
           ga4_id: string | null
           ghl_pipeline_config: Json | null
@@ -1651,6 +1652,7 @@ export type Database = {
           agency_id: string
           client_type?: string
           created_at?: string
+          currency?: string
           default_chart_mode?: string
           ga4_id?: string | null
           ghl_pipeline_config?: Json | null
@@ -1687,6 +1689,7 @@ export type Database = {
           agency_id?: string
           client_type?: string
           created_at?: string
+          currency?: string
           default_chart_mode?: string
           ga4_id?: string | null
           ghl_pipeline_config?: Json | null

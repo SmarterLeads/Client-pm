@@ -92,14 +92,31 @@ export function formatClientAddress(client: {
   return lines.length > 0 ? lines.join("\n") : null;
 }
 
-export function formatMrr(cents: number | null | undefined): string {
+export const CLIENT_CURRENCY_OPTIONS = [
+  { value: "CAD", label: "CAD" },
+  { value: "USD", label: "USD" },
+] as const;
+
+export type ClientCurrency = (typeof CLIENT_CURRENCY_OPTIONS)[number]["value"];
+
+export function normalizeClientCurrency(
+  value: string | null | undefined,
+): ClientCurrency {
+  return value === "USD" ? "USD" : "CAD";
+}
+
+export function formatMrr(
+  cents: number | null | undefined,
+  currency: ClientCurrency = "CAD",
+): string {
   if (cents == null) return "—";
-  return new Intl.NumberFormat("en-CA", {
+  const formatted = new Intl.NumberFormat("en-CA", {
     style: "currency",
-    currency: "CAD",
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(cents / 100);
+  return currency === "USD" ? `${formatted} USD` : formatted;
 }
 
 /** Overview status labels (maps to public.clients.status string values). */

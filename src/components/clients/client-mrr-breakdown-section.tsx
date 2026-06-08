@@ -4,14 +4,19 @@ import { InlineDollarField } from "@/components/clients/inline-dollar-field";
 import { OverviewFieldRow } from "@/components/clients/overview-ui";
 import {
   channelMrrCents,
-  getMarketingChannelLabel,
+  getMrrBreakdownItemLabel,
   mrrBreakdownMismatchMessage,
   orderedMrrBreakdownChannels,
+  orderedTrackingCrmBreakdownKeys,
   parseMrrBreakdown,
-  sumMrrBreakdown,
+  sumActiveMrrBreakdown,
   withChannelMrrCents,
 } from "@/lib/clients/mrr-breakdown";
-import { formatMrr } from "@/lib/clients/overview-fields";
+import {
+  formatMrr,
+  normalizeClientCurrency,
+  type ClientCurrency,
+} from "@/lib/clients/overview-fields";
 import type { Client } from "@/lib/types";
 
 type ClientMrrBreakdownSectionProps = {
@@ -21,17 +26,62 @@ type ClientMrrBreakdownSectionProps = {
   ) => Promise<{ error?: string }>;
 };
 
+function BreakdownSubsection({
+  title,
+  itemKeys,
+  breakdown,
+  currency,
+  onSaveChannel,
+}: {
+  title: string;
+  itemKeys: string[];
+  breakdown: ReturnType<typeof parseMrrBreakdown>;
+  currency: ClientCurrency;
+  onSaveChannel: (key: string, cents: number | null) => Promise<{ error?: string }>;
+}) {
+  if (itemKeys.length === 0) return null;
+
+  return (
+    <div className="space-y-1">
+      <p className="px-2 pt-2 text-xs font-medium text-muted-foreground">{title}</p>
+      {itemKeys.map((key) => (
+        <OverviewFieldRow
+          key={key}
+          editable
+          label={getMrrBreakdownItemLabel(key)}
+        >
+          <InlineDollarField
+            cents={channelMrrCents(breakdown, key)}
+            currency={currency}
+            aria-label={`${getMrrBreakdownItemLabel(key)} MRR`}
+            onSave={(cents) => onSaveChannel(key, cents)}
+          />
+        </OverviewFieldRow>
+      ))}
+    </div>
+  );
+}
+
 export function ClientMrrBreakdownSection({
   client,
   onSaveBreakdown,
 }: ClientMrrBreakdownSectionProps) {
-  const channels = orderedMrrBreakdownChannels(client.marketing_channels);
+  const currency = normalizeClientCurrency(client.currency);
+  const marketingChannels = orderedMrrBreakdownChannels(client.marketing_channels);
+  const trackingKeys = orderedTrackingCrmBreakdownKeys(client.tracking_setup);
   const breakdown = parseMrrBreakdown(client.mrr_breakdown);
-  const breakdownTotalCents = sumMrrBreakdown(breakdown);
+  const breakdownTotalCents = sumActiveMrrBreakdown(
+    breakdown,
+    client.marketing_channels,
+    client.tracking_setup,
+  );
   const mismatchMessage = mrrBreakdownMismatchMessage(
     breakdownTotalCents,
     client.mrr_cents,
+    currency,
   );
+  const hasBreakdownItems =
+    marketingChannels.length > 0 || trackingKeys.length > 0;
 
   async function saveChannelMrr(
     channel: string,
@@ -47,35 +97,36 @@ export function ClientMrrBreakdownSection({
         MRR Breakdown
       </p>
 
-      {channels.length === 0 ? (
+      {!hasBreakdownItems ? (
         <p className="px-2 text-sm text-muted-foreground">
-          No marketing channels configured.
+          No marketing channels or tracking tools configured.
         </p>
       ) : (
         <div className="space-y-1">
-          {channels.map((channel) => (
-            <OverviewFieldRow
-              key={channel}
-              editable
-              label={getMarketingChannelLabel(channel)}
-            >
-              <InlineDollarField
-                cents={channelMrrCents(breakdown, channel)}
-                aria-label={`${getMarketingChannelLabel(channel)} MRR`}
-                onSave={(cents) => saveChannelMrr(channel, cents)}
-              />
-            </OverviewFieldRow>
-          ))}
+          <BreakdownSubsection
+            title="Marketing Channels"
+            itemKeys={marketingChannels}
+            breakdown={breakdown}
+            currency={currency}
+            onSaveChannel={saveChannelMrr}
+          />
+          <BreakdownSubsection
+            title="Tracking & CRM"
+            itemKeys={trackingKeys}
+            breakdown={breakdown}
+            currency={currency}
+            onSaveChannel={saveChannelMrr}
+          />
 
           <OverviewFieldRow
-            label="Breakdown total"
+            label="Total"
             value={
               <span
                 className={
                   mismatchMessage ? "text-amber-600 dark:text-amber-500" : undefined
                 }
               >
-                {formatMrr(breakdownTotalCents)}
+                {formatMrr(breakdownTotalCents, currency)}
               </span>
             }
           />

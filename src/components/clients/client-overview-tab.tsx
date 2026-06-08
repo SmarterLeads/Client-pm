@@ -26,6 +26,8 @@ import {
   isAddressComplete,
   normalizeOverviewClientType,
   normalizeOverviewStatus,
+  normalizeClientCurrency,
+  CLIENT_CURRENCY_OPTIONS,
   OVERVIEW_CLIENT_TYPES,
   OVERVIEW_STATUS_OPTIONS,
   type OverviewStatus,
@@ -67,6 +69,7 @@ export function ClientOverviewTab({
   const statusValue = normalizeOverviewStatus(client.status);
   const ragValue = client.rag_status ?? "green";
   const clientTypeValue = normalizeOverviewClientType(client.client_type);
+  const currencyValue = normalizeClientCurrency(client.currency);
   const formattedAddress = formatClientAddress(client);
   const showAddressPreview = isAddressComplete(client) && formattedAddress;
 
@@ -179,8 +182,18 @@ export function ClientOverviewTab({
               <OverviewFieldRow editable label="Total MRR (monthly)">
                 <InlineDollarField
                   cents={client.mrr_cents}
+                  currency={currencyValue}
                   aria-label="Total monthly recurring revenue"
                   onSave={(cents) => saveField({ mrr_cents: cents })}
+                />
+              </OverviewFieldRow>
+              <OverviewFieldRow editable label="Currency">
+                <InlineSelectField
+                  aria-label="Currency"
+                  value={currencyValue}
+                  options={[...CLIENT_CURRENCY_OPTIONS]}
+                  className="min-w-[5rem]"
+                  onSave={(value) => saveField({ currency: value })}
                 />
               </OverviewFieldRow>
               <ClientMrrBreakdownSection

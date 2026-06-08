@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Input } from "@/components/ui/input";
-import { formatMrr } from "@/lib/clients/overview-fields";
+import { formatMrr, type ClientCurrency } from "@/lib/clients/overview-fields";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ type InlineDollarFieldProps = {
   onSave: (cents: number | null) => Promise<{ error?: string }>;
   "aria-label": string;
   className?: string;
+  currency?: ClientCurrency;
 };
 
 export function InlineDollarField({
@@ -20,6 +21,7 @@ export function InlineDollarField({
   onSave,
   "aria-label": ariaLabel,
   className,
+  currency = "CAD",
 }: InlineDollarFieldProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -132,7 +134,7 @@ export function InlineDollarField({
       )}
       aria-label={`Edit ${ariaLabel}`}
     >
-      {formatMrr(cents)}
+      {formatMrr(cents, currency)}
     </button>
   );
 }

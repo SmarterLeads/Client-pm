@@ -214,6 +214,7 @@ export const updateClientOverviewFieldsSchema = z
         z.number().int().min(0).max(999_999_999_99),
       )
       .optional(),
+    currency: z.enum(["CAD", "USD"]).optional(),
     status: z.enum(CLIENT_STATUSES).optional(),
     rag_status: z.enum(ragStatuses).optional(),
     account_manager_id: z
