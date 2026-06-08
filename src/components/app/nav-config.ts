@@ -20,7 +20,7 @@ export type AppNavItem = {
   matchPrefix?: boolean;
 };
 
-export const appNavItems: AppNavItem[] = [
+export const workspaceNavItems: AppNavItem[] = [
   { href: "/dashboard", label: "PM Dashboard", icon: LayoutDashboard },
   {
     href: "/marketing",
@@ -34,6 +34,9 @@ export const appNavItems: AppNavItem[] = [
     icon: Landmark,
     matchPrefix: true,
   },
+];
+
+export const clientNavItems: AppNavItem[] = [
   {
     href: "/clients",
     label: "Clients",
@@ -46,6 +49,24 @@ export const appNavItems: AppNavItem[] = [
     icon: Users,
     matchPrefix: true,
   },
+];
+
+export const internalNavItems: AppNavItem[] = [
+  {
+    href: "/internal/projects",
+    label: "Internal Projects",
+    icon: Building2,
+    matchPrefix: true,
+  },
+  {
+    href: "/internal/meetings",
+    label: "Team Meetings",
+    icon: Users,
+    matchPrefix: true,
+  },
+];
+
+export const deliveryNavItems: AppNavItem[] = [
   {
     href: "/projects",
     label: "Projects",
@@ -61,6 +82,14 @@ export const appNavItems: AppNavItem[] = [
   },
   { href: "/team", label: "Team", icon: Users, matchPrefix: true },
   { href: "/settings", label: "Settings", icon: Settings, matchPrefix: true },
+];
+
+/** @deprecated Use section arrays — kept for any legacy imports */
+export const appNavItems: AppNavItem[] = [
+  ...workspaceNavItems,
+  ...clientNavItems,
+  ...internalNavItems,
+  ...deliveryNavItems,
 ];
 
 /** Shown after Settings — admin only (see AppSidebar). */

@@ -3,6 +3,8 @@
   "project",
   "task",
   "interaction",
+  "internal_project",
+  "internal_task",
 ] as const;
 
 export type AttachmentEntityType = (typeof ATTACHMENT_ENTITY_TYPES)[number];

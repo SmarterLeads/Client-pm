@@ -4,7 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ClientReportsNav } from "@/components/app/client-reports-nav";
-import { adminNavItems, appNavItems } from "@/components/app/nav-config";
+import {
+  adminNavItems,
+  clientNavItems,
+  deliveryNavItems,
+  internalNavItems,
+  type AppNavItem,
+  workspaceNavItems,
+} from "@/components/app/nav-config";
 import type { AgencyReportClientGroup } from "@/lib/marketing/types";
 
 function isActive(pathname: string, href: string, matchPrefix?: boolean) {
@@ -17,6 +24,32 @@ function isActive(pathname: string, href: string, matchPrefix?: boolean) {
   return pathname === href;
 }
 
+function NavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
+  const active = isActive(pathname, item.href, item.matchPrefix);
+  const Icon = item.icon;
+  const showClientReports =
+    item.href === "/marketing" && item.label === "Marketing Overview";
+
+  return (
+    <div className="contents">
+      <Link
+        href={item.href}
+        title={item.label}
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+          active
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+        )}
+      >
+        <Icon className="size-5 shrink-0" aria-hidden />
+        <span className="hidden truncate lg:inline">{item.label}</span>
+      </Link>
+      {showClientReports ? <ClientReportsNav groups={[]} /> : null}
+    </div>
+  );
+}
+
 type AppSidebarProps = {
   isAdmin?: boolean;
   reportClientGroups?: AgencyReportClientGroup[];
@@ -27,7 +60,16 @@ export function AppSidebar({
   reportClientGroups = [],
 }: AppSidebarProps) {
   const pathname = usePathname();
-  const navItems = [...appNavItems, ...(isAdmin ? adminNavItems : [])];
+
+  const sections = [
+    { items: workspaceNavItems, showDividerBefore: false },
+    { items: clientNavItems, showDividerBefore: false },
+    { items: internalNavItems, showDividerBefore: true },
+    { items: deliveryNavItems, showDividerBefore: false },
+    ...(isAdmin
+      ? [{ items: adminNavItems, showDividerBefore: true }]
+      : []),
+  ];
 
   return (
     <aside className="flex h-full w-16 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:w-56">
@@ -40,34 +82,50 @@ export function AppSidebar({
           <span className="hidden lg:inline">Smarter Leads</span>
         </Link>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-2">
-        {navItems.map((item) => {
-          const active = isActive(pathname, item.href, item.matchPrefix);
-          const Icon = item.icon;
-          const showClientReports =
-            item.href === "/marketing" && item.label === "Marketing Overview";
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
+        {sections.map((section, index) => (
+          <div key={index} className="contents">
+            {section.showDividerBefore ? (
+              <div
+                className="my-2 hidden border-t border-sidebar-border/60 lg:block"
+                aria-hidden
+              />
+            ) : null}
+            {section.items.map((item) => {
+              if (
+                item.href === "/marketing" &&
+                item.label === "Marketing Overview"
+              ) {
+                const active = isActive(pathname, item.href, item.matchPrefix);
+                const Icon = item.icon;
+                return (
+                  <div key={item.href} className="contents">
+                    <Link
+                      href={item.href}
+                      title={item.label}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                      )}
+                    >
+                      <Icon className="size-5 shrink-0" aria-hidden />
+                      <span className="hidden truncate lg:inline">
+                        {item.label}
+                      </span>
+                    </Link>
+                    <ClientReportsNav groups={reportClientGroups} />
+                  </div>
+                );
+              }
 
-          return (
-            <div key={item.href} className="contents">
-              <Link
-                href={item.href}
-                title={item.label}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                )}
-              >
-                <Icon className="size-5 shrink-0" aria-hidden />
-                <span className="hidden truncate lg:inline">{item.label}</span>
-              </Link>
-              {showClientReports ? (
-                <ClientReportsNav groups={reportClientGroups} />
-              ) : null}
-            </div>
-          );
-        })}
+              return (
+                <NavLink key={item.href} item={item} pathname={pathname} />
+              );
+            })}
+          </div>
+        ))}
       </nav>
     </aside>
   );

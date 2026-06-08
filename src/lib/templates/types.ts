@@ -20,7 +20,7 @@ export type ProjectTemplateSection = {
 export type ProjectTemplateTask = {
   id: string;
   template_id: string;
-  section_id: string;
+  section_id: string | null;
   parent_task_id: string | null;
   title: string;
   description: string | null;
@@ -29,6 +29,9 @@ export type ProjectTemplateTask = {
   estimated_hours: number | null;
   days_from_start: number | null;
   display_order: number;
+  is_recurring?: boolean;
+  recurrence_rule?: string | null;
+  notes?: string | null;
 };
 
 export type TemplateListRow = {

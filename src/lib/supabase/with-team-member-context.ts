@@ -681,3 +681,247 @@ export async function applyProjectTemplateWithTeamMemberContext(
   );
   if (error) throw new Error(`Failed to apply template: ${error.message}. ${TEMPLATE_RPC_HINT}`);
 }
+
+const INTERNAL_RPC_HINT =
+  "Apply supabase/migrations/20260622120000_internal_rpcs.sql";
+
+export async function insertInternalProjectWithTeamMemberContext(
+  teamMemberId: string,
+  payload: Record<string, unknown>,
+): Promise<string> {
+  const supabase = createServiceClient();
+  const { data, error } = await pmRpc<string>(
+    supabase,
+    "insert_internal_project_with_team_member_context",
+    { p_team_member_id: teamMemberId, p_project: payload as Json },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to create internal project: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+  if (!data) throw new Error("Failed to create internal project: no id returned.");
+  return data;
+}
+
+export async function updateInternalProjectWithTeamMemberContext(
+  teamMemberId: string,
+  projectId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await pmRpc(
+    supabase,
+    "update_internal_project_with_team_member_context",
+    {
+      p_team_member_id: teamMemberId,
+      p_project_id: projectId,
+      p_payload: payload as Json,
+    },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to update internal project: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+}
+
+export async function insertInternalSectionWithTeamMemberContext(
+  teamMemberId: string,
+  payload: Record<string, unknown>,
+): Promise<string> {
+  const supabase = createServiceClient();
+  const { data, error } = await pmRpc<string>(
+    supabase,
+    "insert_internal_section_with_team_member_context",
+    { p_team_member_id: teamMemberId, p_payload: payload as Json },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to create section: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+  if (!data) throw new Error("Failed to create section: no id returned.");
+  return data;
+}
+
+export async function updateInternalTaskSectionWithTeamMemberContext(
+  teamMemberId: string,
+  taskId: string,
+  sectionId: string,
+): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await pmRpc(
+    supabase,
+    "update_internal_task_section_with_team_member_context",
+    {
+      p_team_member_id: teamMemberId,
+      p_task_id: taskId,
+      p_section_id: sectionId,
+    },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to move task: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+}
+
+export async function insertInternalTaskWithTeamMemberContext(
+  teamMemberId: string,
+  payload: Record<string, unknown>,
+): Promise<string> {
+  const supabase = createServiceClient();
+  const { data, error } = await pmRpc<string>(
+    supabase,
+    "insert_internal_task_with_team_member_context",
+    { p_team_member_id: teamMemberId, p_payload: payload as Json },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to create internal task: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+  if (!data) throw new Error("Failed to create internal task: no id returned.");
+  return data;
+}
+
+export async function updateInternalTaskWithTeamMemberContext(
+  teamMemberId: string,
+  taskId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await pmRpc(
+    supabase,
+    "update_internal_task_with_team_member_context",
+    {
+      p_team_member_id: teamMemberId,
+      p_task_id: taskId,
+      p_payload: payload as Json,
+    },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to update internal task: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+}
+
+export async function deleteInternalTaskWithTeamMemberContext(
+  teamMemberId: string,
+  taskId: string,
+): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await pmRpc(
+    supabase,
+    "delete_internal_task_with_team_member_context",
+    { p_team_member_id: teamMemberId, p_task_id: taskId },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to delete internal task: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+}
+
+export async function insertMeetingWithTeamMemberContext(
+  teamMemberId: string,
+  payload: Record<string, unknown>,
+): Promise<string> {
+  const supabase = createServiceClient();
+  const { data, error } = await pmRpc<string>(
+    supabase,
+    "insert_meeting_with_team_member_context",
+    { p_team_member_id: teamMemberId, p_payload: payload as Json },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to create meeting: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+  if (!data) throw new Error("Failed to create meeting: no id returned.");
+  return data;
+}
+
+export async function updateMeetingWithTeamMemberContext(
+  teamMemberId: string,
+  meetingId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await pmRpc(
+    supabase,
+    "update_meeting_with_team_member_context",
+    {
+      p_team_member_id: teamMemberId,
+      p_meeting_id: meetingId,
+      p_payload: payload as Json,
+    },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to update meeting: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+}
+
+export async function deleteMeetingWithTeamMemberContext(
+  teamMemberId: string,
+  meetingId: string,
+): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await pmRpc(
+    supabase,
+    "delete_meeting_with_team_member_context",
+    { p_team_member_id: teamMemberId, p_meeting_id: meetingId },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to delete meeting: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+}
+
+export async function addMeetingParticipantWithTeamMemberContext(
+  teamMemberId: string,
+  meetingId: string,
+  participantId: string,
+): Promise<string | null> {
+  const supabase = createServiceClient();
+  const { data, error } = await pmRpc<string>(
+    supabase,
+    "add_meeting_participant_with_team_member_context",
+    {
+      p_team_member_id: teamMemberId,
+      p_meeting_id: meetingId,
+      p_participant_id: participantId,
+    },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to add participant: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+  return data;
+}
+
+export async function removeMeetingParticipantWithTeamMemberContext(
+  teamMemberId: string,
+  participantId: string,
+): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await pmRpc(
+    supabase,
+    "remove_meeting_participant_with_team_member_context",
+    {
+      p_team_member_id: teamMemberId,
+      p_participant_id: participantId,
+    },
+  );
+  if (error) {
+    throw new Error(
+      `Failed to remove participant: ${error.message}. ${INTERNAL_RPC_HINT}`,
+    );
+  }
+}

@@ -28,6 +28,16 @@ export const PmEnumValues = {
     "report",
     "quote",
   ],
+  meeting_type: [
+    "team_meeting",
+    "one_on_one",
+    "standup",
+    "planning",
+    "retrospective",
+    "training",
+    "other",
+  ],
+  meeting_visibility: ["all", "admin_only", "participants"],
   notification_type: [
     "task_assigned",
     "task_due",

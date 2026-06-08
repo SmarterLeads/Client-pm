@@ -119,6 +119,7 @@ export async function getTemplateById(id: string): Promise<TemplateDetail | null
     tasksBySection.set(section.id, []);
   }
   for (const task of tasks ?? []) {
+    if (!task.section_id) continue;
     const list = tasksBySection.get(task.section_id);
     if (list) list.push(task);
   }
