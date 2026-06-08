@@ -133,6 +133,20 @@ export async function getProjectsForSelect(): Promise<SelectOption[]> {
   return data ?? [];
 }
 
+export async function getProjectsForSelectByClient(
+  clientId: string,
+): Promise<SelectOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await pm(supabase)
+    .from("projects")
+    .select("id, name")
+    .eq("client_id", clientId)
+    .order("name");
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 export async function getTeamMembersForSelect(): Promise<
   Pick<TeamMember, "id" | "name" | "email" | "avatar_url">[]
 > {

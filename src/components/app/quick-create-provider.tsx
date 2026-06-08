@@ -31,7 +31,6 @@ type QuickCreateFormData = {
   agencies: AgencyListRow[];
   teamMembers: Pick<TeamMember, "id" | "name" | "email" | "avatar_url">[];
   templates: TemplateSelectOption[];
-  projects: SelectOption[];
 };
 
 type QuickCreateProviderProps = {
@@ -151,7 +150,7 @@ export function QuickCreateProvider({
 
       {formData ? (
         <NewTaskQuickSheet
-          projects={formData.projects}
+          clients={formData.clients}
           teamMembers={formData.teamMembers}
           open={active === "task"}
           onOpenChange={handleOpenChange}

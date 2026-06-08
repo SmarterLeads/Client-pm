@@ -1,8 +1,11 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
-import { loadQuickCreateProjectSections } from "@/lib/actions/quick-create";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  loadQuickCreateClientProjects,
+  loadQuickCreateProjectSections,
+} from "@/lib/actions/quick-create";
 import { createTask, type TaskFormState } from "@/lib/actions/tasks";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { Input } from "@/components/ui/input";
@@ -35,14 +38,14 @@ const priorities = PmEnumValues.task_priority;
 type SectionOption = { id: string; name: string };
 
 type NewTaskQuickSheetProps = {
-  projects: SelectOption[];
+  clients: SelectOption[];
   teamMembers: Pick<TeamMember, "id" | "name" | "email">[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
 export function NewTaskQuickSheet({
-  projects,
+  clients,
   teamMembers,
   open,
   onOpenChange,
@@ -54,15 +57,33 @@ export function NewTaskQuickSheet({
     getQuickCreateState,
   );
   const defaultAssigneeId = options.taskDefaults?.assigneeId ?? "";
+
+  const [clientId, setClientId] = useState("");
+  const [clientQuery, setClientQuery] = useState("");
+  const [projects, setProjects] = useState<SelectOption[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectId, setProjectId] = useState("");
+  const [sectionId, setSectionId] = useState("");
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(false);
   const [assigneeId, setAssigneeId] = useState(defaultAssigneeId);
   const [state, formAction, pending] = useActionState(createTask, initialState);
 
+  const filteredClients = useMemo(() => {
+    const query = clientQuery.trim().toLowerCase();
+    if (!query) return clients.slice(0, 20);
+    return clients
+      .filter((client) => client.name.toLowerCase().includes(query))
+      .slice(0, 20);
+  }, [clients, clientQuery]);
+
   useEffect(() => {
     if (!open) {
+      setClientId("");
+      setClientQuery("");
+      setProjects([]);
       setProjectId("");
+      setSectionId("");
       setSections([]);
       setAssigneeId("");
       return;
@@ -72,8 +93,32 @@ export function NewTaskQuickSheet({
   }, [open, defaultAssigneeId]);
 
   useEffect(() => {
+    if (!clientId) {
+      setProjects([]);
+      setProjectId("");
+      setSectionId("");
+      return;
+    }
+
+    let cancelled = false;
+    setProjectsLoading(true);
+    loadQuickCreateClientProjects(clientId)
+      .then((rows) => {
+        if (!cancelled) setProjects(rows);
+      })
+      .finally(() => {
+        if (!cancelled) setProjectsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
+
+  useEffect(() => {
     if (!projectId) {
       setSections([]);
+      setSectionId("");
       return;
     }
 
@@ -92,6 +137,44 @@ export function NewTaskQuickSheet({
     };
   }, [projectId]);
 
+  function handleClientQueryChange(value: string) {
+    setClientQuery(value);
+
+    const match = clients.find(
+      (client) => client.name.toLowerCase() === value.trim().toLowerCase(),
+    );
+
+    if (match) {
+      if (match.id !== clientId) {
+        setClientId(match.id);
+        setProjectId("");
+        setSectionId("");
+      }
+      return;
+    }
+
+    if (clientId) {
+      setClientId("");
+      setProjectId("");
+      setSectionId("");
+    }
+  }
+
+  function handleClientBlur() {
+    if (!clientId && clientQuery.trim()) {
+      const match = clients.find(
+        (client) =>
+          client.name.toLowerCase() === clientQuery.trim().toLowerCase(),
+      );
+      if (!match) {
+        setClientQuery("");
+      }
+    } else if (clientId) {
+      const selected = clients.find((client) => client.id === clientId);
+      if (selected) setClientQuery(selected.name);
+    }
+  }
+
   useActionToast(state, {
     successMessage: "Task created",
     onSuccess: () => {
@@ -107,7 +190,15 @@ export function NewTaskQuickSheet({
           <SheetTitle>New task</SheetTitle>
         </SheetHeader>
 
-        <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+        <form
+          action={formAction}
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(event) => {
+            if (!clientId || !projectId) {
+              event.preventDefault();
+            }
+          }}
+        >
           <SheetBody className="py-0">
             <SheetFormBody>
               {state.error ? (
@@ -116,19 +207,55 @@ export function NewTaskQuickSheet({
                 </p>
               ) : null}
 
-              <SheetFormField label="Title" required error={state.fieldErrors?.title?.[0]}>
-                <Input name="title" required className={sheetInputClassName} />
+              <SheetFormField label="Client" required>
+                <Input
+                  list="new-task-client-options"
+                  value={clientQuery}
+                  onChange={(event) => handleClientQueryChange(event.target.value)}
+                  onBlur={handleClientBlur}
+                  placeholder="Search clients…"
+                  className={sheetInputClassName}
+                  autoComplete="off"
+                  required
+                  aria-label="Client"
+                />
+                <datalist id="new-task-client-options">
+                  {filteredClients.map((client) => (
+                    <option key={client.id} value={client.name} />
+                  ))}
+                </datalist>
+                {!clientId && clientQuery.trim() ? (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Select a client from the list.
+                  </p>
+                ) : null}
               </SheetFormField>
 
-              <SheetFormField label="Project" required error={state.fieldErrors?.project_id?.[0]}>
+              <SheetFormField
+                label="Project"
+                required
+                error={state.fieldErrors?.project_id?.[0]}
+              >
                 <select
                   name="project_id"
                   required
                   value={projectId}
-                  onChange={(event) => setProjectId(event.target.value)}
+                  disabled={!clientId || projectsLoading}
+                  onChange={(event) => {
+                    setProjectId(event.target.value);
+                    setSectionId("");
+                  }}
                   className={sheetSelectClassName}
                 >
-                  <option value="">Select project…</option>
+                  <option value="">
+                    {!clientId
+                      ? "Select a client first"
+                      : projectsLoading
+                        ? "Loading projects…"
+                        : projects.length === 0
+                          ? "No projects for this client"
+                          : "Select project…"}
+                  </option>
                   {projects.map((project) => (
                     <option key={project.id} value={project.id}>
                       {project.name}
@@ -140,8 +267,9 @@ export function NewTaskQuickSheet({
               <SheetFormField label="Section" error={state.fieldErrors?.section_id?.[0]}>
                 <select
                   name="section_id"
-                  defaultValue=""
+                  value={sectionId}
                   disabled={!projectId || sectionsLoading}
+                  onChange={(event) => setSectionId(event.target.value)}
                   className={sheetSelectClassName}
                 >
                   <option value="">
@@ -157,6 +285,10 @@ export function NewTaskQuickSheet({
                     </option>
                   ))}
                 </select>
+              </SheetFormField>
+
+              <SheetFormField label="Title" required error={state.fieldErrors?.title?.[0]}>
+                <Input name="title" required className={sheetInputClassName} />
               </SheetFormField>
 
               <SheetFormField label="Assignee" error={state.fieldErrors?.assignee_id?.[0]}>
@@ -212,7 +344,7 @@ export function NewTaskQuickSheet({
             <SheetFormActions
               primaryLabel="Create task"
               pending={pending}
-              primaryDisabled={!projectId}
+              primaryDisabled={!clientId || !projectId}
               onCancel={() => onOpenChange(false)}
             />
           </SheetFooter>

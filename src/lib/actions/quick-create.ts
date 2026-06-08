@@ -4,23 +4,26 @@ import { getAgenciesList } from "@/lib/queries/agencies";
 import { getClientContacts } from "@/lib/queries/clients";
 import {
   getClientsForSelect,
-  getProjectsForSelect,
+  getProjectsForSelectByClient,
   getProjectSections,
   getTeamMembersForSelect,
 } from "@/lib/queries/projects";
 import { getActiveTemplatesForSelect } from "@/lib/queries/templates";
 
 export async function loadQuickCreateFormData() {
-  const [clients, agencies, teamMembers, templates, projects] =
-    await Promise.all([
-      getClientsForSelect(),
-      getAgenciesList(),
-      getTeamMembersForSelect(),
-      getActiveTemplatesForSelect(),
-      getProjectsForSelect(),
-    ]);
+  const [clients, agencies, teamMembers, templates] = await Promise.all([
+    getClientsForSelect(),
+    getAgenciesList(),
+    getTeamMembersForSelect(),
+    getActiveTemplatesForSelect(),
+  ]);
 
-  return { clients, agencies, teamMembers, templates, projects };
+  return { clients, agencies, teamMembers, templates };
+}
+
+export async function loadQuickCreateClientProjects(clientId: string) {
+  if (!clientId) return [];
+  return getProjectsForSelectByClient(clientId);
 }
 
 export async function loadQuickCreateProjectSections(projectId: string) {
