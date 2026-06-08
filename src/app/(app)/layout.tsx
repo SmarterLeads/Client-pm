@@ -1,5 +1,6 @@
 ﻿import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
+import { QuickCreateProvider } from "@/components/app/quick-create-provider";
 import { TaskDrawerProvider } from "@/components/tasks/task-drawer-provider";
 import {
   getSessionUser,
@@ -34,15 +35,17 @@ export default async function AppLayout({
     ]);
 
   return (
-    <AppShell
-      teamMember={teamMember}
-      unreadCount={unreadCount}
-      notifications={notifications}
-      reportClientGroups={reportClientGroups}
-    >
-      <TaskDrawerProvider teamMembers={teamMembers}>
-        {children}
-      </TaskDrawerProvider>
-    </AppShell>
+    <QuickCreateProvider teamMember={teamMember}>
+      <AppShell
+        teamMember={teamMember}
+        unreadCount={unreadCount}
+        notifications={notifications}
+        reportClientGroups={reportClientGroups}
+      >
+        <TaskDrawerProvider teamMembers={teamMembers}>
+          {children}
+        </TaskDrawerProvider>
+      </AppShell>
+    </QuickCreateProvider>
   );
 }

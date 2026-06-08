@@ -9,12 +9,14 @@ type ClientSearchSelectProps = {
   clients: SelectOption[];
   defaultClientId?: string;
   error?: string;
+  onClientSelect?: (clientId: string) => void;
 };
 
 export function ClientSearchSelect({
   clients,
   defaultClientId = "",
   error,
+  onClientSelect,
 }: ClientSearchSelectProps) {
   const defaultClient = clients.find((c) => c.id === defaultClientId);
   const [query, setQuery] = useState(defaultClient?.name ?? "");
@@ -42,7 +44,9 @@ export function ClientSearchSelect({
           const match = clients.find(
             (c) => c.name.toLowerCase() === e.target.value.trim().toLowerCase(),
           );
-          setSelectedId(match?.id ?? "");
+          const nextId = match?.id ?? "";
+          setSelectedId(nextId);
+          onClientSelect?.(nextId);
         }}
         placeholder="Search clients…"
         className="mt-1.5"

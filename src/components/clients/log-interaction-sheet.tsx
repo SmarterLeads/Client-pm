@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   createInteraction,
   updateInteraction,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions/clients";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { formatContactName } from "@/lib/clients/contact-utils";
+import { ClientSearchSelect } from "@/components/projects/client-search-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { interactionTypeOptions } from "@/lib/interactions/display";
 import type { InteractionRow } from "@/lib/interactions/types";
+import type { SelectOption } from "@/lib/queries/projects";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { ClientContact } from "@/lib/types";
 
@@ -28,11 +30,14 @@ const initialState: ClientFormState = {};
 const interactionChannels = PmEnumValues.interaction_channel;
 
 type LogInteractionSheetProps = {
-  clientId: string;
-  contacts: ClientContact[];
+  clientId?: string;
+  clients?: SelectOption[];
+  contacts?: ClientContact[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   interaction?: InteractionRow | null;
+  title?: string;
+  onClientSelect?: (clientId: string) => void;
 };
 
 function newOccurredAtLocal() {
@@ -48,19 +53,42 @@ function toDatetimeLocalValue(iso: string) {
 }
 
 export function LogInteractionSheet({
-  clientId,
-  contacts,
+  clientId: clientIdProp,
+  clients,
+  contacts = [],
   open,
   onOpenChange,
   interaction = null,
+  title,
+  onClientSelect,
 }: LogInteractionSheetProps) {
   const router = useRouter();
   const isEditing = Boolean(interaction);
+  const [selectedClientId, setSelectedClientId] = useState(clientIdProp ?? "");
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedClientId(clientIdProp ?? "");
+      return;
+    }
+    if (clientIdProp) {
+      setSelectedClientId(clientIdProp);
+    }
+  }, [open, clientIdProp]);
+
+  const effectiveClientId = clientIdProp ?? selectedClientId;
+  const showClientPicker = Boolean(clients?.length) && !clientIdProp && !isEditing;
+
+  const createAction =
+    effectiveClientId
+      ? createInteraction.bind(null, effectiveClientId)
+      : async () =>
+          ({ error: "Select a client first." }) satisfies ClientFormState;
 
   const [state, formAction, pending] = useActionState(
-    isEditing && interaction
-      ? updateInteraction.bind(null, clientId, interaction.id)
-      : createInteraction.bind(null, clientId),
+    isEditing && interaction && clientIdProp
+      ? updateInteraction.bind(null, clientIdProp, interaction.id)
+      : createAction,
     initialState,
   );
 
@@ -73,18 +101,24 @@ export function LogInteractionSheet({
   });
 
   const primaryId = contacts.find((c) => c.is_primary)?.id ?? "";
+  const sheetTitle =
+    title ??
+    (isEditing ? "Edit interaction" : showClientPicker ? "New interaction" : "Log interaction");
+
+  function handleClientSelect(id: string) {
+    setSelectedClientId(id);
+    onClientSelect?.(id);
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>
-            {isEditing ? "Edit interaction" : "Log interaction"}
-          </SheetTitle>
+          <SheetTitle>{sheetTitle}</SheetTitle>
         </SheetHeader>
 
         <form
-          key={interaction?.id ?? "new"}
+          key={`${interaction?.id ?? "new"}-${effectiveClientId}`}
           action={formAction}
           className="mt-6 space-y-4"
         >
@@ -92,6 +126,13 @@ export function LogInteractionSheet({
             <p className="text-sm text-destructive" role="alert">
               {state.error}
             </p>
+          ) : null}
+
+          {showClientPicker && clients ? (
+            <ClientSearchSelect
+              clients={clients}
+              onClientSelect={handleClientSelect}
+            />
           ) : null}
 
           <Field label="Type" required error={state.fieldErrors?.type?.[0]}>
@@ -175,7 +216,7 @@ export function LogInteractionSheet({
           </Field>
 
           <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending || (showClientPicker && !effectiveClientId)}>
               {pending
                 ? "Saving…"
                 : isEditing

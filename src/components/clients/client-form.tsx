@@ -26,9 +26,17 @@ type ClientFormProps = {
   teamMembers: Pick<TeamMember, "id" | "name" | "email">[];
   agencies: AgencyListRow[];
   agencyId?: string | null;
+  sheetMode?: boolean;
+  onCancel?: () => void;
 };
 
-export function ClientForm({ teamMembers, agencies, agencyId }: ClientFormProps) {
+export function ClientForm({
+  teamMembers,
+  agencies,
+  agencyId,
+  sheetMode = false,
+  onCancel,
+}: ClientFormProps) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(createClient, initialState);
   const redirectedClientId = useRef<string | null>(null);
@@ -40,11 +48,15 @@ export function ClientForm({ teamMembers, agencies, agencyId }: ClientFormProps)
     if (redirectedClientId.current === state.clientId) return;
 
     redirectedClientId.current = state.clientId;
+    if (sheetMode) onCancel?.();
     router.push(`/clients/${state.clientId}`);
-  }, [state.success, state.clientId, router]);
+  }, [state.success, state.clientId, router, sheetMode, onCancel]);
 
   return (
-    <form action={formAction} className="mx-auto max-w-2xl space-y-8">
+    <form
+      action={formAction}
+      className={sheetMode ? "space-y-6" : "mx-auto max-w-2xl space-y-8"}
+    >
       {agencyId ? (
         <input type="hidden" name="agency_id" value={agencyId} />
       ) : (
@@ -255,9 +267,15 @@ export function ClientForm({ teamMembers, agencies, agencyId }: ClientFormProps)
         >
           {pending ? "Creating…" : "Create client"}
         </button>
-        <Button type="button" variant="outline" render={<Link href="/clients" />}>
-          Cancel
-        </Button>
+        {sheetMode ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : (
+          <Button type="button" variant="outline" render={<Link href="/clients" />}>
+            Cancel
+          </Button>
+        )}
       </div>
     </form>
   );

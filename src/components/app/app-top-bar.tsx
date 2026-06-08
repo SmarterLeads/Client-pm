@@ -2,6 +2,7 @@
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { isAdmin } from "@/lib/auth/roles";
 import { GlobalSearch } from "@/components/app/global-search";
+import { QuickCreateButton } from "@/components/app/quick-create-button";
 import { NotificationsBell } from "@/components/app/notifications-bell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -51,6 +52,7 @@ export function AppTopBar({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
+        <QuickCreateButton />
         <NotificationsBell
           unreadCount={unreadCount}
           notifications={notifications}

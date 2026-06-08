@@ -27,6 +27,8 @@ type ProjectFormProps = {
   teamMembers: Pick<TeamMember, "id" | "name" | "email">[];
   templates?: TemplateSelectOption[];
   defaultClientId?: string;
+  sheetMode?: boolean;
+  onCancel?: () => void;
 };
 
 export function ProjectForm({
@@ -34,13 +36,15 @@ export function ProjectForm({
   teamMembers,
   templates = [],
   defaultClientId,
+  sheetMode = false,
+  onCancel,
 }: ProjectFormProps) {
   const [state, formAction, pending] = useActionState(createProject, initialState);
 
-  useActionToast(state);
+  useActionToast(state, { successMessage: "Project created" });
 
   return (
-    <form action={formAction} className="mx-auto max-w-2xl space-y-6">
+    <form action={formAction} className={sheetMode ? "space-y-6" : "mx-auto max-w-2xl space-y-6"}>
       {state.error ? (
         <p
           className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
@@ -163,21 +167,27 @@ export function ProjectForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Creating…" : "Create project"}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          render={
-            <Link
-              href={
-                defaultClientId
-                  ? `/clients/${defaultClientId}?tab=projects`
-                  : "/projects"
-              }
-            />
-          }
-        >
-          Cancel
-        </Button>
+        {sheetMode ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            render={
+              <Link
+                href={
+                  defaultClientId
+                    ? `/clients/${defaultClientId}?tab=projects`
+                    : "/projects"
+                }
+              />
+            }
+          >
+            Cancel
+          </Button>
+        )}
       </div>
     </form>
   );
