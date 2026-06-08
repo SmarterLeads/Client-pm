@@ -15,7 +15,7 @@ import { InlineDollarField } from "@/components/clients/inline-dollar-field";
 import { InlineSelectField } from "@/components/clients/inline-select-field";
 import { InlineTextField } from "@/components/clients/inline-text-field";
 import { LastContactedIndicator } from "@/components/clients/last-contacted-indicator";
-import { OverviewCard, OverviewFieldRow } from "@/components/clients/overview-ui";
+import { OverviewCard, OverviewFieldRow, OverviewSectionDivider, OverviewSubsection } from "@/components/clients/overview-ui";
 import { PortalUsersSection } from "@/components/clients/portal-users-section";
 import { RagDot } from "@/components/clients/rag-dot";
 import { Button } from "@/components/ui/button";
@@ -152,6 +152,50 @@ export function ClientOverviewTab({
               aria-label="HST number"
             />
           </OverviewFieldRow>
+
+          <OverviewSectionDivider />
+          <OverviewSubsection title="Business Address">
+            {showAddressPreview ? (
+              <p className="mb-3 whitespace-pre-wrap rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm">
+                {formattedAddress}
+              </p>
+            ) : null}
+            <OverviewFieldRow editable label="Street">
+              <InlineTextField
+                value={client.address_street}
+                onSave={(value) => saveField({ address_street: value })}
+                aria-label="Street"
+              />
+            </OverviewFieldRow>
+            <OverviewFieldRow editable label="City">
+              <InlineTextField
+                value={client.address_city}
+                onSave={(value) => saveField({ address_city: value })}
+                aria-label="City"
+              />
+            </OverviewFieldRow>
+            <OverviewFieldRow editable label="Province">
+              <InlineTextField
+                value={client.address_province}
+                onSave={(value) => saveField({ address_province: value })}
+                aria-label="Province"
+              />
+            </OverviewFieldRow>
+            <OverviewFieldRow editable label="Postal code">
+              <InlineTextField
+                value={client.address_postal_code}
+                onSave={(value) => saveField({ address_postal_code: value })}
+                aria-label="Postal code"
+              />
+            </OverviewFieldRow>
+            <OverviewFieldRow editable label="Country">
+              <InlineTextField
+                value={client.address_country ?? "Canada"}
+                onSave={(value) => saveField({ address_country: value })}
+                aria-label="Country"
+              />
+            </OverviewFieldRow>
+          </OverviewSubsection>
         </OverviewCard>
 
         <OverviewCard title="Account Info">
@@ -218,52 +262,14 @@ export function ClientOverviewTab({
               />
             </>
           ) : null}
+          <ClientOverviewMarketingConfigSection
+            client={client}
+            connections={platformConnections}
+            embedded
+          />
         </OverviewCard>
 
         {/* Row 2 */}
-        <OverviewCard title="Business Address">
-          {showAddressPreview ? (
-            <p className="mb-3 whitespace-pre-wrap rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm">
-              {formattedAddress}
-            </p>
-          ) : null}
-          <OverviewFieldRow editable label="Street">
-            <InlineTextField
-              value={client.address_street}
-              onSave={(value) => saveField({ address_street: value })}
-              aria-label="Street"
-            />
-          </OverviewFieldRow>
-          <OverviewFieldRow editable label="City">
-            <InlineTextField
-              value={client.address_city}
-              onSave={(value) => saveField({ address_city: value })}
-              aria-label="City"
-            />
-          </OverviewFieldRow>
-          <OverviewFieldRow editable label="Province">
-            <InlineTextField
-              value={client.address_province}
-              onSave={(value) => saveField({ address_province: value })}
-              aria-label="Province"
-            />
-          </OverviewFieldRow>
-          <OverviewFieldRow editable label="Postal code">
-            <InlineTextField
-              value={client.address_postal_code}
-              onSave={(value) => saveField({ address_postal_code: value })}
-              aria-label="Postal code"
-            />
-          </OverviewFieldRow>
-          <OverviewFieldRow editable label="Country">
-            <InlineTextField
-              value={client.address_country ?? "Canada"}
-              onSave={(value) => saveField({ address_country: value })}
-              aria-label="Country"
-            />
-          </OverviewFieldRow>
-        </OverviewCard>
-
         <OverviewCard title="Primary Contact">
           {primaryContact ? (
             <>
@@ -351,14 +357,6 @@ export function ClientOverviewTab({
             </>
           )}
         </OverviewCard>
-
-        {/* Row 3 — full width */}
-        <div className="lg:col-span-2">
-          <ClientOverviewMarketingConfigSection
-            client={client}
-            connections={platformConnections}
-          />
-        </div>
       </div>
 
       <ClientContactsSection clientId={client.id} contacts={contacts ?? []} />

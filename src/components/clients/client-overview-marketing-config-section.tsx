@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
-import { OverviewCard } from "@/components/clients/overview-ui";
+import { OverviewCard, OverviewSectionDivider, OverviewSubsection } from "@/components/clients/overview-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +30,7 @@ import type { Client } from "@/lib/types";
 type ClientOverviewMarketingConfigSectionProps = {
   client: Client;
   connections: ClientPlatformConnection[];
+  embedded?: boolean;
 };
 
 type DraftPlatformIds = Record<string, string>;
@@ -66,6 +67,7 @@ function buildPlatformDraftValues(
 export function ClientOverviewMarketingConfigSection({
   client,
   connections,
+  embedded = false,
 }: ClientOverviewMarketingConfigSectionProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -223,18 +225,13 @@ export function ClientOverviewMarketingConfigSection({
     });
   }
 
-  return (
-    <OverviewCard
-      title="Marketing Configuration"
-      headerAction={
-        !isEditing ? (
-          <Button type="button" variant="outline" size="sm" onClick={beginEdit}>
-            Edit
-          </Button>
-        ) : null
-      }
-    >
-      {isEditing ? (
+  const editButton = !isEditing ? (
+    <Button type="button" variant="outline" size="sm" onClick={beginEdit}>
+      Edit
+    </Button>
+  ) : null;
+
+  const content = isEditing ? (
         <div className="space-y-4 px-1">
           <div className="space-y-1">
             <Label className="text-sm text-muted-foreground">
@@ -409,7 +406,25 @@ export function ClientOverviewMarketingConfigSection({
             </ul>
           ) : null}
         </div>
-      )}
+      );
+
+  if (embedded) {
+    return (
+      <>
+        <OverviewSectionDivider />
+        <OverviewSubsection
+          title="Marketing Configuration"
+          headerAction={editButton}
+        >
+          {content}
+        </OverviewSubsection>
+      </>
+    );
+  }
+
+  return (
+    <OverviewCard title="Marketing Configuration" headerAction={editButton}>
+      {content}
     </OverviewCard>
   );
 }

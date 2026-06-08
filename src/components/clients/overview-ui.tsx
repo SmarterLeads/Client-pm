@@ -34,6 +34,34 @@ export function OverviewCard({
   );
 }
 
+export function OverviewSectionDivider() {
+  return <div className="my-4 border-t border-border" role="separator" />;
+}
+
+type OverviewSubsectionProps = {
+  title: string;
+  children: React.ReactNode;
+  headerAction?: React.ReactNode;
+  className?: string;
+};
+
+export function OverviewSubsection({
+  title,
+  children,
+  headerAction,
+  className,
+}: OverviewSubsectionProps) {
+  return (
+    <div className={cn("space-y-1", className)}>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h4 className="text-sm font-semibold tracking-tight">{title}</h4>
+        {headerAction}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 type OverviewFieldRowProps = {
   label: React.ReactNode;
   children?: React.ReactNode;
