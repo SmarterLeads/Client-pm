@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
@@ -17,6 +18,12 @@ type InlineTextFieldProps = {
   emptyLabel?: string;
   type?: "text" | "url";
 };
+
+function externalUrl(value: string) {
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
 
 export function InlineTextField({
   value,
@@ -112,14 +119,48 @@ export function InlineTextField({
     );
   }
 
-  const display =
-    type === "url" && value?.trim() ? (
-      <span className="text-primary underline decoration-primary/40">
-        {value}
-      </span>
-    ) : (
-      value?.trim() || emptyLabel
+  const trimmed = value?.trim();
+
+  if (type === "url") {
+    return (
+      <div
+        className={cn(
+          "flex max-w-full items-center justify-end gap-1",
+          className,
+        )}
+      >
+        {trimmed ? (
+          <a
+            href={externalUrl(trimmed)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="truncate text-sm font-medium text-primary underline decoration-primary/40 hover:decoration-primary"
+          >
+            {trimmed}
+          </a>
+        ) : (
+          <button
+            type="button"
+            data-inline-edit-trigger="true"
+            onClick={beginEdit}
+            className="rounded-md px-1 py-0.5 text-sm font-medium text-muted-foreground transition hover:bg-muted/60"
+            aria-label={`Edit ${ariaLabel}`}
+          >
+            {emptyLabel}
+          </button>
+        )}
+        <button
+          type="button"
+          data-inline-edit-trigger="true"
+          onClick={beginEdit}
+          className="shrink-0 rounded-md p-1 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+          aria-label={`Edit ${ariaLabel}`}
+        >
+          <Pencil className="size-3.5" />
+        </button>
+      </div>
     );
+  }
 
   return (
     <button
@@ -128,12 +169,12 @@ export function InlineTextField({
       onClick={beginEdit}
       className={cn(
         "max-w-full rounded-md px-1 py-0.5 text-right text-sm font-medium transition hover:bg-muted/60",
-        !value?.trim() && "text-muted-foreground",
+        !trimmed && "text-muted-foreground",
         className,
       )}
       aria-label={`Edit ${ariaLabel}`}
     >
-      {display}
+      {trimmed || emptyLabel}
     </button>
   );
 }

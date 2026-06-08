@@ -1623,6 +1623,7 @@ export type Database = {
           default_chart_mode: string
           ga4_id: string | null
           ghl_pipeline_config: Json | null
+          gmb_url: string | null
           hst_number: string | null
           id: string
           industry: string | null
@@ -1661,6 +1662,7 @@ export type Database = {
           default_chart_mode?: string
           ga4_id?: string | null
           ghl_pipeline_config?: Json | null
+          gmb_url?: string | null
           hst_number?: string | null
           id?: string
           industry?: string | null
@@ -1699,6 +1701,7 @@ export type Database = {
           default_chart_mode?: string
           ga4_id?: string | null
           ghl_pipeline_config?: Json | null
+          gmb_url?: string | null
           hst_number?: string | null
           id?: string
           industry?: string | null

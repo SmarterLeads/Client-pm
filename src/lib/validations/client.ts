@@ -63,6 +63,12 @@ export const createClientSchema = z.object({
       z.union([z.string().max(500), z.null()]).optional(),
     )
     .optional(),
+  gmb_url: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string().max(500), z.null()]).optional(),
+    )
+    .optional(),
   business_phone: z
     .preprocess(
       emptyToNull,
@@ -193,6 +199,7 @@ export const updateClientOverviewFieldsSchema = z
     name: z.string().trim().min(1).max(200).optional(),
     legal_name: optionalText(200),
     website_url: optionalText(500),
+    gmb_url: optionalText(500),
     business_phone: optionalText(50),
     industry: optionalText(200),
     client_type: z.enum(["ecommerce", "lead_generation"]).optional(),

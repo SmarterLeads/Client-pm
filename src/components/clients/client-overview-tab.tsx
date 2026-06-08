@@ -116,6 +116,14 @@ export function ClientOverviewTab({
               aria-label="Website URL"
             />
           </OverviewFieldRow>
+          <OverviewFieldRow editable label="Google My Business">
+            <InlineTextField
+              value={client.gmb_url}
+              type="url"
+              onSave={(value) => saveField({ gmb_url: value })}
+              aria-label="Google My Business"
+            />
+          </OverviewFieldRow>
           <OverviewFieldRow editable label="Business phone">
             <InlineTextField
               value={client.business_phone}

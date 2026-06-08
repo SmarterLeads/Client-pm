@@ -170,6 +170,15 @@ export function ClientForm({ teamMembers, agencies, agencyId }: ClientFormProps)
           </Field>
 
           <Field
+            id="gmb_url"
+            label="Google My Business"
+            className="sm:col-span-2"
+            error={state.fieldErrors?.gmb_url?.[0]}
+          >
+            <Input id="gmb_url" name="gmb_url" type="url" />
+          </Field>
+
+          <Field
             id="business_phone"
             label="Business phone"
             className="sm:col-span-2"
