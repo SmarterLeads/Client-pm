@@ -30,11 +30,6 @@ import {
   updatePlatformConnectionSchema,
 } from "@/lib/validations/client";
 import type { ClientStatus } from "@/lib/pm/constants";
-import {
-  getClientsList,
-  type ClientListFilters,
-  type ClientsListPage,
-} from "@/lib/queries/clients";
 import { buildStoredMarketingChannel } from "@/lib/updates/display";
 import { pm } from "@/lib/supabase/pm";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
@@ -711,14 +706,6 @@ export async function deleteContact(
       error: err instanceof Error ? err.message : "Failed to delete contact.",
     };
   }
-}
-
-export async function loadMoreClients(
-  filters: ClientListFilters,
-  cursor: string,
-): Promise<ClientsListPage> {
-  await requireTeamMember();
-  return getClientsList(filters, { cursor });
 }
 
 export async function createInteraction(

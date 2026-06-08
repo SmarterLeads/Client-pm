@@ -59,39 +59,11 @@ export type ClientListFilters = {
 
 export type ClientsListPage = {
   clients: ClientListRow[];
-  nextCursor: string | null;
   totalCount: number;
 };
 
 /** Shown on /clients when "Include inactive" is off. */
 export const CLIENT_LIST_ACTIVE_STATUSES = ["active", "prospect"] as const;
-
-export const CLIENTS_PAGE_SIZE = 25;
-
-type ClientsCursor = {
-  name: string;
-  id: string;
-};
-
-function encodeClientsCursor(name: string, id: string): string {
-  return Buffer.from(JSON.stringify({ name, id } satisfies ClientsCursor)).toString(
-    "base64url",
-  );
-}
-
-function decodeClientsCursor(cursor: string): ClientsCursor {
-  const parsed = JSON.parse(
-    Buffer.from(cursor, "base64url").toString("utf8"),
-  ) as ClientsCursor;
-  if (!parsed?.name || !parsed?.id) {
-    throw new Error("Invalid pagination cursor.");
-  }
-  return parsed;
-}
-
-function escapePostgrestValue(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
 
 export type ClientDetail = {
   client: Client;
@@ -174,10 +146,8 @@ function mapClientListRows(
 
 export async function getClientsList(
   filters: ClientListFilters = {},
-  options: { cursor?: string | null; limit?: number } = {},
 ): Promise<ClientsListPage> {
   const supabase = await createClient();
-  const limit = options.limit ?? CLIENTS_PAGE_SIZE;
 
   let agencyClientIds: string[] | null = null;
 
@@ -193,7 +163,7 @@ export async function getClientsList(
 
     agencyClientIds = (scopedClients ?? []).map((client) => client.id);
     if (agencyClientIds.length === 0) {
-      return { clients: [], nextCursor: null, totalCount: 0 };
+      return { clients: [], totalCount: 0 };
     }
   }
 
@@ -243,17 +213,9 @@ export async function getClientsList(
 
   query = applyListFilters(query);
 
-  if (options.cursor) {
-    const { name, id } = decodeClientsCursor(options.cursor);
-    const safeName = escapePostgrestValue(name);
-    query = query.or(
-      `name.gt."${safeName}",and(name.eq."${safeName}",id.gt.${id})`,
-    );
-  }
-
   const [{ count, error: countError }, { data, error }] = await Promise.all([
     countQuery,
-    query.limit(limit + 1),
+    query,
   ]);
 
   if (countError) {
@@ -264,14 +226,9 @@ export async function getClientsList(
     throw new Error(error.message);
   }
 
-  const rows = mapClientListRows(data ?? []);
-  const hasMore = rows.length > limit;
-  const clients = hasMore ? rows.slice(0, limit) : rows;
-  const last = clients.at(-1);
-  const nextCursor =
-    hasMore && last ? encodeClientsCursor(last.name, last.id) : null;
+  const clients = mapClientListRows(data ?? []);
 
-  return { clients, nextCursor, totalCount: count ?? clients.length };
+  return { clients, totalCount: count ?? clients.length };
 }
 
 export async function getClientContacts(

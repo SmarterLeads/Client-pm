@@ -45,7 +45,6 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
             {filters.includeInactive
               ? `${clientsPage.totalCount} client${clientsPage.totalCount === 1 ? "" : "s"}`
               : `${clientsPage.totalCount} active client${clientsPage.totalCount === 1 ? "" : "s"}`}
-            {clientsPage.nextCursor ? "+" : ""}
           </p>
         </div>
         <Button render={<Link href="/clients/new" />}>New client</Button>
@@ -55,12 +54,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         <ClientsFilters agencies={agencies} />
       </Suspense>
 
-      <ClientsList
-        key={JSON.stringify(filters)}
-        initialClients={clientsPage.clients}
-        initialNextCursor={clientsPage.nextCursor}
-        filters={filters}
-      />
+      <ClientsList clients={clientsPage.clients} />
     </div>
   );
 }
