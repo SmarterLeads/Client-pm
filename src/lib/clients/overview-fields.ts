@@ -205,6 +205,34 @@ export function getTrackingSetupLabel(value: string | null | undefined): string 
   );
 }
 
+/** Marketing channels that do not have an associated platform account ID. */
+export const MARKETING_CHANNELS_WITHOUT_PLATFORM_ID = new Set<
+  MarketingChannel
+>(["seo", "website_maintenance"]);
+
+export type ChannelPlatformIdConfig = {
+  platform: string;
+  clientField?: "ga4_id";
+};
+
+export function platformIdConfigForChannel(
+  channel: MarketingChannel,
+): ChannelPlatformIdConfig | null {
+  if (MARKETING_CHANNELS_WITHOUT_PLATFORM_ID.has(channel)) return null;
+  if (channel === "ga4") return { platform: "ga4", clientField: "ga4_id" };
+  const row = CHANNEL_PLATFORM_FIELDS.find((field) => field.channel === channel);
+  return row ? { platform: row.platform } : null;
+}
+
+export function trackingPlatformIdRows(
+  trackingSetup: string | null | undefined,
+): PlatformIdRowConfig[] {
+  if (!trackingSetup) return [];
+  return PLATFORM_ID_ROWS.filter(
+    (row) => row.trackingSetup && row.trackingSetup === trackingSetup,
+  );
+}
+
 export function editablePlatformIdRows(client: {
   marketing_channels: string[] | null;
   tracking_setup: string | null;

@@ -10,7 +10,6 @@ import {
 import { ClientMrrBreakdownSection } from "@/components/clients/client-mrr-breakdown-section";
 import { ClientContactsSection } from "@/components/clients/client-contacts-section";
 import { ClientOverviewMarketingConfigSection } from "@/components/clients/client-overview-marketing-config-section";
-import { ClientOverviewPlatformIdsSection } from "@/components/clients/client-overview-platform-ids-section";
 import { ContactFormSheet } from "@/components/clients/contact-form-sheet";
 import { InlineDollarField } from "@/components/clients/inline-dollar-field";
 import { InlineSelectField } from "@/components/clients/inline-select-field";
@@ -353,13 +352,13 @@ export function ClientOverviewTab({
           )}
         </OverviewCard>
 
-        {/* Row 3 */}
-        <ClientOverviewMarketingConfigSection client={client} />
-
-        <ClientOverviewPlatformIdsSection
-          client={client}
-          connections={platformConnections}
-        />
+        {/* Row 3 — full width */}
+        <div className="lg:col-span-2">
+          <ClientOverviewMarketingConfigSection
+            client={client}
+            connections={platformConnections}
+          />
+        </div>
       </div>
 
       <ClientContactsSection clientId={client.id} contacts={contacts ?? []} />
