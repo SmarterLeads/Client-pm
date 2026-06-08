@@ -7,11 +7,13 @@ import type { GroupedMyTasks } from "@/lib/queries/tasks";
 type MyTasksListShellProps = {
   groups: GroupedMyTasks;
   hasActiveFilters: boolean;
+  assignee: { name: string; avatar_url: string | null };
 };
 
 export function MyTasksListShell({
   groups,
   hasActiveFilters,
+  assignee,
 }: MyTasksListShellProps) {
   const router = useRouter();
 
@@ -19,6 +21,7 @@ export function MyTasksListShell({
     <MyTasksList
       groups={groups}
       hasActiveFilters={hasActiveFilters}
+      assignee={assignee}
       onClearFilters={() => router.replace("/tasks")}
     />
   );

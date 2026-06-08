@@ -71,7 +71,14 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         <MyTasksFilters clients={clients} />
       </Suspense>
 
-      <MyTasksListShell groups={groups} hasActiveFilters={hasActiveFilters} />
+      <MyTasksListShell
+        groups={groups}
+        hasActiveFilters={hasActiveFilters}
+        assignee={{
+          name: teamMember.name,
+          avatar_url: teamMember.avatar_url,
+        }}
+      />
     </div>
   );
 }

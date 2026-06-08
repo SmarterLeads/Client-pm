@@ -61,6 +61,7 @@ export type MyTaskRow = {
   project_id: string;
   project_name: string;
   client_name: string;
+  is_recurring: boolean;
 };
 
 export type MyTaskGroup = "overdue" | "today" | "week" | "later";
@@ -191,6 +192,7 @@ export async function getMyTasks(
       priority,
       status,
       due_date,
+      is_recurring,
       project_id,
       project:projects(name, client_id)
     `,
@@ -263,6 +265,7 @@ export async function getMyTasks(
     project_id: row.project_id,
     project_name: row.project?.name ?? "—",
     client_name: clientNameFromMap(row.project?.client_id, clientNameMap),
+    is_recurring: row.is_recurring ?? false,
   }));
 }
 

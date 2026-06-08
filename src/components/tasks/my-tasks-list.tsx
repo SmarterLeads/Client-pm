@@ -1,57 +1,190 @@
 ﻿"use client";
 
-import { TaskPriorityBadge } from "@/components/projects/task-priority-badge";
+import { useState } from "react";
+import { ChevronDown, Repeat } from "lucide-react";
+import { TaskPriorityDot } from "@/components/projects/task-priority-badge";
 import { useTaskDrawer } from "@/components/tasks/task-drawer-provider";
-import type { GroupedMyTasks, MyTaskRow } from "@/lib/queries/tasks";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import type {
+  GroupedMyTasks,
+  MyTaskGroup,
+  MyTaskRow,
+} from "@/lib/queries/tasks";
+import { cn } from "@/lib/utils";
 
-const groupLabels = {
+const groupLabels: Record<MyTaskGroup, string> = {
   overdue: "Overdue",
   today: "Due today",
   week: "Due this week",
   later: "Later",
-} as const;
+};
 
-function formatDueDate(iso: string | null) {
-  if (!iso) return "No due date";
+const groupOrder: MyTaskGroup[] = ["overdue", "today", "week", "later"];
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatDueDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
 }
 
-function TaskRow({ task }: { task: MyTaskRow }) {
+function dueDateClassName(dueDate: string | null, today: string) {
+  if (!dueDate) return "text-muted-foreground";
+  if (dueDate < today) return "text-destructive";
+  if (dueDate === today) return "text-amber-600 dark:text-amber-400";
+  return "text-muted-foreground";
+}
+
+function TaskRow({
+  task,
+  assignee,
+  today,
+}: {
+  task: MyTaskRow;
+  assignee: { name: string; avatar_url: string | null };
+  today: string;
+}) {
   const { openTask } = useTaskDrawer();
 
   return (
     <button
       type="button"
       onClick={() => openTask(task.id)}
-      className="flex w-full items-start justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/50"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
     >
-      <div className="min-w-0">
-        <p className="font-medium">{task.title}</p>
-        <p className="text-sm text-muted-foreground">
-          {task.project_name} · {task.client_name}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Due {formatDueDate(task.due_date)}
-        </p>
+      <TaskPriorityDot priority={task.priority} />
+
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+        <span className="truncate font-medium">{task.title}</span>
+        <span className="shrink-0 text-muted-foreground" aria-hidden>
+          ·
+        </span>
+        <span className="truncate text-sm text-muted-foreground">
+          {task.project_name}
+        </span>
+        <span className="shrink-0 text-muted-foreground" aria-hidden>
+          ·
+        </span>
+        <span className="truncate text-sm text-muted-foreground">
+          {task.client_name}
+        </span>
       </div>
-      <TaskPriorityBadge priority={task.priority} />
+
+      <div className="ml-auto flex shrink-0 items-center gap-3">
+        {task.is_recurring ? (
+          <Repeat
+            className="size-3.5 text-muted-foreground"
+            aria-label="Recurring task"
+          />
+        ) : null}
+        {task.due_date ? (
+          <span
+            className={cn(
+              "text-sm tabular-nums",
+              dueDateClassName(task.due_date, today),
+            )}
+          >
+            {formatDueDate(task.due_date)}
+          </span>
+        ) : null}
+        <Avatar size="sm">
+          {assignee.avatar_url ? (
+            <AvatarImage src={assignee.avatar_url} alt="" />
+          ) : null}
+          <AvatarFallback>{initials(assignee.name)}</AvatarFallback>
+        </Avatar>
+      </div>
     </button>
+  );
+}
+
+function TaskGroupSection({
+  groupKey,
+  tasks,
+  assignee,
+  today,
+}: {
+  groupKey: MyTaskGroup;
+  tasks: MyTaskRow[];
+  assignee: { name: string; avatar_url: string | null };
+  today: string;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  if (tasks.length === 0) return null;
+
+  const headerClassName =
+    groupKey === "overdue"
+      ? "text-destructive"
+      : groupKey === "today"
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-foreground";
+
+  return (
+    <section>
+      <button
+        type="button"
+        onClick={() => setCollapsed((value) => !value)}
+        className="mb-2 flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-muted/40"
+        aria-expanded={!collapsed}
+      >
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            collapsed && "-rotate-90",
+          )}
+          aria-hidden
+        />
+        <h2 className={cn("text-sm font-semibold", headerClassName)}>
+          {groupLabels[groupKey]}
+        </h2>
+        <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+          {tasks.length}
+        </Badge>
+      </button>
+
+      {!collapsed ? (
+        <div className="overflow-hidden rounded-lg border border-border">
+          <ul className="divide-y divide-border">
+            {tasks.map((task) => (
+              <li key={task.id}>
+                <TaskRow task={task} assignee={assignee} today={today} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
 export function MyTasksList({
   groups,
   hasActiveFilters = false,
+  assignee,
   onClearFilters,
 }: {
   groups: GroupedMyTasks;
   hasActiveFilters?: boolean;
+  assignee: { name: string; avatar_url: string | null };
   onClearFilters?: () => void;
 }) {
-  const hasAny = Object.values(groups).some((g) => g.length > 0);
+  const today = todayIso();
+  const hasAny = Object.values(groups).some((group) => group.length > 0);
 
   if (!hasAny) {
     if (hasActiveFilters) {
@@ -81,27 +214,17 @@ export function MyTasksList({
   }
 
   return (
-    <div className="space-y-8">
-      {(Object.keys(groupLabels) as Array<keyof typeof groupLabels>).map(
-        (key) =>
-          groups[key].length > 0 ? (
-            <section key={key}>
-              <h2
-                className={`mb-3 text-sm font-semibold ${
-                  key === "overdue" ? "text-destructive" : "text-foreground"
-                }`}
-              >
-                {groupLabels[key]} ({groups[key].length})
-              </h2>
-              <ul className="space-y-2">
-                {groups[key].map((task) => (
-                  <li key={task.id}>
-                    <TaskRow task={task} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null,
+    <div className="space-y-6">
+      {groupOrder.map((key) =>
+        groups[key].length > 0 ? (
+          <TaskGroupSection
+            key={key}
+            groupKey={key}
+            tasks={groups[key]}
+            assignee={assignee}
+            today={today}
+          />
+        ) : null,
       )}
     </div>
   );
