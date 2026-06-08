@@ -161,6 +161,24 @@ export function ClientForm({ teamMembers, agencies, agencyId }: ClientFormProps)
           </Field>
 
           <Field
+            id="website_url"
+            label="Website URL"
+            className="sm:col-span-2"
+            error={state.fieldErrors?.website_url?.[0]}
+          >
+            <Input id="website_url" name="website_url" type="url" />
+          </Field>
+
+          <Field
+            id="business_phone"
+            label="Business phone"
+            className="sm:col-span-2"
+            error={state.fieldErrors?.business_phone?.[0]}
+          >
+            <Input id="business_phone" name="business_phone" type="tel" />
+          </Field>
+
+          <Field
             id="notes"
             label="Notes"
             className="sm:col-span-2"

@@ -1613,6 +1613,7 @@ export type Database = {
           address_province: string | null
           address_street: string | null
           agency_id: string
+          business_phone: string | null
           client_type: string
           created_at: string
           currency: string
@@ -1650,6 +1651,7 @@ export type Database = {
           address_province?: string | null
           address_street?: string | null
           agency_id: string
+          business_phone?: string | null
           client_type?: string
           created_at?: string
           currency?: string
@@ -1687,6 +1689,7 @@ export type Database = {
           address_province?: string | null
           address_street?: string | null
           agency_id?: string
+          business_phone?: string | null
           client_type?: string
           created_at?: string
           currency?: string

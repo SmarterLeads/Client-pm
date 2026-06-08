@@ -70,6 +70,8 @@ function parseCreateClientForm(formData: FormData) {
     rag_status: formData.get("rag_status"),
     account_manager_id: formData.get("account_manager_id"),
     notes: formData.get("notes"),
+    website_url: formData.get("website_url"),
+    business_phone: formData.get("business_phone"),
     primary_contact: {
       first_name: formData.get("contact_first_name"),
       last_name: formData.get("contact_last_name"),
@@ -157,6 +159,8 @@ export async function createClient(
     rag_status: parsed.data.rag_status,
     account_manager_id: parsed.data.account_manager_id ?? null,
     pm_notes: parsed.data.notes ?? null,
+    website_url: parsed.data.website_url ?? null,
+    business_phone: parsed.data.business_phone ?? null,
   };
 
   const contactPayload = {

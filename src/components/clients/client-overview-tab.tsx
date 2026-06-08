@@ -116,6 +116,13 @@ export function ClientOverviewTab({
               aria-label="Website URL"
             />
           </OverviewFieldRow>
+          <OverviewFieldRow editable label="Business phone">
+            <InlineTextField
+              value={client.business_phone}
+              onSave={(value) => saveField({ business_phone: value })}
+              aria-label="Business phone"
+            />
+          </OverviewFieldRow>
           <OverviewFieldRow editable label="Industry">
             <InlineTextField
               value={client.industry}
