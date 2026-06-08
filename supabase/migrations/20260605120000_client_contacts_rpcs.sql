@@ -163,14 +163,14 @@ CREATE OR REPLACE FUNCTION public.insert_interaction_with_team_member_context(
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pm
 AS $$
 DECLARE
   v_id uuid;
 BEGIN
   PERFORM set_config('app.current_team_member_id', p_team_member_id::text, true);
 
-  INSERT INTO public.interactions (
+  INSERT INTO pm.interactions (
     client_id,
     contact_id,
     type,
@@ -183,8 +183,8 @@ BEGIN
   VALUES (
     (p_payload->>'client_id')::uuid,
     NULLIF(p_payload->>'contact_id', '')::uuid,
-    (p_payload->>'type')::public.interaction_type,
-    NULLIF(p_payload->>'channel', '')::public.interaction_channel,
+    (p_payload->>'type')::pm.interaction_type,
+    NULLIF(p_payload->>'channel', '')::pm.interaction_channel,
     p_payload->>'summary',
     NULLIF(p_payload->>'body', ''),
     COALESCE((p_payload->>'occurred_at')::timestamptz, now()),
