@@ -8,7 +8,9 @@ import {
 } from "@/lib/actions/quick-create";
 import { createTask, type TaskFormState } from "@/lib/actions/tasks";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { TaskRecurrenceFormFields } from "@/components/tasks/task-recurrence-form-fields";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
   SheetBody,
@@ -23,12 +25,18 @@ import {
   SheetFormField,
   sheetInputClassName,
   sheetSelectClassName,
+  sheetTextareaClassName,
 } from "@/components/ui/sheet-form";
+import {
+  defaultRecurrenceRule,
+  type RecurrenceRule,
+} from "@/lib/tasks/recurrence";
 import {
   getQuickCreateState,
   subscribeQuickCreate,
 } from "@/lib/stores/quick-create-store";
 import type { SelectOption } from "@/lib/queries/projects";
+import { cn } from "@/lib/utils";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { TeamMember } from "@/lib/types";
 
@@ -48,10 +56,6 @@ async function submitNewTask(
   prevState: TaskFormState,
   formData: FormData,
 ): Promise<TaskFormState> {
-  console.log(
-    "[NewTaskSheet] submitting:",
-    JSON.stringify(Object.fromEntries(formData.entries())),
-  );
   return createTask(prevState, formData);
 }
 
@@ -77,6 +81,10 @@ export function NewTaskQuickSheet({
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(false);
   const [assigneeId, setAssigneeId] = useState(defaultAssigneeId);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>(() =>
+    defaultRecurrenceRule(),
+  );
   const [localError, setLocalError] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState(submitNewTask, initialState);
 
@@ -88,6 +96,8 @@ export function NewTaskQuickSheet({
       setSectionId("");
       setSections([]);
       setAssigneeId("");
+      setIsRecurring(false);
+      setRecurrenceRule(defaultRecurrenceRule());
       setLocalError(null);
       return;
     }
@@ -148,12 +158,6 @@ export function NewTaskQuickSheet({
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    const formData = new FormData(event.currentTarget);
-    console.log(
-      "[NewTaskSheet] submit handler:",
-      JSON.stringify(Object.fromEntries(formData.entries())),
-    );
-
     if (!clientId) {
       event.preventDefault();
       setLocalError("Please select a client.");
@@ -192,6 +196,7 @@ export function NewTaskQuickSheet({
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={handleSubmit}
         >
+          <input type="hidden" name="status" value="todo" />
           <SheetBody className="py-0">
             <SheetFormBody>
               {displayError ? (
@@ -278,6 +283,17 @@ export function NewTaskQuickSheet({
                 <Input name="title" required className={sheetInputClassName} />
               </SheetFormField>
 
+              <SheetFormField
+                label="Description"
+                error={state.fieldErrors?.description?.[0]}
+              >
+                <Textarea
+                  name="description"
+                  placeholder="Add a description..."
+                  className={cn(sheetTextareaClassName, "min-h-[80px]")}
+                />
+              </SheetFormField>
+
               <SheetFormField label="Assignee" error={state.fieldErrors?.assignee_id?.[0]}>
                 <select
                   name="assignee_id"
@@ -311,6 +327,14 @@ export function NewTaskQuickSheet({
               <SheetFormField label="Due date" error={state.fieldErrors?.due_date?.[0]}>
                 <Input name="due_date" type="date" className={sheetInputClassName} />
               </SheetFormField>
+
+              <TaskRecurrenceFormFields
+                isRecurring={isRecurring}
+                rule={recurrenceRule}
+                onRecurringChange={setIsRecurring}
+                onRuleChange={setRecurrenceRule}
+                disabled={pending}
+              />
 
               <SheetFormField
                 label="Estimated hours"

@@ -63,12 +63,10 @@ export async function createTask(
   _prevState: TaskFormState,
   formData: FormData,
 ): Promise<TaskFormState> {
-  const raw = Object.fromEntries(formData.entries());
-  console.log("[createTask] called with:", JSON.stringify(raw));
-
   try {
     const teamMember = await requireTeamMember();
     const isQuickAdd = formData.get("_quick_add") === "true";
+    const status = formData.get("status") || "todo";
 
     const parsed = isQuickAdd
       ? quickAddTaskSchema.safeParse({
@@ -89,14 +87,12 @@ export async function createTask(
           assignee_id: formData.get("assignee_id"),
           due_date: formData.get("due_date"),
           estimated_hours: formData.get("estimated_hours"),
-          status: formData.get("status"),
+          status,
+          is_recurring: formData.get("is_recurring"),
+          recurrence_rule: formData.get("recurrence_rule"),
         });
 
     if (!parsed.success) {
-      console.log(
-        "[createTask] validation failed:",
-        JSON.stringify(parsed.error.flatten()),
-      );
       return {
         error: parsed.error.issues[0]?.message ?? "Invalid task details.",
         fieldErrors: zodFieldErrors(parsed.error),
@@ -104,7 +100,8 @@ export async function createTask(
     }
 
     const data = parsed.data;
-    console.log("[createTask] validated payload:", JSON.stringify(data));
+
+    const isRecurring = "is_recurring" in data ? Boolean(data.is_recurring) : false;
 
     const taskId = await insertTaskWithTeamMemberContext(teamMember.id, {
       project_id: data.project_id,
@@ -118,10 +115,13 @@ export async function createTask(
       due_date: data.due_date ?? null,
       estimated_hours:
         "estimated_hours" in data ? (data.estimated_hours ?? null) : null,
-      status: "status" in data ? (data.status ?? null) : null,
+      status: "status" in data ? (data.status ?? "todo") : "todo",
+      is_recurring: isRecurring,
+      recurrence_rule:
+        isRecurring && "recurrence_rule" in data
+          ? (data.recurrence_rule ?? null)
+          : null,
     });
-
-    console.log("[createTask] created task id:", taskId);
 
     revalidateTaskPaths(data.project_id);
     return { success: true, taskId };

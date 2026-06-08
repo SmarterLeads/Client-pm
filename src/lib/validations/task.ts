@@ -49,7 +49,16 @@ export const createTaskSchema = z.object({
       z.union([z.coerce.number().min(0).max(10000), z.null()]).optional(),
     )
     .optional(),
-  status: z.enum(taskStatuses).optional(),
+  status: z.enum(taskStatuses).default("todo"),
+  is_recurring: z
+    .preprocess((v) => v === "true" || v === true, z.boolean())
+    .optional(),
+  recurrence_rule: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string().max(2000), z.null()]).optional(),
+    )
+    .optional(),
 });
 
 export const quickAddTaskSchema = z.object({
