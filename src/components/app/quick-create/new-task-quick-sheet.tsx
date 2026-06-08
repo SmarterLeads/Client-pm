@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
 import { loadQuickCreateProjectSections } from "@/lib/actions/quick-create";
 import { createTask, type TaskFormState } from "@/lib/actions/tasks";
 import { useActionToast } from "@/hooks/use-action-toast";
@@ -21,6 +21,10 @@ import {
   sheetInputClassName,
   sheetSelectClassName,
 } from "@/components/ui/sheet-form";
+import {
+  getQuickCreateState,
+  subscribeQuickCreate,
+} from "@/lib/stores/quick-create-store";
 import type { SelectOption } from "@/lib/queries/projects";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { TeamMember } from "@/lib/types";
@@ -44,17 +48,28 @@ export function NewTaskQuickSheet({
   onOpenChange,
 }: NewTaskQuickSheetProps) {
   const router = useRouter();
+  const { options } = useSyncExternalStore(
+    subscribeQuickCreate,
+    getQuickCreateState,
+    getQuickCreateState,
+  );
+  const defaultAssigneeId = options.taskDefaults?.assigneeId ?? "";
   const [projectId, setProjectId] = useState("");
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(false);
+  const [assigneeId, setAssigneeId] = useState(defaultAssigneeId);
   const [state, formAction, pending] = useActionState(createTask, initialState);
 
   useEffect(() => {
     if (!open) {
       setProjectId("");
       setSections([]);
+      setAssigneeId("");
+      return;
     }
-  }, [open]);
+
+    setAssigneeId(defaultAssigneeId);
+  }, [open, defaultAssigneeId]);
 
   useEffect(() => {
     if (!projectId) {
@@ -147,7 +162,8 @@ export function NewTaskQuickSheet({
               <SheetFormField label="Assignee" error={state.fieldErrors?.assignee_id?.[0]}>
                 <select
                   name="assignee_id"
-                  defaultValue=""
+                  value={assigneeId}
+                  onChange={(event) => setAssigneeId(event.target.value)}
                   className={sheetSelectClassName}
                 >
                   <option value="">Unassigned</option>

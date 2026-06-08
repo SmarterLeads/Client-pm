@@ -5,11 +5,18 @@ export type QuickCreateType =
   | "task"
   | "interaction";
 
-type QuickCreateState = {
-  active: QuickCreateType | null;
+export type QuickCreateOptions = {
+  taskDefaults?: {
+    assigneeId?: string;
+  };
 };
 
-let state: QuickCreateState = { active: null };
+type QuickCreateState = {
+  active: QuickCreateType | null;
+  options: QuickCreateOptions;
+};
+
+let state: QuickCreateState = { active: null, options: {} };
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -27,12 +34,15 @@ export function subscribeQuickCreate(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-export function openQuickCreate(type: QuickCreateType) {
-  state = { active: type };
+export function openQuickCreate(
+  type: QuickCreateType,
+  options?: QuickCreateOptions,
+) {
+  state = { active: type, options: options ?? {} };
   emit();
 }
 
 export function closeQuickCreate() {
-  state = { active: null };
+  state = { active: null, options: {} };
   emit();
 }

@@ -139,3 +139,20 @@ export const logTimeSchema = z.object({
 export const addDependencySchema = z.object({
   depends_on_task_id: z.string().uuid("Select a task"),
 });
+
+export const myTasksDueDateFilters = [
+  "all",
+  "overdue",
+  "today",
+  "this_week",
+  "next_week",
+  "no_due_date",
+] as const;
+
+export type MyTasksDueDateFilter = (typeof myTasksDueDateFilters)[number];
+
+export const myTasksFiltersSchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  client: z.string().uuid().optional(),
+  due: z.enum(myTasksDueDateFilters).optional(),
+});

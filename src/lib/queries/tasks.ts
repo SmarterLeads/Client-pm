@@ -8,6 +8,7 @@ import { pm } from "@/lib/supabase/pm";
 import { createClient } from "@/lib/supabase/server";
 import type { ProjectSection, Task, TeamMember } from "@/lib/types";
 import type { TaskPriority, TaskStatus } from "@/lib/types";
+import type { MyTasksDueDateFilter } from "@/lib/validations/task";
 
 export type TaskCommentRow = {
   id: string;
@@ -66,6 +67,24 @@ export type MyTaskGroup = "overdue" | "today" | "week" | "later";
 
 export type GroupedMyTasks = Record<MyTaskGroup, MyTaskRow[]>;
 
+export type MyTasksFilters = {
+  search?: string;
+  clientId?: string;
+  dueDateFilter?: MyTasksDueDateFilter;
+};
+
+export type MyTaskClientOption = {
+  id: string;
+  name: string;
+};
+
+const OPEN_TASK_STATUSES: TaskStatus[] = [
+  "backlog",
+  "todo",
+  "in_progress",
+  "in_review",
+];
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -76,6 +95,18 @@ function endOfWeekIso() {
   const diff = day === 0 ? 0 : 7 - day;
   d.setDate(d.getDate() + diff);
   return d.toISOString().slice(0, 10);
+}
+
+function nextWeekRange() {
+  const weekEnd = endOfWeekIso();
+  const start = new Date(`${weekEnd}T12:00:00`);
+  start.setDate(start.getDate() + 1);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
 }
 
 export function groupMyTasks(tasks: MyTaskRow[]): GroupedMyTasks {
@@ -111,10 +142,47 @@ export function groupMyTasks(tasks: MyTaskRow[]): GroupedMyTasks {
   return groups;
 }
 
-export async function getMyTasks(assigneeId: string): Promise<MyTaskRow[]> {
+export async function getMyTaskClientOptions(
+  assigneeId: string,
+): Promise<MyTaskClientOption[]> {
   const supabase = await createClient();
 
   const { data, error } = await pm(supabase)
+    .from("tasks")
+    .select("project:projects!inner(client_id)")
+    .eq("assignee_id", assigneeId)
+    .is("parent_task_id", null)
+    .in("status", OPEN_TASK_STATUSES);
+
+  if (error) throw new Error(error.message);
+
+  const clientIds = [
+    ...new Set(
+      (data ?? [])
+        .map((row) => row.project?.client_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  if (clientIds.length === 0) return [];
+
+  const clientNameMap = await loadClientNameMap(supabase, clientIds);
+
+  return clientIds
+    .map((id) => ({
+      id,
+      name: clientNameFromMap(id, clientNameMap),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getMyTasks(
+  assigneeId: string,
+  filters: MyTasksFilters = {},
+): Promise<MyTaskRow[]> {
+  const supabase = await createClient();
+
+  let query = pm(supabase)
     .from("tasks")
     .select(
       `
@@ -129,8 +197,54 @@ export async function getMyTasks(assigneeId: string): Promise<MyTaskRow[]> {
     )
     .eq("assignee_id", assigneeId)
     .is("parent_task_id", null)
-    .in("status", ["backlog", "todo", "in_progress", "in_review"])
-    .order("due_date", { ascending: true, nullsFirst: false });
+    .in("status", OPEN_TASK_STATUSES);
+
+  if (filters.search?.trim()) {
+    query = query.ilike("title", `%${filters.search.trim()}%`);
+  }
+
+  if (filters.clientId) {
+    const { data: projects, error: projectsError } = await pm(supabase)
+      .from("projects")
+      .select("id")
+      .eq("client_id", filters.clientId);
+
+    if (projectsError) throw new Error(projectsError.message);
+
+    const projectIds = (projects ?? []).map((project) => project.id);
+    if (projectIds.length === 0) return [];
+
+    query = query.in("project_id", projectIds);
+  }
+
+  if (filters.dueDateFilter && filters.dueDateFilter !== "all") {
+    const today = todayIso();
+
+    switch (filters.dueDateFilter) {
+      case "overdue":
+        query = query.lt("due_date", today).not("due_date", "is", null);
+        break;
+      case "today":
+        query = query.eq("due_date", today);
+        break;
+      case "this_week":
+        query = query.gt("due_date", today).lte("due_date", endOfWeekIso());
+        break;
+      case "next_week": {
+        const { start, end } = nextWeekRange();
+        query = query.gte("due_date", start).lte("due_date", end);
+        break;
+      }
+      case "no_due_date":
+        query = query.is("due_date", null);
+        break;
+    }
+  }
+
+  const { data, error } = await query.order("due_date", {
+    ascending: true,
+    nullsFirst: false,
+  });
 
   if (error) throw new Error(error.message);
 

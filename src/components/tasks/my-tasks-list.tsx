@@ -42,10 +42,37 @@ function TaskRow({ task }: { task: MyTaskRow }) {
   );
 }
 
-export function MyTasksList({ groups }: { groups: GroupedMyTasks }) {
+export function MyTasksList({
+  groups,
+  hasActiveFilters = false,
+  onClearFilters,
+}: {
+  groups: GroupedMyTasks;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
+}) {
   const hasAny = Object.values(groups).some((g) => g.length > 0);
 
   if (!hasAny) {
+    if (hasActiveFilters) {
+      return (
+        <div className="rounded-lg border border-dashed border-border px-4 py-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            No tasks match your filters.
+          </p>
+          {onClearFilters ? (
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className="mt-3 text-sm font-medium text-primary hover:underline"
+            >
+              Clear filters
+            </button>
+          ) : null}
+        </div>
+      );
+    }
+
     return (
       <p className="rounded-lg border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground">
         No open tasks assigned to you.
