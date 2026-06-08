@@ -11,7 +11,7 @@ AS $$
 BEGIN
   PERFORM set_config('app.current_team_member_id', p_team_member_id::text, true);
 
-  UPDATE pm.team_members
+  UPDATE public.team_members
   SET is_available = p_is_available
   WHERE id = p_target_member_id;
 END;

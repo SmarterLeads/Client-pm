@@ -1199,6 +1199,83 @@ export async function fetchDailyKpisForView(
   return fetchDailyKpis(supabase, clientId, platform, options);
 }
 
+type ComparisonWindows = ReturnType<typeof resolveComparisonWindows>;
+
+/** Fallback when no `client_conversions` rows exist — infer breakdown from `conversion_events`. */
+async function fetchConversionBreakdownFromEventsOnly(
+  supabase: SB,
+  clientId: string,
+  platform: string,
+  win: ComparisonWindows,
+): Promise<ConversionBreakdownGroup[]> {
+  const [{ data: events, error: eErr }, { data: perfRows, error: pErr }] =
+    await Promise.all([
+      supabase
+        .from("conversion_events")
+        .select("event_name, event_count, occurred_on")
+        .eq("client_id", clientId)
+        .ilike("platform", platform)
+        .gte("occurred_on", win.queryStart)
+        .lt("occurred_on", win.queryEndExclusive),
+      supabase
+        .from("daily_performance")
+        .select("report_date, spend_cents")
+        .eq("client_id", clientId)
+        .ilike("platform", platform)
+        .gte("report_date", win.queryStart)
+        .lt("report_date", win.queryEndExclusive),
+    ]);
+
+  if (eErr) throw eErr;
+  if (pErr) throw pErr;
+
+  const totalsCurrent = new Map<string, number>();
+  const totalsPrior = new Map<string, number>();
+  for (const ev of events ?? []) {
+    const name = (ev.event_name ?? "").trim();
+    if (!name) continue;
+    const n = ev.event_count ?? 0;
+    if (isDateInRangeInclusive(ev.occurred_on, win.currentStart, win.currentEnd)) {
+      totalsCurrent.set(name, (totalsCurrent.get(name) ?? 0) + n);
+    }
+    if (isDateInRangeInclusive(ev.occurred_on, win.priorStart, win.priorEnd)) {
+      totalsPrior.set(name, (totalsPrior.get(name) ?? 0) + n);
+    }
+  }
+
+  const eventNames = Array.from(
+    new Set([...totalsCurrent.keys(), ...totalsPrior.keys()]),
+  ).filter(
+    (name) => (totalsCurrent.get(name) ?? 0) > 0 || (totalsPrior.get(name) ?? 0) > 0,
+  );
+
+  if (eventNames.length === 0) return [];
+
+  const spendCurrentCents = (perfRows ?? [])
+    .filter((r) => isDateInRangeInclusive(r.report_date, win.currentStart, win.currentEnd))
+    .reduce((sum, r) => sum + (r.spend_cents ?? 0), 0);
+
+  const rows = eventNames
+    .map((displayName, index) => {
+      const totalCount = totalsCurrent.get(displayName) ?? 0;
+      const priorCount = totalsPrior.get(displayName) ?? 0;
+      return {
+        id: `event:${platform}:${displayName}`,
+        displayName,
+        type: normalizeConversionType("other"),
+        sortOrder: index,
+        totalCount,
+        priorCount,
+        wowPct: wowPct(totalCount, priorCount),
+        costPerConv:
+          totalCount > 0 ? round2(spendCurrentCents / 100 / totalCount) : 0,
+      };
+    })
+    .sort((a, b) => b.totalCount + b.priorCount - (a.totalCount + a.priorCount));
+
+  return [{ groupName: "Conversions", groupOrder: 0, rows }];
+}
+
 export async function fetchConversionBreakdown(
   supabase: SB,
   clientId: string,
@@ -1227,12 +1304,26 @@ export async function fetchConversionBreakdown(
   if (clientTypeErr) throw clientTypeErr;
   const isEcommerceClient = (clientRow?.client_type ?? "").trim().toLowerCase() === "ecommerce";
   const eligible = configsForActiveDisplayNames(allConfigs ?? []);
-  if (eligible.length === 0) return [];
+  if (eligible.length === 0) {
+    return fetchConversionBreakdownFromEventsOnly(
+      supabase,
+      clientId,
+      eventsPlatform,
+      win,
+    );
+  }
 
   const rawNames = Array.from(
     new Set(eligible.map((c) => c.raw_name?.trim()).filter((n): n is string => Boolean(n))),
   );
-  if (rawNames.length === 0) return [];
+  if (rawNames.length === 0) {
+    return fetchConversionBreakdownFromEventsOnly(
+      supabase,
+      clientId,
+      eventsPlatform,
+      win,
+    );
+  }
 
   const [{ data: events, error: eErr }, { data: perfRows, error: pErr }] = await Promise.all([
     supabase
