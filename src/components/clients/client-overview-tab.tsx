@@ -1,28 +1,30 @@
 ﻿"use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { Pencil } from "lucide-react";
 
 import {
   updateClientOverviewFields,
-  updateContactFields,
 } from "@/lib/actions/clients";
 import { ClientMrrBreakdownSection } from "@/components/clients/client-mrr-breakdown-section";
 import { ClientContactsSection } from "@/components/clients/client-contacts-section";
 import { ClientOverviewMarketingConfigSection } from "@/components/clients/client-overview-marketing-config-section";
-import { ContactFormSheet } from "@/components/clients/contact-form-sheet";
+import { EditAddressSheet } from "@/components/clients/edit-address-sheet";
 import { InlineDollarField } from "@/components/clients/inline-dollar-field";
 import { InlineSelectField } from "@/components/clients/inline-select-field";
 import { InlineTextField } from "@/components/clients/inline-text-field";
 import { LastContactedIndicator } from "@/components/clients/last-contacted-indicator";
-import { OverviewCard, OverviewFieldRow, OverviewSectionDivider, OverviewSubsection } from "@/components/clients/overview-ui";
+import {
+  OverviewCard,
+  OverviewFieldRow,
+  OverviewSectionDivider,
+  OverviewSubsection,
+} from "@/components/clients/overview-ui";
 import { PortalUsersSection } from "@/components/clients/portal-users-section";
 import { RagDot } from "@/components/clients/rag-dot";
 import { Button } from "@/components/ui/button";
-import { formatContactName } from "@/lib/clients/contact-utils";
 import {
-  formatClientAddress,
-  isAddressComplete,
+  formatClientAddressSingleLine,
   normalizeOverviewClientType,
   normalizeOverviewStatus,
   normalizeClientCurrency,
@@ -40,7 +42,6 @@ const ragStatuses = PmEnumValues.rag_status;
 type ClientOverviewTabProps = {
   client: Client;
   agencyName: string | null;
-  primaryContact: ClientContact | null;
   contacts: ClientContact[];
   lastInteractionAt: string | null;
   teamMembers: Pick<TeamMember, "id" | "name" | "email">[];
@@ -52,7 +53,6 @@ type ClientOverviewTabProps = {
 export function ClientOverviewTab({
   client,
   agencyName,
-  primaryContact,
   contacts = [],
   lastInteractionAt,
   teamMembers = [],
@@ -60,7 +60,7 @@ export function ClientOverviewTab({
   platformConnections,
   canViewMrr,
 }: ClientOverviewTabProps) {
-  const [contactEditOpen, setContactEditOpen] = useState(false);
+  const [addressEditOpen, setAddressEditOpen] = useState(false);
 
   const saveField = (updates: Record<string, unknown>) =>
     updateClientOverviewFields(client.id, updates);
@@ -69,8 +69,7 @@ export function ClientOverviewTab({
   const ragValue = client.rag_status ?? "green";
   const clientTypeValue = normalizeOverviewClientType(client.client_type);
   const currencyValue = normalizeClientCurrency(client.currency);
-  const formattedAddress = formatClientAddress(client);
-  const showAddressPreview = isAddressComplete(client) && formattedAddress;
+  const formattedAddress = formatClientAddressSingleLine(client);
 
   const managerOptions = [
     { value: "", label: "Unassigned" },
@@ -82,16 +81,9 @@ export function ClientOverviewTab({
     label: r.charAt(0).toUpperCase() + r.slice(1),
   }));
 
-  function scrollToContacts() {
-    document
-      .getElementById("client-contacts-section")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Row 1 */}
         <OverviewCard title="Company Info">
           <OverviewFieldRow editable label="Display name">
             <InlineTextField
@@ -155,46 +147,26 @@ export function ClientOverviewTab({
 
           <OverviewSectionDivider />
           <OverviewSubsection title="Business Address">
-            {showAddressPreview ? (
-              <p className="mb-3 whitespace-pre-wrap rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm">
-                {formattedAddress}
+            <div className="flex items-start justify-between gap-3 px-2 py-1.5">
+              <p
+                className={
+                  formattedAddress
+                    ? "min-w-0 flex-1 text-sm text-foreground"
+                    : "min-w-0 flex-1 text-sm text-muted-foreground"
+                }
+              >
+                {formattedAddress ?? "No address on file"}
               </p>
-            ) : null}
-            <OverviewFieldRow editable label="Street">
-              <InlineTextField
-                value={client.address_street}
-                onSave={(value) => saveField({ address_street: value })}
-                aria-label="Street"
-              />
-            </OverviewFieldRow>
-            <OverviewFieldRow editable label="City">
-              <InlineTextField
-                value={client.address_city}
-                onSave={(value) => saveField({ address_city: value })}
-                aria-label="City"
-              />
-            </OverviewFieldRow>
-            <OverviewFieldRow editable label="Province">
-              <InlineTextField
-                value={client.address_province}
-                onSave={(value) => saveField({ address_province: value })}
-                aria-label="Province"
-              />
-            </OverviewFieldRow>
-            <OverviewFieldRow editable label="Postal code">
-              <InlineTextField
-                value={client.address_postal_code}
-                onSave={(value) => saveField({ address_postal_code: value })}
-                aria-label="Postal code"
-              />
-            </OverviewFieldRow>
-            <OverviewFieldRow editable label="Country">
-              <InlineTextField
-                value={client.address_country ?? "Canada"}
-                onSave={(value) => saveField({ address_country: value })}
-                aria-label="Country"
-              />
-            </OverviewFieldRow>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setAddressEditOpen(true)}
+                aria-label="Edit address"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </div>
           </OverviewSubsection>
         </OverviewCard>
 
@@ -268,95 +240,6 @@ export function ClientOverviewTab({
             embedded
           />
         </OverviewCard>
-
-        {/* Row 2 */}
-        <OverviewCard title="Primary Contact">
-          {primaryContact ? (
-            <>
-              <OverviewFieldRow
-                label="Name"
-                value={
-                  <button
-                    type="button"
-                    onClick={() => setContactEditOpen(true)}
-                    className="text-primary hover:underline"
-                  >
-                    {formatContactName(primaryContact)}
-                  </button>
-                }
-              />
-              <OverviewFieldRow
-                label="Email"
-                value={
-                  primaryContact.email ? (
-                    <Link
-                      href={`mailto:${primaryContact.email}`}
-                      className="text-primary hover:underline"
-                    >
-                      {primaryContact.email}
-                    </Link>
-                  ) : (
-                    "—"
-                  )
-                }
-              />
-              <OverviewFieldRow
-                label="Phone"
-                value={primaryContact.phone ?? "—"}
-              />
-              <OverviewFieldRow
-                label="Job title"
-                value={primaryContact.job_title ?? "—"}
-              />
-              <OverviewFieldRow editable label="Preferred contact">
-                <InlineTextField
-                  value={primaryContact.preferred_contact_method}
-                  onSave={(value) =>
-                    updateContactFields(client.id, primaryContact.id, {
-                      preferred_contact_method: value,
-                    })
-                  }
-                  aria-label="Preferred contact method"
-                  placeholder="e.g. WhatsApp, Email, Call after 2pm"
-                />
-              </OverviewFieldRow>
-              <div className="flex flex-wrap gap-2 pt-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setContactEditOpen(true)}
-                >
-                  Edit contact
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={scrollToContacts}
-                >
-                  View all contacts
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="px-2 text-sm text-muted-foreground">
-                No primary contact set.
-              </p>
-              <div className="pt-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={scrollToContacts}
-                >
-                  View all contacts
-                </Button>
-              </div>
-            </>
-          )}
-        </OverviewCard>
       </div>
 
       <ClientContactsSection clientId={client.id} contacts={contacts ?? []} />
@@ -369,14 +252,11 @@ export function ClientOverviewTab({
         </OverviewFieldRow>
       </div>
 
-      {primaryContact ? (
-        <ContactFormSheet
-          clientId={client.id}
-          contact={primaryContact}
-          open={contactEditOpen}
-          onOpenChange={setContactEditOpen}
-        />
-      ) : null}
+      <EditAddressSheet
+        client={client}
+        open={addressEditOpen}
+        onOpenChange={setAddressEditOpen}
+      />
     </div>
   );
 }

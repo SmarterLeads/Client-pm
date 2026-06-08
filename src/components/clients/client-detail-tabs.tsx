@@ -150,7 +150,6 @@ export function ClientDetailTabs({
         <ClientOverviewTab
           client={client}
           agencyName={agencyName ?? null}
-          primaryContact={primaryContact ?? null}
           contacts={contacts ?? []}
           lastInteractionAt={lastInteractionAt ?? null}
           teamMembers={teamMembers ?? []}

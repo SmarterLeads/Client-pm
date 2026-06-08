@@ -92,6 +92,39 @@ export function formatClientAddress(client: {
   return lines.length > 0 ? lines.join("\n") : null;
 }
 
+/** Single-line address for overview display, e.g. "123 Main St, Toronto, ON M5V 1A1, Canada". */
+export function formatClientAddressSingleLine(client: {
+  address_street: string | null;
+  address_city: string | null;
+  address_province: string | null;
+  address_postal_code: string | null;
+  address_country: string | null;
+}): string | null {
+  const parts: string[] = [];
+
+  if (client.address_street?.trim()) {
+    parts.push(client.address_street.trim());
+  }
+
+  if (client.address_city?.trim()) {
+    parts.push(client.address_city.trim());
+  }
+
+  if (client.address_province?.trim()) {
+    parts.push(client.address_province.trim());
+  }
+
+  if (client.address_postal_code?.trim()) {
+    parts.push(client.address_postal_code.trim());
+  }
+
+  if (client.address_country?.trim()) {
+    parts.push(client.address_country.trim());
+  }
+
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 export const CLIENT_CURRENCY_OPTIONS = [
   { value: "CAD", label: "CAD" },
   { value: "USD", label: "USD" },

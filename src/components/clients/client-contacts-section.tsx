@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { ContactFormSheet } from "@/components/clients/contact-form-sheet";
 import { DeleteContactDialog } from "@/components/clients/delete-contact-dialog";
 import { formatContactName } from "@/lib/clients/contact-utils";
@@ -14,6 +15,15 @@ type ClientContactsSectionProps = {
   contacts: ClientContact[];
 };
 
+function sortContacts(contacts: ClientContact[]) {
+  return [...contacts].sort((a, b) => {
+    if (a.is_primary !== b.is_primary) {
+      return a.is_primary ? -1 : 1;
+    }
+    return formatContactName(a).localeCompare(formatContactName(b));
+  });
+}
+
 export function ClientContactsSection({
   clientId,
   contacts,
@@ -25,6 +35,8 @@ export function ClientContactsSection({
   const [deletingContact, setDeletingContact] = useState<ClientContact | null>(
     null,
   );
+
+  const sortedContacts = useMemo(() => sortContacts(contacts), [contacts]);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -45,55 +57,92 @@ export function ClientContactsSection({
           </Button>
         </CardHeader>
         <CardContent>
-          {contacts.length === 0 ? (
+          {sortedContacts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No contacts yet. Add one to get started.
             </p>
           ) : (
-            <ul className="divide-y divide-border">
-              {contacts.map((contact) => (
-                <li
-                  key={contact.id}
-                  id={`contact-${contact.id}`}
-                  className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between scroll-mt-24"
-                >
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-muted-foreground">
+                    <th className="pb-2 pr-3 font-medium w-24" scope="col" />
+                    <th className="pb-2 pr-4 font-medium" scope="col">
+                      Name
+                    </th>
+                    <th className="pb-2 pr-4 font-medium" scope="col">
+                      Email
+                    </th>
+                    <th className="pb-2 pr-4 font-medium" scope="col">
+                      Phone
+                    </th>
+                    <th className="pb-2 pr-4 font-medium" scope="col">
+                      Job title
+                    </th>
+                    <th className="pb-2 font-medium w-28 text-right" scope="col">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedContacts.map((contact) => (
+                    <tr
+                      key={contact.id}
+                      id={`contact-${contact.id}`}
+                      className="border-b border-border last:border-0 scroll-mt-24"
+                    >
+                      <td className="py-3 pr-3 align-middle">
+                        {contact.is_primary ? (
+                          <Badge variant="secondary">Primary</Badge>
+                        ) : null}
+                      </td>
+                      <td className="py-3 pr-4 align-middle font-medium whitespace-nowrap">
                         {formatContactName(contact)}
-                      </span>
-                      {contact.is_primary ? (
-                        <Badge variant="secondary">Primary</Badge>
-                      ) : null}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {[contact.job_title, contact.email, contact.phone]
-                        .filter(Boolean)
-                        .join(" · ") || "—"}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingContact(contact)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDeletingContact(contact)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      </td>
+                      <td className="py-3 pr-4 align-middle text-muted-foreground">
+                        {contact.email ? (
+                          <Link
+                            href={`mailto:${contact.email}`}
+                            className="text-primary hover:underline"
+                          >
+                            {contact.email}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-3 pr-4 align-middle text-muted-foreground whitespace-nowrap">
+                        {contact.phone ?? "—"}
+                      </td>
+                      <td className="py-3 pr-4 align-middle text-muted-foreground">
+                        {contact.job_title ?? "—"}
+                      </td>
+                      <td className="py-3 align-middle text-right whitespace-nowrap">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingContact(contact)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeletingContact(contact)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>
