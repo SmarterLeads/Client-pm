@@ -179,14 +179,6 @@ export function ClientOverviewTab({
           </OverviewFieldRow>
           {canViewMrr ? (
             <>
-              <OverviewFieldRow editable label="Total MRR (monthly)">
-                <InlineDollarField
-                  cents={client.mrr_cents}
-                  currency={currencyValue}
-                  aria-label="Total monthly recurring revenue"
-                  onSave={(cents) => saveField({ mrr_cents: cents })}
-                />
-              </OverviewFieldRow>
               <OverviewFieldRow editable label="Currency">
                 <InlineSelectField
                   aria-label="Currency"
@@ -194,6 +186,14 @@ export function ClientOverviewTab({
                   options={[...CLIENT_CURRENCY_OPTIONS]}
                   className="min-w-[5rem]"
                   onSave={(value) => saveField({ currency: value })}
+                />
+              </OverviewFieldRow>
+              <OverviewFieldRow editable label="Total MRR (monthly)">
+                <InlineDollarField
+                  cents={client.mrr_cents}
+                  currency={currencyValue}
+                  aria-label="Total monthly recurring revenue"
+                  onSave={(cents) => saveField({ mrr_cents: cents })}
                 />
               </OverviewFieldRow>
               <ClientMrrBreakdownSection
