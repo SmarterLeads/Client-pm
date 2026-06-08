@@ -12,6 +12,7 @@ export type ContactListRow = {
   email: string;
   phone: string | null;
   job_title: string | null;
+  preferred_contact_method: string | null;
   is_primary: boolean;
 };
 
@@ -69,6 +70,7 @@ type ContactQueryRow = {
   email: string;
   phone: string | null;
   job_title: string | null;
+  preferred_contact_method: string | null;
   is_primary: boolean;
   clients: {
     id: string;
@@ -89,6 +91,7 @@ function mapContactRow(row: ContactQueryRow): ContactListRow {
     email: row.email,
     phone: row.phone,
     job_title: row.job_title,
+    preferred_contact_method: row.preferred_contact_method,
     is_primary: row.is_primary,
   };
 }
@@ -160,6 +163,7 @@ function buildContactsQuery(
       email,
       phone,
       job_title,
+      preferred_contact_method,
       is_primary,
       clients!inner (
         id,

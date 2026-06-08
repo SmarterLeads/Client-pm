@@ -114,12 +114,29 @@ export const contactFormSchema = z.object({
       z.union([z.string().max(5000), z.null()]).optional(),
     )
     .optional(),
+  preferred_contact_method: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string(), z.null()]).optional(),
+    )
+    .optional(),
   is_primary: z
     .preprocess((v) => v === "true" || v === true, z.boolean().optional())
     .optional(),
 });
 
 export type ContactFormInput = z.infer<typeof contactFormSchema>;
+
+export const updateContactFieldsSchema = z.object({
+  preferred_contact_method: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string(), z.null()]).optional(),
+    )
+    .optional(),
+});
+
+export type UpdateContactFieldsInput = z.infer<typeof updateContactFieldsSchema>;
 
 export const archiveClientStatusSchema = z.enum([
   "active",

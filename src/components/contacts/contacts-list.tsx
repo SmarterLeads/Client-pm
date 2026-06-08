@@ -29,6 +29,7 @@ function toClientContact(row: ContactListRow): ClientContact {
     email: row.email,
     phone: row.phone,
     job_title: row.job_title,
+    preferred_contact_method: row.preferred_contact_method,
     is_primary: row.is_primary,
     is_active: true,
     name: null,

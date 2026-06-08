@@ -101,6 +101,16 @@ export function ContactFormSheet({
               defaultValue={contact?.job_title ?? ""}
             />
           </Field>
+          <Field
+            label="Preferred contact"
+            error={state.fieldErrors?.preferred_contact_method?.[0]}
+          >
+            <Input
+              name="preferred_contact_method"
+              defaultValue={contact?.preferred_contact_method ?? ""}
+              placeholder="e.g. WhatsApp, Email, Call after 2pm"
+            />
+          </Field>
           <Field label="Notes" error={state.fieldErrors?.notes?.[0]}>
             <Textarea
               name="notes"

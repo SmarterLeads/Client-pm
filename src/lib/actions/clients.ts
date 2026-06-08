@@ -21,6 +21,7 @@ import {
   updateClientFieldSchema,
   updateClientOverviewFieldsSchema,
   updateClientSchema,
+  updateContactFieldsSchema,
   updateMarketingBriefSchema,
   updateMarketingChannelsSchema,
   updatePlatformConnectionSchema,
@@ -87,6 +88,7 @@ function parseContactForm(formData: FormData) {
     phone: formData.get("phone"),
     job_title: formData.get("job_title"),
     notes: formData.get("notes"),
+    preferred_contact_method: formData.get("preferred_contact_method"),
     is_primary: formData.get("is_primary"),
   };
 }
@@ -463,6 +465,7 @@ export async function createContact(
       phone: parsed.data.phone ?? null,
       job_title: parsed.data.job_title ?? null,
       pm_notes: parsed.data.notes ?? null,
+      preferred_contact_method: parsed.data.preferred_contact_method ?? null,
       is_primary: parsed.data.is_primary ?? false,
     });
 
@@ -496,12 +499,51 @@ export async function updateContact(
       phone: parsed.data.phone ?? null,
       job_title: parsed.data.job_title ?? null,
       pm_notes: parsed.data.notes ?? null,
+      preferred_contact_method: parsed.data.preferred_contact_method ?? null,
       is_primary: parsed.data.is_primary ?? false,
     });
 
     revalidateClient(clientId);
     return { success: true };
   } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Failed to update contact.",
+    };
+  }
+}
+
+export async function updateContactFields(
+  clientId: string,
+  contactId: string,
+  updates: Record<string, unknown>,
+): Promise<{ error?: string }> {
+  try {
+    const teamMember = await requireTeamMember();
+    const parsed = updateContactFieldsSchema.safeParse(updates);
+
+    if (!parsed.success) {
+      const message =
+        parsed.error.issues[0]?.message ?? "Invalid field value.";
+      return { error: message };
+    }
+
+    const payload = Object.fromEntries(
+      Object.entries(parsed.data).filter(([, value]) => value !== undefined),
+    ) as Record<string, unknown>;
+
+    if (Object.keys(payload).length === 0) {
+      return { error: "No fields to update." };
+    }
+
+    await updateClientContactWithTeamMemberContext(
+      teamMember.id,
+      contactId,
+      payload,
+    );
+    revalidateClient(clientId);
+    return {};
+  } catch (err) {
+    console.error("[updateContactFields] error:", err);
     return {
       error: err instanceof Error ? err.message : "Failed to update contact.",
     };

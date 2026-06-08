@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import {
   updateClientOverviewFields,
+  updateContactFields,
 } from "@/lib/actions/clients";
 import { ClientMrrBreakdownSection } from "@/components/clients/client-mrr-breakdown-section";
 import { ClientContactsSection } from "@/components/clients/client-contacts-section";
@@ -274,6 +275,18 @@ export function ClientOverviewTab({
                 label="Job title"
                 value={primaryContact.job_title ?? "—"}
               />
+              <OverviewFieldRow editable label="Preferred contact">
+                <InlineTextField
+                  value={primaryContact.preferred_contact_method}
+                  onSave={(value) =>
+                    updateContactFields(client.id, primaryContact.id, {
+                      preferred_contact_method: value,
+                    })
+                  }
+                  aria-label="Preferred contact method"
+                  placeholder="e.g. WhatsApp, Email, Call after 2pm"
+                />
+              </OverviewFieldRow>
               <div className="flex flex-wrap gap-2 pt-3">
                 <Button
                   type="button"

@@ -34,7 +34,7 @@ export function ContactsTable({ contacts, onEdit, onDelete }: ContactsTableProps
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="group/table overflow-hidden rounded-lg border border-border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -42,6 +42,11 @@ export function ContactsTable({ contacts, onEdit, onDelete }: ContactsTableProps
             <TableHead className="hidden md:table-cell">Email</TableHead>
             <TableHead className="hidden lg:table-cell">Phone</TableHead>
             <TableHead className="hidden lg:table-cell">Job title</TableHead>
+            <TableHead className="hidden w-[160px] xl:table-cell">
+              <span className="opacity-0 transition-opacity group-hover/table:opacity-100">
+                Preferred contact
+              </span>
+            </TableHead>
             <TableHead>Client</TableHead>
             <TableHead className="hidden md:table-cell">Agency</TableHead>
             <TableHead className="w-[100px]">Primary</TableHead>
@@ -50,7 +55,7 @@ export function ContactsTable({ contacts, onEdit, onDelete }: ContactsTableProps
         </TableHeader>
         <TableBody>
           {contacts.map((contact) => (
-            <TableRow key={contact.id}>
+            <TableRow key={contact.id} className="group">
               <TableCell>
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
@@ -72,6 +77,11 @@ export function ContactsTable({ contacts, onEdit, onDelete }: ContactsTableProps
                   {contact.phone ? (
                     <p className="text-xs text-muted-foreground">{contact.phone}</p>
                   ) : null}
+                  {contact.preferred_contact_method ? (
+                    <p className="text-xs text-muted-foreground">
+                      Preferred: {contact.preferred_contact_method}
+                    </p>
+                  ) : null}
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell">
@@ -91,6 +101,9 @@ export function ContactsTable({ contacts, onEdit, onDelete }: ContactsTableProps
               </TableCell>
               <TableCell className="hidden text-muted-foreground lg:table-cell">
                 {contact.job_title ?? "—"}
+              </TableCell>
+              <TableCell className="hidden max-w-[160px] truncate text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 xl:table-cell">
+                {contact.preferred_contact_method ?? "—"}
               </TableCell>
               <TableCell>
                 <Link
