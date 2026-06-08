@@ -17,7 +17,17 @@ export const PmEnumValues = {
     "slack",
     "sms",
   ],
-  interaction_type: ["call", "email", "meeting", "note", "demo", "support"],
+  interaction_type: [
+    "call",
+    "email",
+    "meeting",
+    "note",
+    "demo",
+    "support",
+    "check_in",
+    "report",
+    "quote",
+  ],
   notification_type: [
     "task_assigned",
     "task_due",

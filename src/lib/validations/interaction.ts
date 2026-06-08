@@ -1,7 +1,5 @@
-﻿import { PmEnumValues } from "@/lib/types/enums";
+﻿import { INTERACTION_TYPES } from "@/lib/interactions/constants";
 import { z } from "zod";
-
-const interactionTypes = PmEnumValues.interaction_type;
 
 const emptyToUndefined = (value: unknown) => {
   if (typeof value === "string" && value.trim() === "") return undefined;
@@ -9,13 +7,13 @@ const emptyToUndefined = (value: unknown) => {
 };
 
 export const clientInteractionFiltersSchema = z.object({
-  type: z.preprocess(emptyToUndefined, z.enum(interactionTypes).optional()),
+  type: z.preprocess(emptyToUndefined, z.enum(INTERACTION_TYPES).optional()),
   from: z.preprocess(emptyToUndefined, z.string().optional()),
   to: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export const interactionListFiltersSchema = z.object({
-  type: z.preprocess(emptyToUndefined, z.enum(interactionTypes).optional()),
+  type: z.preprocess(emptyToUndefined, z.enum(INTERACTION_TYPES).optional()),
   client: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
   from: z.preprocess(emptyToUndefined, z.string().optional()),
   to: z.preprocess(emptyToUndefined, z.string().optional()),

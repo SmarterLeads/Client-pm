@@ -18,11 +18,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { interactionTypeOptions } from "@/lib/interactions/display";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { ClientContact } from "@/lib/types";
 
 const initialState: ClientFormState = {};
-const interactionTypes = PmEnumValues.interaction_type;
 const interactionChannels = PmEnumValues.interaction_channel;
 
 type LogInteractionSheetProps = {
@@ -76,12 +76,12 @@ export function LogInteractionSheet({
             <select
               name="type"
               required
-              defaultValue="call"
+              defaultValue="meeting"
               className="h-8 w-full rounded-lg border border-input px-2.5 text-sm dark:bg-input/30"
             >
-              {interactionTypes.map((t) => (
-                <option key={t} value={t}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+              {interactionTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>

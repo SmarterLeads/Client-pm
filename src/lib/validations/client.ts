@@ -1,10 +1,10 @@
 ﻿import { CLIENT_STATUSES } from "@/lib/pm/constants";
 import { MARKETING_CHANNEL_VALUES } from "@/lib/clients/overview-fields";
+import { INTERACTION_TYPES } from "@/lib/interactions/constants";
 import { PmEnumValues } from "@/lib/types/enums";
 import { z } from "zod";
 
 const ragStatuses = PmEnumValues.rag_status;
-const interactionTypes = PmEnumValues.interaction_type;
 const interactionChannels = PmEnumValues.interaction_channel;
 
 const emptyToNull = (value: unknown) => {
@@ -245,7 +245,7 @@ export const updatePlatformConnectionSchema = z.object({
 });
 
 export const createInteractionSchema = z.object({
-  type: z.enum(interactionTypes),
+  type: z.enum(INTERACTION_TYPES),
   channel: z
     .preprocess(
       emptyToNull,

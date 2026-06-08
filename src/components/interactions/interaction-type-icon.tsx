@@ -1,24 +1,6 @@
-﻿import {
-  Calendar,
-  FileText,
-  Headphones,
-  Mail,
-  MessageSquare,
-  Phone,
-  Presentation,
-  type LucideIcon,
-} from "lucide-react";
-import type { InteractionType } from "@/lib/interactions/types";
+﻿import type { InteractionType } from "@/lib/interactions/types";
+import { getInteractionTypeIcon } from "@/lib/interactions/display";
 import { cn } from "@/lib/utils";
-
-const typeIcons: Record<InteractionType, LucideIcon> = {
-  call: Phone,
-  email: Mail,
-  meeting: Calendar,
-  note: FileText,
-  demo: Presentation,
-  support: Headphones,
-};
 
 type InteractionTypeIconProps = {
   type: InteractionType;
@@ -26,6 +8,6 @@ type InteractionTypeIconProps = {
 };
 
 export function InteractionTypeIcon({ type, className }: InteractionTypeIconProps) {
-  const Icon = typeIcons[type] ?? MessageSquare;
+  const Icon = getInteractionTypeIcon(type);
   return <Icon className={cn("size-4", className)} aria-hidden />;
 }

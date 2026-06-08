@@ -2,9 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import { PmEnumValues } from "@/lib/types/enums";
-
-const interactionTypes = PmEnumValues.interaction_type;
+import { interactionTypeOptions } from "@/lib/interactions/display";
 
 export function PortalInteractionFilters() {
   const router = useRouter();
@@ -40,9 +38,9 @@ export function PortalInteractionFilters() {
         aria-label="Filter by type"
       >
         <option value="">All types</option>
-        {interactionTypes.map((t) => (
-          <option key={t} value={t}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+        {interactionTypeOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
