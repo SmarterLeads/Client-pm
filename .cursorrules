@@ -1,0 +1,53 @@
+This is a Next.js 16 App Router project with TypeScript, Tailwind CSS v4,
+and Supabase.
+
+Tech stack:
+- Next.js 16 App Router (NOT pages router — never use pages/)
+- Tailwind CSS v4 (no tailwind.config.js — config is in CSS directly)
+- Supabase for DB, Auth (SSR), and Storage
+- shadcn/ui for UI components
+- @dnd-kit/core for drag and drop on the kanban board
+- recharts for charts (always loaded via next/dynamic)
+- zod for input validation on all server actions
+- sonner for toast notifications
+- cmdk for the command palette
+- lucide-react for icons
+- vitest for tests
+
+Architecture rules:
+- Data fetching: server components only (no useEffect + fetch)
+- Mutations: server actions only (no API routes for mutations)
+- Before every mutation, call:
+    SET LOCAL app.current_team_member_id = '<uuid>'
+  using the service role client so the change_history trigger knows who acted
+- Never use the service role key in client components or browser code
+- RLS is enabled on all 15 tables — always test with a real auth session
+- Use the generated types from src/lib/types/database.ts
+- Never write raw SQL strings — use the Supabase JS client query builder
+
+Two user personas:
+- Team members: authenticate via /login, use routes under app/(app)/
+  their auth_user_id maps to team_members.auth_user_id
+- Client portal users: authenticate via /portal/login, use app/(portal)/
+  their auth_user_id maps to client_users.auth_user_id
+  RLS automatically scopes all their queries to their client_id
+
+File structure:
+- src/app/(app)/         internal team app
+- src/app/(portal)/      client-facing portal
+- src/app/(auth)/        login pages
+- src/lib/supabase/      server.ts, client.ts, service.ts
+- src/lib/types/         database.ts (generated), index.ts (aliases)
+- src/lib/actions/       server actions grouped by domain
+- src/lib/notifications.ts   notification helpers
+- src/lib/storage.ts     Supabase Storage helpers
+- src/lib/dashboard-bridge.ts  typed queries for dashboard_api views
+- src/components/ui/     shadcn components
+- src/components/        shared app components
+
+Database (15 tables):
+attachments, change_history, client_users, clients, interactions,
+milestones, notifications, project_members, project_sections, projects,
+task_comments, task_dependencies, tasks, team_members, time_entries
+
+No GHL integration. No invoicing. Clients are created manually.
