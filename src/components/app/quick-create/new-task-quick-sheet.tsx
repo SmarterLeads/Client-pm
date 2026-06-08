@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
 import {
   loadQuickCreateClientProjects,
   loadQuickCreateProjectSections,
@@ -44,6 +44,17 @@ type NewTaskQuickSheetProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+async function submitNewTask(
+  prevState: TaskFormState,
+  formData: FormData,
+): Promise<TaskFormState> {
+  console.log(
+    "[NewTaskSheet] submitting:",
+    JSON.stringify(Object.fromEntries(formData.entries())),
+  );
+  return createTask(prevState, formData);
+}
+
 export function NewTaskQuickSheet({
   clients,
   teamMembers,
@@ -59,7 +70,6 @@ export function NewTaskQuickSheet({
   const defaultAssigneeId = options.taskDefaults?.assigneeId ?? "";
 
   const [clientId, setClientId] = useState("");
-  const [clientQuery, setClientQuery] = useState("");
   const [projects, setProjects] = useState<SelectOption[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectId, setProjectId] = useState("");
@@ -67,25 +77,18 @@ export function NewTaskQuickSheet({
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(false);
   const [assigneeId, setAssigneeId] = useState(defaultAssigneeId);
-  const [state, formAction, pending] = useActionState(createTask, initialState);
-
-  const filteredClients = useMemo(() => {
-    const query = clientQuery.trim().toLowerCase();
-    if (!query) return clients.slice(0, 20);
-    return clients
-      .filter((client) => client.name.toLowerCase().includes(query))
-      .slice(0, 20);
-  }, [clients, clientQuery]);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [state, formAction, pending] = useActionState(submitNewTask, initialState);
 
   useEffect(() => {
     if (!open) {
       setClientId("");
-      setClientQuery("");
       setProjects([]);
       setProjectId("");
       setSectionId("");
       setSections([]);
       setAssigneeId("");
+      setLocalError(null);
       return;
     }
 
@@ -137,42 +140,33 @@ export function NewTaskQuickSheet({
     };
   }, [projectId]);
 
-  function handleClientQueryChange(value: string) {
-    setClientQuery(value);
+  function handleClientChange(nextClientId: string) {
+    setLocalError(null);
+    setClientId(nextClientId);
+    setProjectId("");
+    setSectionId("");
+  }
 
-    const match = clients.find(
-      (client) => client.name.toLowerCase() === value.trim().toLowerCase(),
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
+    console.log(
+      "[NewTaskSheet] submit handler:",
+      JSON.stringify(Object.fromEntries(formData.entries())),
     );
 
-    if (match) {
-      if (match.id !== clientId) {
-        setClientId(match.id);
-        setProjectId("");
-        setSectionId("");
-      }
+    if (!clientId) {
+      event.preventDefault();
+      setLocalError("Please select a client.");
       return;
     }
 
-    if (clientId) {
-      setClientId("");
-      setProjectId("");
-      setSectionId("");
+    if (!projectId) {
+      event.preventDefault();
+      setLocalError("Please select a project.");
+      return;
     }
-  }
 
-  function handleClientBlur() {
-    if (!clientId && clientQuery.trim()) {
-      const match = clients.find(
-        (client) =>
-          client.name.toLowerCase() === clientQuery.trim().toLowerCase(),
-      );
-      if (!match) {
-        setClientQuery("");
-      }
-    } else if (clientId) {
-      const selected = clients.find((client) => client.id === clientId);
-      if (selected) setClientQuery(selected.name);
-    }
+    setLocalError(null);
   }
 
   useActionToast(state, {
@@ -183,9 +177,12 @@ export function NewTaskQuickSheet({
     },
   });
 
+  const displayError =
+    localError ?? state.error ?? null;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right">
+      <SheetContent side="right" className="flex flex-col">
         <SheetHeader>
           <SheetTitle>New task</SheetTitle>
         </SheetHeader>
@@ -193,42 +190,31 @@ export function NewTaskQuickSheet({
         <form
           action={formAction}
           className="flex min-h-0 flex-1 flex-col"
-          onSubmit={(event) => {
-            if (!clientId || !projectId) {
-              event.preventDefault();
-            }
-          }}
+          onSubmit={handleSubmit}
         >
           <SheetBody className="py-0">
             <SheetFormBody>
-              {state.error ? (
+              {displayError ? (
                 <p className="text-sm text-destructive" role="alert">
-                  {state.error}
+                  {displayError}
                 </p>
               ) : null}
 
               <SheetFormField label="Client" required>
-                <Input
-                  list="new-task-client-options"
-                  value={clientQuery}
-                  onChange={(event) => handleClientQueryChange(event.target.value)}
-                  onBlur={handleClientBlur}
-                  placeholder="Search clients…"
-                  className={sheetInputClassName}
-                  autoComplete="off"
+                <select
                   required
+                  value={clientId}
+                  onChange={(event) => handleClientChange(event.target.value)}
+                  className={sheetSelectClassName}
                   aria-label="Client"
-                />
-                <datalist id="new-task-client-options">
-                  {filteredClients.map((client) => (
-                    <option key={client.id} value={client.name} />
+                >
+                  <option value="">Select client…</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.name}
+                    </option>
                   ))}
-                </datalist>
-                {!clientId && clientQuery.trim() ? (
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    Select a client from the list.
-                  </p>
-                ) : null}
+                </select>
               </SheetFormField>
 
               <SheetFormField
@@ -242,6 +228,7 @@ export function NewTaskQuickSheet({
                   value={projectId}
                   disabled={!clientId || projectsLoading}
                   onChange={(event) => {
+                    setLocalError(null);
                     setProjectId(event.target.value);
                     setSectionId("");
                   }}
@@ -344,7 +331,7 @@ export function NewTaskQuickSheet({
             <SheetFormActions
               primaryLabel="Create task"
               pending={pending}
-              primaryDisabled={!clientId || !projectId}
+              primaryDisabled={pending || !clientId || !projectId}
               onCancel={() => onOpenChange(false)}
             />
           </SheetFooter>

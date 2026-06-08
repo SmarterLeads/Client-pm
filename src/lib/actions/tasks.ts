@@ -63,6 +63,9 @@ export async function createTask(
   _prevState: TaskFormState,
   formData: FormData,
 ): Promise<TaskFormState> {
+  const raw = Object.fromEntries(formData.entries());
+  console.log("[createTask] called with:", JSON.stringify(raw));
+
   try {
     const teamMember = await requireTeamMember();
     const isQuickAdd = formData.get("_quick_add") === "true";
@@ -90,10 +93,19 @@ export async function createTask(
         });
 
     if (!parsed.success) {
-      return { fieldErrors: zodFieldErrors(parsed.error) };
+      console.log(
+        "[createTask] validation failed:",
+        JSON.stringify(parsed.error.flatten()),
+      );
+      return {
+        error: parsed.error.issues[0]?.message ?? "Invalid task details.",
+        fieldErrors: zodFieldErrors(parsed.error),
+      };
     }
 
     const data = parsed.data;
+    console.log("[createTask] validated payload:", JSON.stringify(data));
+
     const taskId = await insertTaskWithTeamMemberContext(teamMember.id, {
       project_id: data.project_id,
       section_id: data.section_id ?? null,
@@ -109,12 +121,15 @@ export async function createTask(
       status: "status" in data ? (data.status ?? null) : null,
     });
 
+    console.log("[createTask] created task id:", taskId);
+
     revalidateTaskPaths(data.project_id);
     return { success: true, taskId };
   } catch (err) {
-    return {
-      error: err instanceof Error ? err.message : "Failed to create task.",
-    };
+    const message =
+      err instanceof Error ? err.message : "Failed to create task.";
+    console.error("[createTask] error:", message);
+    return { error: message };
   }
 }
 
