@@ -9,7 +9,9 @@ export type InteractionRow = {
   summary: string;
   body: string | null;
   occurred_at: string;
+  logged_by: string | null;
   logged_by_name: string | null;
+  contact_id: string | null;
   contact_name: string | null;
 };
 

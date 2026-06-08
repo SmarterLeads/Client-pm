@@ -9,6 +9,7 @@ import type {
 } from "@/lib/interactions/types";
 
 export type { ClientSelectOption } from "@/lib/interactions/types";
+import type { InteractionRow } from "@/lib/interactions/types";
 import { pm } from "@/lib/supabase/pm";
 import { createClient } from "@/lib/supabase/server";
 
@@ -56,6 +57,7 @@ export async function getAllInteractions(
       occurred_at,
       client_id,
       contact_id,
+      logged_by,
       logger:team_members(name)
     `,
     )
@@ -119,9 +121,56 @@ export async function getAllInteractions(
     summary: row.summary,
     body: row.body,
     occurred_at: row.occurred_at,
+    logged_by: row.logged_by,
     logged_by_name: row.logger?.name ?? null,
+    contact_id: row.contact_id,
     contact_name: contactNameFromMap(row.contact_id, contactMap),
     client_id: row.client_id,
     client_name: clientNameMap.get(row.client_id) ?? "—",
   }));
+}
+
+export async function getInteractionById(
+  interactionId: string,
+): Promise<InteractionRow | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await pm(supabase)
+    .from("interactions")
+    .select(
+      `
+      id,
+      type,
+      channel,
+      summary,
+      body,
+      occurred_at,
+      contact_id,
+      logged_by,
+      logger:team_members(name)
+    `,
+    )
+    .eq("id", interactionId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const contactMap = await loadContactNameMap(
+    supabase,
+    data.contact_id ? [data.contact_id] : [],
+  );
+
+  return {
+    id: data.id,
+    type: data.type,
+    channel: data.channel,
+    summary: data.summary,
+    body: data.body,
+    occurred_at: data.occurred_at,
+    logged_by: data.logged_by,
+    logged_by_name: data.logger?.name ?? null,
+    contact_id: data.contact_id,
+    contact_name: contactNameFromMap(data.contact_id, contactMap),
+  };
 }

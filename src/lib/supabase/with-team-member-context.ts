@@ -138,6 +138,52 @@ export async function insertInteractionWithTeamMemberContext(
   return data;
 }
 
+export async function updateInteractionWithTeamMemberContext(
+  teamMemberId: string,
+  interactionId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const supabase = createServiceClient();
+
+  const { error } = await pmRpc(
+    supabase,
+    "update_interaction_with_team_member_context",
+    {
+      p_team_member_id: teamMemberId,
+      p_interaction_id: interactionId,
+      p_payload: payload as Json,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Failed to update interaction: ${error.message}. Apply supabase/migrations/20260620150000_update_delete_interaction_rpcs.sql`,
+    );
+  }
+}
+
+export async function deleteInteractionWithTeamMemberContext(
+  teamMemberId: string,
+  interactionId: string,
+): Promise<void> {
+  const supabase = createServiceClient();
+
+  const { error } = await pmRpc(
+    supabase,
+    "delete_interaction_with_team_member_context",
+    {
+      p_team_member_id: teamMemberId,
+      p_interaction_id: interactionId,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Failed to delete interaction: ${error.message}. Apply supabase/migrations/20260620150000_update_delete_interaction_rpcs.sql`,
+    );
+  }
+}
+
 export async function insertProjectWithTeamMemberContext(
   teamMemberId: string,
   project: Record<string, unknown>,

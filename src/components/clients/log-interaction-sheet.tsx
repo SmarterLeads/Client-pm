@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import {
   createInteraction,
+  updateInteraction,
   type ClientFormState,
 } from "@/lib/actions/clients";
 import { useActionToast } from "@/hooks/use-action-toast";
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { interactionTypeOptions } from "@/lib/interactions/display";
+import type { InteractionRow } from "@/lib/interactions/types";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { ClientContact } from "@/lib/types";
 
@@ -30,12 +32,19 @@ type LogInteractionSheetProps = {
   contacts: ClientContact[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  interaction?: InteractionRow | null;
 };
 
-function defaultOccurredAt() {
+function newOccurredAtLocal() {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   return now.toISOString().slice(0, 16);
+}
+
+function toDatetimeLocalValue(iso: string) {
+  const date = new Date(iso);
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
 }
 
 export function LogInteractionSheet({
@@ -43,13 +52,20 @@ export function LogInteractionSheet({
   contacts,
   open,
   onOpenChange,
+  interaction = null,
 }: LogInteractionSheetProps) {
   const router = useRouter();
-  const boundAction = createInteraction.bind(null, clientId);
-  const [state, formAction, pending] = useActionState(boundAction, initialState);
+  const isEditing = Boolean(interaction);
+
+  const [state, formAction, pending] = useActionState(
+    isEditing && interaction
+      ? updateInteraction.bind(null, clientId, interaction.id)
+      : createInteraction.bind(null, clientId),
+    initialState,
+  );
 
   useActionToast(state, {
-    successMessage: "Interaction logged",
+    successMessage: isEditing ? "Interaction updated" : "Interaction logged",
     onSuccess: () => {
       onOpenChange(false);
       router.refresh();
@@ -62,10 +78,16 @@ export function LogInteractionSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>Log interaction</SheetTitle>
+          <SheetTitle>
+            {isEditing ? "Edit interaction" : "Log interaction"}
+          </SheetTitle>
         </SheetHeader>
 
-        <form action={formAction} className="mt-6 space-y-4">
+        <form
+          key={interaction?.id ?? "new"}
+          action={formAction}
+          className="mt-6 space-y-4"
+        >
           {state.error ? (
             <p className="text-sm text-destructive" role="alert">
               {state.error}
@@ -76,7 +98,7 @@ export function LogInteractionSheet({
             <select
               name="type"
               required
-              defaultValue="meeting"
+              defaultValue={interaction?.type ?? "meeting"}
               className="h-8 w-full rounded-lg border border-input px-2.5 text-sm dark:bg-input/30"
             >
               {interactionTypeOptions.map((option) => (
@@ -90,7 +112,7 @@ export function LogInteractionSheet({
           <Field label="Channel" error={state.fieldErrors?.channel?.[0]}>
             <select
               name="channel"
-              defaultValue=""
+              defaultValue={interaction?.channel ?? ""}
               className="h-8 w-full rounded-lg border border-input px-2.5 text-sm dark:bg-input/30"
             >
               <option value="">None</option>
@@ -105,7 +127,7 @@ export function LogInteractionSheet({
           <Field label="Contact" error={state.fieldErrors?.contact_id?.[0]}>
             <select
               name="contact_id"
-              defaultValue={primaryId}
+              defaultValue={interaction?.contact_id ?? primaryId}
               className="h-8 w-full rounded-lg border border-input px-2.5 text-sm dark:bg-input/30"
             >
               <option value="">No contact</option>
@@ -119,11 +141,20 @@ export function LogInteractionSheet({
           </Field>
 
           <Field label="Summary" required error={state.fieldErrors?.summary?.[0]}>
-            <Input name="summary" required maxLength={500} />
+            <Input
+              name="summary"
+              required
+              maxLength={500}
+              defaultValue={interaction?.summary ?? ""}
+            />
           </Field>
 
           <Field label="Details" error={state.fieldErrors?.body?.[0]}>
-            <Textarea name="body" rows={4} />
+            <Textarea
+              name="body"
+              rows={4}
+              defaultValue={interaction?.body ?? ""}
+            />
           </Field>
 
           <Field
@@ -135,13 +166,21 @@ export function LogInteractionSheet({
               name="occurred_at"
               type="datetime-local"
               required
-              defaultValue={defaultOccurredAt()}
+              defaultValue={
+                interaction
+                  ? toDatetimeLocalValue(interaction.occurred_at)
+                  : newOccurredAtLocal()
+              }
             />
           </Field>
 
           <div className="flex gap-2 pt-2">
             <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Log interaction"}
+              {pending
+                ? "Saving…"
+                : isEditing
+                  ? "Save changes"
+                  : "Log interaction"}
             </Button>
             <Button
               type="button"

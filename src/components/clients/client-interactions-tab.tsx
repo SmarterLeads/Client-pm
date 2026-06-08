@@ -1,26 +1,74 @@
 ﻿"use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useTransition } from "react";
 import { ClientInteractionFilters } from "@/components/clients/client-interaction-filters";
 import { LogInteractionSheet } from "@/components/clients/log-interaction-sheet";
 import { InteractionTimeline } from "@/components/interactions/interaction-timeline";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { deleteInteraction } from "@/lib/actions/clients";
 import type { InteractionRow } from "@/lib/interactions/types";
+import { toastError, toastSuccess } from "@/lib/toast";
 import type { ClientContact } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
 type ClientInteractionsTabProps = {
   clientId: string;
   contacts: ClientContact[];
   interactions: InteractionRow[];
+  currentTeamMemberId: string | null;
+  isAdmin: boolean;
 };
 
 export function ClientInteractionsTab({
   clientId,
   contacts,
   interactions,
+  currentTeamMemberId,
+  isAdmin,
 }: ClientInteractionsTabProps) {
-  const [logOpen, setLogOpen] = useState(false);
+  const router = useRouter();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingInteraction, setEditingInteraction] =
+    useState<InteractionRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  function openCreateSheet() {
+    setEditingInteraction(null);
+    setSheetOpen(true);
+  }
+
+  function openEditSheet(interaction: InteractionRow) {
+    setEditingInteraction(interaction);
+    setSheetOpen(true);
+  }
+
+  function handleSheetOpenChange(open: boolean) {
+    setSheetOpen(open);
+    if (!open) {
+      setEditingInteraction(null);
+    }
+  }
+
+  async function handleDelete(interaction: InteractionRow) {
+    const confirmed = window.confirm(
+      "Delete this interaction? This cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    setDeletingId(interaction.id);
+    const result = await deleteInteraction(clientId, interaction.id);
+    setDeletingId(null);
+
+    if (result.error) {
+      toastError(result.error);
+      return;
+    }
+
+    toastSuccess("Interaction deleted");
+    startTransition(() => router.refresh());
+  }
 
   return (
     <div className="space-y-4">
@@ -28,7 +76,7 @@ export function ClientInteractionsTab({
         <Suspense fallback={<FiltersSkeleton />}>
           <ClientInteractionFilters />
         </Suspense>
-        <Button type="button" onClick={() => setLogOpen(true)} className="shrink-0">
+        <Button type="button" onClick={openCreateSheet} className="shrink-0">
           Log interaction
         </Button>
       </div>
@@ -38,14 +86,22 @@ export function ClientInteractionsTab({
           No interactions logged yet.
         </p>
       ) : (
-        <InteractionTimeline interactions={interactions} />
+        <InteractionTimeline
+          interactions={interactions}
+          currentTeamMemberId={currentTeamMemberId}
+          isAdmin={isAdmin}
+          deletingId={deletingId}
+          onEdit={openEditSheet}
+          onDelete={handleDelete}
+        />
       )}
 
       <LogInteractionSheet
         clientId={clientId}
         contacts={contacts}
-        open={logOpen}
-        onOpenChange={setLogOpen}
+        open={sheetOpen}
+        onOpenChange={handleSheetOpenChange}
+        interaction={editingInteraction}
       />
     </div>
   );

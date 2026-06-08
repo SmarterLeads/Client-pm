@@ -53,6 +53,7 @@ type ClientDetailTabsProps = {
   platformConnections: ClientPlatformConnection[];
   canViewMrr: boolean;
   isAdmin: boolean;
+  currentTeamMemberId: string | null;
 };
 
 export function ClientDetailTabs({
@@ -72,6 +73,7 @@ export function ClientDetailTabs({
   platformConnections,
   canViewMrr,
   isAdmin,
+  currentTeamMemberId,
 }: ClientDetailTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -176,6 +178,8 @@ export function ClientDetailTabs({
           clientId={client.id}
           contacts={contacts ?? []}
           interactions={interactions ?? []}
+          currentTeamMemberId={currentTeamMemberId ?? null}
+          isAdmin={isAdmin}
         />
       ) : null}
 

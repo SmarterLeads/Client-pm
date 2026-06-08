@@ -9,6 +9,8 @@ import {
   insertClientContactWithTeamMemberContext,
   insertClientWithTeamMemberContext,
   insertInteractionWithTeamMemberContext,
+  updateInteractionWithTeamMemberContext,
+  deleteInteractionWithTeamMemberContext,
   updateClientContactWithTeamMemberContext,
   updateClientWithTeamMemberContext,
   upsertPlatformConnectionWithTeamMemberContext,
@@ -17,6 +19,7 @@ import {
   contactFormSchema,
   createClientSchema,
   createInteractionSchema,
+  updateInteractionSchema,
   archiveClientStatusSchema,
   updateClientFieldSchema,
   updateClientOverviewFieldsSchema,
@@ -755,6 +758,64 @@ export async function createInteraction(
     return {
       error:
         err instanceof Error ? err.message : "Failed to log interaction.",
+    };
+  }
+}
+
+export async function updateInteraction(
+  clientId: string,
+  interactionId: string,
+  _prevState: ClientFormState,
+  formData: FormData,
+): Promise<ClientFormState> {
+  try {
+    const teamMember = await requireTeamMember();
+
+    const parsed = updateInteractionSchema.safeParse({
+      type: formData.get("type"),
+      channel: formData.get("channel"),
+      summary: formData.get("summary"),
+      body: formData.get("body"),
+      occurred_at: formData.get("occurred_at"),
+      contact_id: emptyToNull(formData.get("contact_id")),
+    });
+
+    if (!parsed.success) {
+      return { fieldErrors: zodFieldErrors(parsed.error) };
+    }
+
+    await updateInteractionWithTeamMemberContext(teamMember.id, interactionId, {
+      contact_id: parsed.data.contact_id ?? null,
+      type: parsed.data.type,
+      channel: parsed.data.channel ?? null,
+      summary: parsed.data.summary,
+      body: parsed.data.body ?? null,
+      occurred_at: new Date(parsed.data.occurred_at).toISOString(),
+    });
+
+    revalidateClient(clientId);
+    return { success: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : "Failed to update interaction.",
+    };
+  }
+}
+
+export async function deleteInteraction(
+  clientId: string,
+  interactionId: string,
+): Promise<{ error?: string }> {
+  try {
+    const teamMember = await requireTeamMember();
+    await deleteInteractionWithTeamMemberContext(teamMember.id, interactionId);
+    revalidateClient(clientId);
+    return {};
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : "Failed to delete interaction.",
     };
   }
 }

@@ -270,6 +270,8 @@ export const createInteractionSchema = z.object({
 
 export type CreateInteractionInput = z.infer<typeof createInteractionSchema>;
 
+export const updateInteractionSchema = createInteractionSchema;
+
 export const clientListFiltersSchema = z
   .object({
     q: z.string().optional(),

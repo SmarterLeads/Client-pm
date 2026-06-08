@@ -132,7 +132,9 @@ export async function getPortalInteractions(
     summary: row.summary,
     body: row.body,
     occurred_at: row.occurred_at,
+    logged_by: null,
     logged_by_name: null,
+    contact_id: null,
     contact_name: null,
   }));
 }
@@ -166,7 +168,9 @@ export async function getPortalRecentInteractions(
     summary: row.summary,
     body: row.body,
     occurred_at: row.occurred_at,
+    logged_by: null,
     logged_by_name: null,
+    contact_id: null,
     contact_name: null,
   }));
 }

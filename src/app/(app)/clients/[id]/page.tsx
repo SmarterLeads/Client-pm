@@ -115,6 +115,7 @@ export default async function ClientDetailPage({
           platformConnections={platformConnections ?? []}
           canViewMrr={teamMember?.can_view_mrr ?? false}
           isAdmin={teamMember ? isAdmin(teamMember.role) : false}
+          currentTeamMemberId={teamMember?.id ?? null}
         />
       </Suspense>
     </div>

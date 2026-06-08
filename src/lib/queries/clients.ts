@@ -468,6 +468,7 @@ export async function getClientInteractions(
       body,
       occurred_at,
       contact_id,
+      logged_by,
       logger:team_members(name)
     `,
     )
@@ -506,7 +507,9 @@ export async function getClientInteractions(
     summary: row.summary,
     body: row.body,
     occurred_at: row.occurred_at,
+    logged_by: row.logged_by,
     logged_by_name: row.logger?.name ?? null,
+    contact_id: row.contact_id,
     contact_name: contactNameFromMap(row.contact_id, contactMap),
   }));
 }
