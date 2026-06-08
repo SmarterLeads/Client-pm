@@ -10,16 +10,20 @@ import { DashboardDateRangeProvider } from "@/contexts/dashboard-date-range-cont
 
 type MarketingDashboardShellProps = {
   agencies: MarketingDashboardAgency[];
+  includePaused?: boolean;
 };
 
-export function MarketingDashboardShell({ agencies }: MarketingDashboardShellProps) {
+export function MarketingDashboardShell({
+  agencies,
+  includePaused = false,
+}: MarketingDashboardShellProps) {
   return (
     <DashboardDateRangeProvider>
       <div className="flex flex-wrap items-center justify-end gap-2 border-b border-zinc-200 pb-3 dark:border-zinc-800">
         <DashboardDateRangeDropdown />
         <DashboardComparisonDropdown />
       </div>
-      <LeadGenDashboard agencies={agencies} />
+      <LeadGenDashboard agencies={agencies} includePaused={includePaused} />
     </DashboardDateRangeProvider>
   );
 }

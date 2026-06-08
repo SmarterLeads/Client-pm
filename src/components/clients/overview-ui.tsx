@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Pencil } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -41,6 +42,10 @@ type OverviewFieldRowProps = {
   className?: string;
 };
 
+function fieldLabelText(label: React.ReactNode): string {
+  return typeof label === "string" ? label : "field";
+}
+
 export function OverviewFieldRow({
   label,
   children,
@@ -48,6 +53,39 @@ export function OverviewFieldRow({
   editable = false,
   className,
 }: OverviewFieldRowProps) {
+  const valueRef = useRef<HTMLDivElement>(null);
+
+  function triggerInlineEdit() {
+    const root = valueRef.current;
+    if (!root) return;
+
+    const trigger = root.querySelector<HTMLElement>(
+      '[data-inline-edit-trigger="true"]',
+    );
+
+    if (trigger) {
+      if (trigger instanceof HTMLSelectElement) {
+        trigger.focus();
+        return;
+      }
+
+      trigger.click();
+      return;
+    }
+
+    const input = root.querySelector<HTMLInputElement>("input");
+    if (input) {
+      input.focus();
+      return;
+    }
+
+    root.querySelector<HTMLButtonElement>('button[type="button"]')?.click();
+  }
+
+  function handlePencilClick() {
+    triggerInlineEdit();
+  }
+
   return (
     <div
       className={cn(
@@ -57,15 +95,22 @@ export function OverviewFieldRow({
       )}
     >
       <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
-      <div className="flex min-w-0 items-center justify-end gap-1.5 text-sm font-medium">
+      <div
+        ref={valueRef}
+        className="flex min-w-0 items-center justify-end gap-1.5 text-sm font-medium"
+      >
         {children ?? (
           <span className="truncate text-foreground">{value ?? "—"}</span>
         )}
         {editable ? (
-          <Pencil
-            className="size-3 shrink-0 text-muted-foreground/0 transition group-hover:text-muted-foreground"
-            aria-hidden
-          />
+          <button
+            type="button"
+            onClick={handlePencilClick}
+            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 opacity-100 transition hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 sm:opacity-0 sm:group-hover:opacity-100"
+            aria-label={`Edit ${fieldLabelText(label)}`}
+          >
+            <Pencil className="size-3.5" aria-hidden />
+          </button>
         ) : null}
       </div>
     </div>

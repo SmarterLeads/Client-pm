@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   updateClientOverviewFields,
 } from "@/lib/actions/clients";
+import { ClientMrrBreakdownSection } from "@/components/clients/client-mrr-breakdown-section";
 import { ClientContactsSection } from "@/components/clients/client-contacts-section";
 import { ClientOverviewMarketingConfigSection } from "@/components/clients/client-overview-marketing-config-section";
 import { ClientOverviewPlatformIdsSection } from "@/components/clients/client-overview-platform-ids-section";
@@ -173,13 +174,21 @@ export function ClientOverviewTab({
             </div>
           </OverviewFieldRow>
           {canViewMrr ? (
-            <OverviewFieldRow editable label="MRR (monthly)">
-              <InlineDollarField
-                cents={client.mrr_cents}
-                aria-label="Monthly recurring revenue"
-                onSave={(cents) => saveField({ mrr_cents: cents })}
+            <>
+              <OverviewFieldRow editable label="Total MRR (monthly)">
+                <InlineDollarField
+                  cents={client.mrr_cents}
+                  aria-label="Total monthly recurring revenue"
+                  onSave={(cents) => saveField({ mrr_cents: cents })}
+                />
+              </OverviewFieldRow>
+              <ClientMrrBreakdownSection
+                client={client}
+                onSaveBreakdown={(mrr_breakdown) =>
+                  saveField({ mrr_breakdown })
+                }
               />
-            </OverviewFieldRow>
+            </>
           ) : null}
         </OverviewCard>
 

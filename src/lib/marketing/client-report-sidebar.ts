@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SidebarGroup } from "@/components/marketing/report/report-sidebar";
 import type { Database } from "@/lib/types/database";
+import { MARKETING_CHURNED_STATUS } from "@/lib/marketing/client-status";
 
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -31,7 +32,7 @@ export async function fetchPmReportSidebarGroups(
     .from("clients")
     .select("id, name, report_slug, agency_id")
     .not("report_slug", "is", null)
-    .eq("status", "active")
+    .neq("status", MARKETING_CHURNED_STATUS)
     .order("name");
 
   if (cErr) throw cErr;

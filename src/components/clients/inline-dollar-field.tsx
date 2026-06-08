@@ -123,6 +123,7 @@ export function InlineDollarField({
   return (
     <button
       type="button"
+      data-inline-edit-trigger="true"
       onClick={beginEdit}
       className={cn(
         "rounded-md px-1 py-0.5 text-sm font-medium transition hover:bg-muted/60",

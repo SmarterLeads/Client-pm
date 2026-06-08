@@ -4,7 +4,13 @@ import { SkeletonLine } from "@/components/marketing/skeletons";
 import { fetchAgencies } from "@/lib/queries/lead-gen-queries";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function MarketingOverviewPage() {
+export default async function MarketingOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ show_paused?: string }>;
+}) {
+  const params = await searchParams;
+  const includePaused = params.show_paused === "true";
   const supabase = await createClient();
   const agencies = await fetchAgencies(supabase);
 
@@ -23,7 +29,10 @@ export default async function MarketingOverviewPage() {
           </div>
         }
       >
-        <MarketingDashboardShell agencies={agencies} />
+        <MarketingDashboardShell
+          agencies={agencies}
+          includePaused={includePaused}
+        />
       </Suspense>
     </div>
   );

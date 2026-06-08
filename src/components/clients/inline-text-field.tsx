@@ -114,15 +114,9 @@ export function InlineTextField({
 
   const display =
     type === "url" && value?.trim() ? (
-      <a
-        href={value.startsWith("http") ? value : `https://${value}`}
-        target="_blank"
-        rel="noreferrer"
-        className="text-primary hover:underline"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <span className="text-primary underline decoration-primary/40">
         {value}
-      </a>
+      </span>
     ) : (
       value?.trim() || emptyLabel
     );
@@ -130,6 +124,7 @@ export function InlineTextField({
   return (
     <button
       type="button"
+      data-inline-edit-trigger="true"
       onClick={beginEdit}
       className={cn(
         "max-w-full rounded-md px-1 py-0.5 text-right text-sm font-medium transition hover:bg-muted/60",

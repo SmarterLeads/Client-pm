@@ -191,6 +191,12 @@ export const updateClientOverviewFieldsSchema = z
         z.union([z.number().int().min(0).max(999_999_999_99), z.null()]).optional(),
       )
       .optional(),
+    mrr_breakdown: z
+      .record(
+        z.string(),
+        z.number().int().min(0).max(999_999_999_99),
+      )
+      .optional(),
     status: z.enum(CLIENT_STATUSES).optional(),
     rag_status: z.enum(ragStatuses).optional(),
     account_manager_id: z

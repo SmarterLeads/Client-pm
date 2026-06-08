@@ -29,10 +29,10 @@ export const leadGenKeys = {
   allAgencies: () => [...leadGenKeys.all, "agencies", "all"] as const,
   agencies: (clientType: DashboardClientType) =>
     [...leadGenKeys.all, "agencies", clientType] as const,
-  agencyClientTypes: (agencyId: string) =>
-    [...leadGenKeys.all, "agency-client-types", agencyId] as const,
-  clients: (agencyId: string, clientType: DashboardClientType) =>
-    [...leadGenKeys.all, "clients", agencyId, clientType] as const,
+  agencyClientTypes: (agencyId: string, includePaused: boolean) =>
+    [...leadGenKeys.all, "agency-client-types", agencyId, includePaused ? "paused" : "active"] as const,
+  clients: (agencyId: string, clientType: DashboardClientType, includePaused: boolean) =>
+    [...leadGenKeys.all, "clients", agencyId, clientType, includePaused ? "paused" : "active"] as const,
   clientPlatforms: (clientId: string) =>
     [...leadGenKeys.all, "platforms", clientId] as const,
   primaryMetrics: (

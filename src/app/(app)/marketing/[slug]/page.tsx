@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import { MarketingClientInactive } from "@/components/marketing/marketing-client-inactive";
 import { ClientMarketingReportView } from "@/components/marketing/report/client-marketing-report-view";
 import { ReportSidebar } from "@/components/marketing/report/report-sidebar";
+import { isMarketingChurnedClient } from "@/lib/marketing/client-status";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchPmReportSidebarGroups } from "@/lib/marketing/client-report-sidebar";
 import { normalizeAgencyLogoUrl } from "@/lib/report/normalize-agency-logo-url";
@@ -23,11 +25,15 @@ export default async function MarketingClientReportPage({
   const supabase = createServiceClient();
   const { data: client } = await supabase
     .from("clients")
-    .select("agency_id, report_slug, agencies(name, logo_url, primary_color)")
+    .select("id, name, agency_id, report_slug, status, agencies(name, logo_url, primary_color)")
     .eq("report_slug", slug)
     .maybeSingle();
 
   if (!client?.report_slug) notFound();
+
+  if (isMarketingChurnedClient(client.status)) {
+    return <MarketingClientInactive clientName={client.name} />;
+  }
 
   const agency = client.agencies as {
     name: string;

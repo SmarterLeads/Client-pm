@@ -19,6 +19,7 @@ export type SettingsFormState = {
   fieldErrors?: Record<string, string[]>;
   success?: boolean;
   tempPassword?: string;
+  invitedName?: string;
 };
 
 function zodFieldErrors(error: z.ZodError): Record<string, string[]> {
@@ -73,16 +74,34 @@ export async function inviteTeamMember(
       name: formData.get("name"),
       email: formData.get("email"),
       role: formData.get("role"),
-      agency_id: formData.get("agency_id"),
+      can_view_mrr: formData.get("can_view_mrr"),
+      all_agencies: formData.get("all_agencies"),
+      agency_ids: formData.getAll("agency_ids"),
     });
 
     if (!parsed.success) {
       return { fieldErrors: zodFieldErrors(parsed.error) };
     }
 
-    const { name, email, role, agency_id } = parsed.data;
+    const { name, email, role, can_view_mrr, all_agencies } = parsed.data;
     const normalizedEmail = email.toLowerCase();
     const supabase = createServiceClient();
+
+    const { data: agencies, error: agenciesError } = await supabase
+      .from("agencies")
+      .select("id");
+
+    if (agenciesError) {
+      return { error: agenciesError.message };
+    }
+
+    const agencyIds = all_agencies
+      ? (agencies ?? []).map((agency) => agency.id)
+      : (parsed.data.agency_ids ?? []);
+
+    if (agencyIds.length === 0) {
+      return { error: "Select at least one agency." };
+    }
 
     const { data: existing, error: existingError } = await pm(supabase)
       .from("team_members")
@@ -98,7 +117,7 @@ export async function inviteTeamMember(
       return { error: "A team member with this email already exists." };
     }
 
-    const tempPassword = generateTempPassword(12);
+    const tempPassword = generateTempPassword();
     let authUserId: string;
 
     if (existing?.auth_user_id) {
@@ -106,7 +125,7 @@ export async function inviteTeamMember(
         await supabase.auth.admin.updateUserById(existing.auth_user_id, {
           password: tempPassword,
           email_confirm: true,
-          user_metadata: { full_name: name },
+          user_metadata: { name },
         });
 
       if (updateAuthError) {
@@ -118,10 +137,12 @@ export async function inviteTeamMember(
       const { error: updateMemberError } = await pm(supabase)
         .from("team_members")
         .update({
+          auth_user_id: authUserId,
           name,
           email: normalizedEmail,
           role,
-          agency_id: agency_id ?? null,
+          can_view_mrr,
+          agency_id: agencyIds[0] ?? null,
           is_active: true,
           updated_at: new Date().toISOString(),
         })
@@ -136,7 +157,7 @@ export async function inviteTeamMember(
           email: normalizedEmail,
           password: tempPassword,
           email_confirm: true,
-          user_metadata: { full_name: name },
+          user_metadata: { name },
         });
 
       if (createAuthError) {
@@ -153,7 +174,8 @@ export async function inviteTeamMember(
             name,
             email: normalizedEmail,
             role,
-            agency_id: agency_id ?? null,
+            can_view_mrr,
+            agency_id: agencyIds[0] ?? null,
             is_active: true,
             updated_at: new Date().toISOString(),
           })
@@ -170,7 +192,8 @@ export async function inviteTeamMember(
             name,
             email: normalizedEmail,
             role,
-            agency_id: agency_id ?? null,
+            can_view_mrr,
+            agency_id: agencyIds[0] ?? null,
             is_active: true,
           });
 
@@ -180,23 +203,29 @@ export async function inviteTeamMember(
       }
     }
 
-    if (agency_id) {
-      const { error: agencyError } = await supabase.from("user_agencies").upsert(
-        {
-          user_id: authUserId,
-          agency_id,
-          role: role === "admin" ? "admin" : "member",
-        },
-        { onConflict: "user_id,agency_id" },
-      );
+    const { error: clearAgenciesError } = await supabase
+      .from("user_agencies")
+      .delete()
+      .eq("user_id", authUserId);
 
-      if (agencyError) {
-        return { error: agencyError.message };
-      }
+    if (clearAgenciesError) {
+      return { error: clearAgenciesError.message };
+    }
+
+    const { error: agencyLinksError } = await supabase.from("user_agencies").insert(
+      agencyIds.map((agency_id) => ({
+        user_id: authUserId,
+        agency_id,
+        role: "member",
+      })),
+    );
+
+    if (agencyLinksError) {
+      return { error: agencyLinksError.message };
     }
 
     revalidateSettingsPaths();
-    return { success: true, tempPassword };
+    return { success: true, tempPassword, invitedName: name };
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "Failed to invite team member.",

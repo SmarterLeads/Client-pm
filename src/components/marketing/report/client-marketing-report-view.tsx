@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { MarketingClientInactive } from "@/components/marketing/marketing-client-inactive";
 import { CampaignPerformanceTable } from "@/components/marketing/report/campaign-performance-table";
 import { GoogleAdsCampaignPerformanceTable } from "@/components/marketing/report/google-ads-campaign-performance-table";
 import { ConversionBreakdownCards } from "@/components/marketing/report/conversion-breakdown-cards";
@@ -21,6 +22,7 @@ import { MetaLocationBreakdownSection } from "@/components/marketing/report/meta
 import { YtdYearComparison } from "@/components/marketing/report/ytd-year-comparison";
 import { YtdMonthlyTable } from "@/components/marketing/report/ytd-monthly-table";
 import { normalizeAgencyLogoUrl } from "@/lib/report/normalize-agency-logo-url";
+import { isMarketingChurnedClient } from "@/lib/marketing/client-status";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchPmReportSidebarGroups } from "@/lib/marketing/client-report-sidebar";
 import {
@@ -111,6 +113,7 @@ type ReportClient = {
   agencyId: string;
   clientName: string;
   clientType: string;
+  status: string | null;
   showPriorYearYtd: boolean;
   showEcommerceHeroRow: boolean;
   defaultChartMode: "conversions" | "traffic";
@@ -160,6 +163,15 @@ export async function ClientMarketingReportView({
 
   const report = await fetchClientReportMeta(supabase, slug);
   if (!report) notFound();
+
+  if (isMarketingChurnedClient(report.status)) {
+    return (
+      <MarketingClientInactive
+        clientName={report.clientName}
+        backHref={embedded ? undefined : "/marketing"}
+      />
+    );
+  }
 
   const sidebarGroupsPromise = embedded
     ? Promise.resolve([])
@@ -1236,7 +1248,7 @@ async function fetchClientReportMeta(
   const { data: client, error: cErr } = await supabase
     .from("clients")
     .select(
-      "id, name, agency_id, report_slug, client_type, default_chart_mode, show_prior_year_ytd, show_ecommerce_hero_row, ghl_pipeline_config, whatconverts_profile_id, whatconverts_config",
+      "id, name, agency_id, report_slug, status, client_type, default_chart_mode, show_prior_year_ytd, show_ecommerce_hero_row, ghl_pipeline_config, whatconverts_profile_id, whatconverts_config",
     )
     .eq("report_slug", clientSlug)
     .maybeSingle();
@@ -1259,6 +1271,7 @@ async function fetchClientReportMeta(
     agencyId: client.agency_id,
     clientName: client.name,
     clientType: client.client_type ?? "lead_gen",
+    status: client.status,
     showPriorYearYtd: client.show_prior_year_ytd === true,
     showEcommerceHeroRow: client.show_ecommerce_hero_row === true,
     defaultChartMode: chartMode,

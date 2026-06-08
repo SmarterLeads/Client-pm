@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  marketingDashboardStatuses,
+} from "@/lib/marketing/client-status";
+
+import {
   buildConversionPairIndex,
   compareConversionBreakdownOrder,
   configsForActiveDisplayNames,
@@ -256,6 +260,7 @@ export async function fetchAgencies(supabase: SB, _userId?: string) {
 export async function fetchAgenciesForClientType(
   supabase: SB,
   clientType: DashboardClientType,
+  includePaused = false,
 ) {
   const {
     data: { user },
@@ -270,11 +275,12 @@ export async function fetchAgenciesForClientType(
   const allowed = new Set((memberships ?? []).map((m) => m.agency_id));
   if (allowed.size === 0) return [];
 
+  const statuses = marketingDashboardStatuses(includePaused);
   const { data: clientRows, error: cErr } = await supabase
     .from("clients")
     .select("agency_id")
     .eq("client_type", clientType)
-    .eq("status", "active");
+    .in("status", statuses);
   if (cErr) throw cErr;
 
   const withType = new Set<string>();
@@ -295,12 +301,14 @@ export async function fetchAgenciesForClientType(
 export async function fetchAgencyClientTypeAvailability(
   supabase: SB,
   agencyId: string,
+  includePaused = false,
 ): Promise<{ hasLeadGen: boolean; hasEcommerce: boolean }> {
+  const statuses = marketingDashboardStatuses(includePaused);
   const { data, error } = await supabase
     .from("clients")
     .select("client_type")
     .eq("agency_id", agencyId)
-    .eq("status", "active");
+    .in("status", statuses);
   if (error) throw error;
   const types = new Set((data ?? []).map((r) => r.client_type));
   return {
@@ -340,23 +348,25 @@ export async function fetchClientsForAgency(
   supabase: SB,
   agencyId: string,
   clientType: DashboardClientType,
+  includePaused = false,
 ) {
+  const statuses = marketingDashboardStatuses(includePaused);
   const runFull = () =>
     supabase
       .from("clients")
-      .select("id, name, agency_id, client_type, lead_quality_score")
+      .select("id, name, agency_id, client_type, lead_quality_score, status")
       .eq("agency_id", agencyId)
       .eq("client_type", clientType)
-      .eq("status", "active")
+      .in("status", statuses)
       .order("name");
 
   const runWithoutScore = () =>
     supabase
       .from("clients")
-      .select("id, name, agency_id, client_type")
+      .select("id, name, agency_id, client_type, status")
       .eq("agency_id", agencyId)
       .eq("client_type", clientType)
-      .eq("status", "active")
+      .in("status", statuses)
       .order("name");
 
   const { data, error } = await runFull();

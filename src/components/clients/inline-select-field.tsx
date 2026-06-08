@@ -57,6 +57,7 @@ export function InlineSelectField({
         disabled={isPending}
         aria-label={ariaLabel}
         aria-invalid={error ? true : undefined}
+        data-inline-edit-trigger="true"
         onChange={(e) => handleChange(e.target.value)}
         className={cn(
           "h-8 rounded-lg border border-input bg-background px-2 text-sm font-medium dark:bg-input/30",

@@ -1,4 +1,9 @@
 import { weightedAverageRoas } from "@/lib/marketing/format";
+import {
+  isMarketingChurnedClient,
+  MARKETING_CHURNED_STATUS,
+  marketingDashboardStatuses,
+} from "@/lib/marketing/client-status";
 import type {
   AgencyReportClientGroup,
   MarketingCampaignRow,
@@ -29,7 +34,12 @@ type ReportClientRow = {
   name: string;
   report_slug: string;
   agency_id: string;
+  status: string | null;
   agencies: { name: string } | null;
+};
+
+export type MarketingClientQueryOptions = {
+  includePaused?: boolean;
 };
 
 function emptyTotals(): MarketingKpiTotals {
@@ -106,12 +116,16 @@ async function fetchPerformanceInRange(bounds: MarketingDateBounds) {
   return (data ?? []) as PerformanceRow[];
 }
 
-async function fetchReportClients() {
+async function fetchReportClients(options: MarketingClientQueryOptions = {}) {
   const supabase = await createClient();
+  const statuses = marketingDashboardStatuses(options.includePaused ?? false);
+
   const { data, error } = await supabase
     .from("clients")
-    .select("id, name, report_slug, agency_id, agencies(name)")
+    .select("id, name, report_slug, agency_id, status, agencies(name)")
     .not("report_slug", "is", null)
+    .neq("status", MARKETING_CHURNED_STATUS)
+    .in("status", statuses)
     .order("name", { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -125,6 +139,7 @@ async function fetchReportClients() {
         name: row.name,
         report_slug: row.report_slug!.trim(),
         agency_id: row.agency_id,
+        status: row.status,
         agencies: agency,
       } satisfies ReportClientRow;
     });
@@ -133,7 +148,30 @@ async function fetchReportClients() {
 export async function getMarketingReportClientGroups(): Promise<
   AgencyReportClientGroup[]
 > {
-  const clients = await fetchReportClients();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, name, report_slug, agency_id, agencies(name)")
+    .not("report_slug", "is", null)
+    .neq("status", MARKETING_CHURNED_STATUS)
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  const clients = (data ?? [])
+    .filter((row) => row.report_slug?.trim())
+    .map((row) => {
+      const agency = row.agencies as { name: string } | null;
+      return {
+        id: row.id,
+        name: row.name,
+        report_slug: row.report_slug!.trim(),
+        agency_id: row.agency_id,
+        status: null,
+        agencies: agency,
+      } satisfies ReportClientRow;
+    });
+
   const groups = new Map<string, AgencyReportClientGroup>();
 
   for (const client of clients) {
@@ -165,11 +203,13 @@ export async function getMarketingReportClientGroups(): Promise<
 
 export async function getMarketingOverview(
   bounds: MarketingDateBounds,
+  options: MarketingClientQueryOptions = {},
 ): Promise<MarketingOverview> {
-  const [performance, clients] = await Promise.all([
-    fetchPerformanceInRange(bounds),
-    fetchReportClients(),
-  ]);
+  const clients = await fetchReportClients(options);
+  const clientIds = new Set(clients.map((client) => client.id));
+  const performance = (await fetchPerformanceInRange(bounds)).filter((row) =>
+    clientIds.has(row.client_id),
+  );
 
   const performanceByClient = new Map<string, PerformanceRow[]>();
   for (const row of performance) {
@@ -212,7 +252,7 @@ export async function getClientByReportSlug(slug: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
-    .select("id, name, report_slug, rag_status, agency_id, agencies(name)")
+    .select("id, name, report_slug, rag_status, agency_id, status, agencies(name)")
     .eq("report_slug", slug)
     .maybeSingle();
 
@@ -228,6 +268,8 @@ export async function getClientByReportSlug(slug: string) {
     ragStatus: data.rag_status,
     agencyId: data.agency_id,
     agencyName: agency?.name ?? "Unknown agency",
+    status: data.status,
+    isChurned: isMarketingChurnedClient(data.status),
   };
 }
 
@@ -345,7 +387,7 @@ export async function getClientMarketingDataBySlug(
   bounds: MarketingDateBounds,
 ): Promise<MarketingClientData | null> {
   const client = await getClientByReportSlug(slug);
-  if (!client) return null;
+  if (!client || client.isChurned) return null;
 
   const data = await getClientMarketingData(client.id, bounds);
   if (!data) return null;

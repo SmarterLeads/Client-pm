@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -40,13 +40,18 @@ export type MarketingDashboardAgency = { id: string; name: string };
 
 type MarketingDashboardProps = {
   agencies: MarketingDashboardAgency[];
+  includePaused?: boolean;
 };
 
 /**
  * Main dashboard: agency tabs (top), then optional Lead Gen / Ecommerce, then client list.
  */
-export function MarketingDashboard({ agencies: agenciesFromServer }: MarketingDashboardProps) {
+export function MarketingDashboard({
+  agencies: agenciesFromServer,
+  includePaused = false,
+}: MarketingDashboardProps) {
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const viewFromUrl = searchParams.get("view");
   const urlViewApplied = useRef(false);
@@ -72,8 +77,9 @@ export function MarketingDashboard({ agencies: agenciesFromServer }: MarketingDa
   }, [agencies, agencyId]);
 
   const availabilityQuery = useQuery({
-    queryKey: leadGenKeys.agencyClientTypes(agencyId ?? ""),
-    queryFn: () => fetchAgencyClientTypeAvailability(supabase, agencyId!),
+    queryKey: leadGenKeys.agencyClientTypes(agencyId ?? "", includePaused),
+    queryFn: () =>
+      fetchAgencyClientTypeAvailability(supabase, agencyId!, includePaused),
     enabled: Boolean(agencyId),
   });
 
@@ -123,10 +129,30 @@ export function MarketingDashboard({ agencies: agenciesFromServer }: MarketingDa
   const showSecondaryTabs = Boolean(availability?.hasLeadGen && availability.hasEcommerce);
 
   const clientsQuery = useQuery({
-    queryKey: leadGenKeys.clients(agencyId ?? "", effectiveClientType ?? "lead_gen"),
-    queryFn: () => fetchClientsForAgency(supabase, agencyId!, effectiveClientType!),
+    queryKey: leadGenKeys.clients(
+      agencyId ?? "",
+      effectiveClientType ?? "lead_gen",
+      includePaused,
+    ),
+    queryFn: () =>
+      fetchClientsForAgency(
+        supabase,
+        agencyId!,
+        effectiveClientType!,
+        includePaused,
+      ),
     enabled: Boolean(agencyId) && effectiveClientType != null,
   });
+
+  function toggleIncludePaused(checked: boolean) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (checked) {
+      params.set("show_paused", "true");
+    } else {
+      params.delete("show_paused");
+    }
+    router.replace(`/marketing?${params.toString()}`);
+  }
 
   if (agencies.length === 0) {
     return <p className="text-sm text-zinc-500">No agencies linked to your account yet.</p>;
@@ -199,7 +225,9 @@ export function MarketingDashboard({ agencies: agenciesFromServer }: MarketingDa
           {queryErrorMessage(availabilityQuery.error, "Unknown error")}
         </p>
       ) : availability && !availability.hasLeadGen && !availability.hasEcommerce ? (
-        <p className="text-sm text-zinc-500">No active clients in this agency.</p>
+        <p className="text-sm text-zinc-500">
+          No {includePaused ? "active or paused" : "active"} clients in this agency.
+        </p>
       ) : clientsQuery.isLoading || effectiveClientType == null ? (
         <div className="space-y-2">
           <ClientRowSkeleton />
@@ -211,6 +239,17 @@ export function MarketingDashboard({ agencies: agenciesFromServer }: MarketingDa
         </p>
       ) : (
         <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <input
+                type="checkbox"
+                checked={includePaused}
+                onChange={(e) => toggleIncludePaused(e.target.checked)}
+                className="size-4 rounded border-input"
+              />
+              Show paused clients
+            </label>
+          </div>
           {(clientsQuery.data ?? []).map((c) => (
             <ClientRow
               key={c.id}

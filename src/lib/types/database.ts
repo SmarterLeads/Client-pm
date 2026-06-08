@@ -1624,6 +1624,7 @@ export type Database = {
           marketing_channels: string[] | null
           meta_attribution_window: string | null
           mrr_cents: number | null
+          mrr_breakdown: Json
           name: string
           pm_notes: string | null
           rag_status: Database["pm"]["Enums"]["rag_status"]
@@ -1659,6 +1660,7 @@ export type Database = {
           marketing_channels?: string[] | null
           meta_attribution_window?: string | null
           mrr_cents?: number | null
+          mrr_breakdown?: Json
           name: string
           pm_notes?: string | null
           rag_status?: Database["pm"]["Enums"]["rag_status"]
@@ -1694,6 +1696,7 @@ export type Database = {
           marketing_channels?: string[] | null
           meta_attribution_window?: string | null
           mrr_cents?: number | null
+          mrr_breakdown?: Json
           name?: string
           pm_notes?: string | null
           rag_status?: Database["pm"]["Enums"]["rag_status"]
