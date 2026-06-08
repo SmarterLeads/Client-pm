@@ -17,6 +17,7 @@ import {
   getClientProjects,
 } from "@/lib/queries/clients";
 import { getClientUpdates } from "@/lib/queries/client-updates";
+import { clientActivityFiltersSchema } from "@/lib/validations/client-activity";
 import { clientInteractionFiltersSchema } from "@/lib/validations/interaction";
 import { clientUpdateFiltersSchema } from "@/lib/validations/client-update";
 
@@ -34,6 +35,10 @@ type ClientDetailPageProps = {
     end?: string;
     view?: string;
     marketingSub?: string;
+    activity_types?: string;
+    activity_from?: string;
+    activity_to?: string;
+    activity_by?: string;
   }>;
 };
 
@@ -64,6 +69,29 @@ export default async function ClientDetailPage({
   const updateFilters = updateFiltersParsed.success
     ? updateFiltersParsed.data
     : {};
+
+  const activityFiltersParsed = clientActivityFiltersSchema.safeParse({
+    activity_types: query.activity_types,
+    activity_from: query.activity_from,
+    activity_to: query.activity_to,
+    activity_by: query.activity_by,
+  });
+
+  const activityFilters = activityFiltersParsed.success
+    ? {
+        types: activityFiltersParsed.data.activity_types,
+        from: activityFiltersParsed.data.activity_from,
+        to: activityFiltersParsed.data.activity_to,
+        teamMemberId: activityFiltersParsed.data.activity_by,
+      }
+    : {};
+
+  const hasActivityFilters = Boolean(
+    activityFilters.types?.length ||
+      activityFilters.from ||
+      activityFilters.to ||
+      activityFilters.teamMemberId,
+  );
 
   const result = await getClientById(id);
 
@@ -106,7 +134,13 @@ export default async function ClientDetailPage({
           projects={projects ?? []}
           updates={updates ?? []}
           interactions={interactions ?? []}
-          historyPanel={<ClientHistoryPanel clientId={id} />}
+          historyPanel={
+            <ClientHistoryPanel
+              clientId={id}
+              filters={activityFilters}
+              hasActiveFilters={hasActivityFilters}
+            />
+          }
           marketingPanel={
             <ClientMarketingTab client={client} searchParams={query} />
           }

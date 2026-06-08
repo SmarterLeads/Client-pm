@@ -1,5 +1,16 @@
 ﻿import { formatContactName } from "@/lib/clients/contact-utils";
 import {
+  applyActivityLogFilters,
+  mapAttachmentActivityEvent,
+  mapClientChangeHistoryEvent,
+  mapClientUpdateActivityEvent,
+  mapInteractionActivityEvent,
+  mapPortalInviteActivityEvent,
+  type ActivityEvent,
+  type ActivityEventCategory,
+  type ClientActivityLogFilters,
+} from "@/lib/clients/activity-log";
+import {
   contactNameFromMap,
   loadContactNameMap,
 } from "@/lib/interactions/contact-names";
@@ -11,9 +22,11 @@ import type {
 import { pm } from "@/lib/supabase/pm";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  ChangeAction,
   Client,
   ClientContact,
   ClientUser,
+  Json,
   ProjectStatus,
   RagStatus,
   TeamMember,
@@ -473,6 +486,12 @@ export async function getClientInteractions(
 
 export type { ChangeHistoryRow as ClientHistoryRow } from "@/lib/change-history/types";
 
+export type {
+  ActivityEvent,
+  ActivityEventCategory,
+  ClientActivityLogFilters,
+} from "@/lib/clients/activity-log";
+
 const CLIENT_HISTORY_ENTITY_TYPES = [
   "clients",
   "interactions",
@@ -480,6 +499,301 @@ const CLIENT_HISTORY_ENTITY_TYPES = [
   "projects",
 ] as const;
 
+export async function getClientActivityLog(
+  clientId: string,
+  filters: ClientActivityLogFilters = {},
+): Promise<ActivityEvent[]> {
+  try {
+    const supabase = await createClient();
+
+    const [
+      contactsRes,
+      projectsRes,
+      portalUsersRes,
+      interactionsRes,
+      updatesRes,
+      clientAttachmentsRes,
+    ] = await Promise.all([
+      supabase.from("client_contacts").select("id").eq("client_id", clientId),
+      pm(supabase).from("projects").select("id, name").eq("client_id", clientId),
+      pm(supabase)
+        .from("client_portal_users")
+        .select("id, email, invited_at, is_active")
+        .eq("client_id", clientId),
+      pm(supabase)
+        .from("interactions")
+        .select(
+          `
+          id,
+          type,
+          summary,
+          occurred_at,
+          logged_by,
+          logger:team_members(name)
+        `,
+        )
+        .eq("client_id", clientId),
+      pm(supabase)
+        .from("client_updates")
+        .select("id, marketing_channel, summary, occurred_at, logged_by")
+        .eq("client_id", clientId),
+      pm(supabase)
+        .from("attachments")
+        .select(
+          `
+          id,
+          filename,
+          created_at,
+          uploaded_by,
+          uploader:team_members(name)
+        `,
+        )
+        .eq("entity_type", "client")
+        .eq("entity_id", clientId),
+    ]);
+
+    const contactIds = (contactsRes.data ?? []).map((row) => row.id);
+    const projects = projectsRes.data ?? [];
+    const projectIds = projects.map((row) => row.id);
+    const projectNames = new Map(projects.map((row) => [row.id, row.name]));
+
+    const [tasksRes, milestonesRes] =
+      projectIds.length > 0
+        ? await Promise.all([
+            pm(supabase)
+              .from("tasks")
+              .select("id, title, project_id, project:projects(name)")
+              .in("project_id", projectIds),
+            pm(supabase)
+              .from("milestones")
+              .select("id, title, project_id")
+              .in("project_id", projectIds),
+          ])
+        : [{ data: [] }, { data: [] }];
+
+    const clientTasks = tasksRes.data ?? [];
+    const taskIds = clientTasks.map((row) => row.id);
+    const taskProjectNames = new Map(
+      clientTasks.map((row) => [row.id, row.project?.name ?? "Unknown project"]),
+    );
+
+    const clientMilestones = milestonesRes.data ?? [];
+    const milestoneIds = clientMilestones.map((row) => row.id);
+    const milestoneTitles = new Map(
+      clientMilestones.map((row) => [row.id, row.title]),
+    );
+
+    const portalUsers = portalUsersRes.data ?? [];
+    const portalUserIds = portalUsers.map((row) => row.id);
+    const portalEmails = new Map(portalUsers.map((row) => [row.id, row.email]));
+
+    let projectAttachments: {
+      id: string;
+      filename: string;
+      created_at: string;
+      uploaded_by: string | null;
+      uploader: { name: string } | null;
+    }[] = [];
+
+    if (projectIds.length > 0) {
+      const { data } = await pm(supabase)
+        .from("attachments")
+        .select(
+          `
+          id,
+          filename,
+          created_at,
+          uploaded_by,
+          uploader:team_members(name)
+        `,
+        )
+        .eq("entity_type", "project")
+        .in("entity_id", projectIds);
+
+      projectAttachments = data ?? [];
+    }
+
+    const contactIdSet = new Set(contactIds);
+    const projectIdSet = new Set(projectIds);
+    const taskIdSet = new Set(taskIds);
+    const milestoneIdSet = new Set(milestoneIds);
+
+    const historyEntityIds = [
+      clientId,
+      ...contactIds,
+      ...projectIds,
+      ...taskIds,
+      ...milestoneIds,
+      ...portalUserIds,
+    ];
+
+    let historyRows: {
+      id: string;
+      action: ChangeAction;
+      entity_type: string;
+      entity_id: string;
+      changed_at: string;
+      changed_by: string | null;
+      old_values: Json | null;
+      new_values: Json | null;
+      changer: { name: string } | null;
+    }[] = [];
+
+    if (historyEntityIds.length > 0) {
+      const { data, error } = await pm(supabase)
+        .from("change_history")
+        .select(
+          `
+          id,
+          action,
+          entity_type,
+          entity_id,
+          changed_at,
+          changed_by,
+          old_values,
+          new_values,
+          changer:team_members(name)
+        `,
+        )
+        .in("entity_id", historyEntityIds)
+        .order("changed_at", { ascending: false })
+        .limit(500);
+
+      if (error) {
+        console.error("[getClientActivityLog] change_history:", error.message);
+      } else {
+        historyRows = data ?? [];
+      }
+    }
+
+    const historyContext = {
+      clientId,
+      contactIds: contactIdSet,
+      projectIds: projectIdSet,
+      taskProjectNames,
+      projectNames,
+      milestoneTitles,
+      portalEmails,
+    };
+
+    const portalInviteHistoryIds = new Set(
+      historyRows
+        .filter(
+          (row) =>
+            row.action === "insert" &&
+            row.entity_type.replace(/^(public|pm)\./, "") ===
+              "client_portal_users",
+        )
+        .map((row) => row.entity_id),
+    );
+
+    const events: ActivityEvent[] = [];
+
+    for (const row of historyRows) {
+      if (
+        row.entity_type.replace(/^(public|pm)\./, "") === "tasks" &&
+        !taskIdSet.has(row.entity_id)
+      ) {
+        continue;
+      }
+
+      if (
+        row.entity_type.replace(/^(public|pm)\./, "") === "milestones" &&
+        !milestoneIdSet.has(row.entity_id)
+      ) {
+        continue;
+      }
+
+      const mapped = mapClientChangeHistoryEvent(
+        {
+          id: row.id,
+          action: row.action,
+          entity_type: row.entity_type,
+          entity_id: row.entity_id,
+          changed_at: row.changed_at,
+          changed_by: row.changed_by,
+          changed_by_name: row.changer?.name ?? null,
+          old_values: row.old_values,
+          new_values: row.new_values,
+        },
+        historyContext,
+      );
+
+      if (mapped) events.push(mapped);
+    }
+
+    for (const row of interactionsRes.data ?? []) {
+      events.push(
+        mapInteractionActivityEvent({
+          id: row.id,
+          type: row.type,
+          summary: row.summary,
+          occurred_at: row.occurred_at,
+          logged_by: row.logged_by,
+          logged_by_name: row.logger?.name ?? null,
+        }),
+      );
+    }
+
+    const updateLoggerIds = [
+      ...new Set(
+        (updatesRes.data ?? [])
+          .map((row) => row.logged_by)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const updateLoggerNames = new Map<string, string>();
+    if (updateLoggerIds.length > 0) {
+      const { data: loggers } = await pm(supabase)
+        .from("team_members")
+        .select("id, name")
+        .in("id", updateLoggerIds);
+      for (const logger of loggers ?? []) {
+        updateLoggerNames.set(logger.id, logger.name);
+      }
+    }
+
+    for (const row of updatesRes.data ?? []) {
+      events.push(
+        mapClientUpdateActivityEvent({
+          id: row.id,
+          marketing_channel: row.marketing_channel,
+          summary: row.summary,
+          occurred_at: row.occurred_at,
+          logged_by: row.logged_by,
+          logged_by_name: row.logged_by
+            ? (updateLoggerNames.get(row.logged_by) ?? null)
+            : null,
+        }),
+      );
+    }
+
+    for (const row of [...(clientAttachmentsRes.data ?? []), ...projectAttachments]) {
+      events.push(
+        mapAttachmentActivityEvent({
+          id: row.id,
+          filename: row.filename,
+          created_at: row.created_at,
+          uploaded_by: row.uploaded_by,
+          uploaded_by_name: row.uploader?.name ?? null,
+        }),
+      );
+    }
+
+    for (const row of portalUsers) {
+      if (!portalInviteHistoryIds.has(row.id)) {
+        events.push(mapPortalInviteActivityEvent(row));
+      }
+    }
+
+    return applyActivityLogFilters(events, filters);
+  } catch (err) {
+    console.error("[getClientActivityLog]", err);
+    return [];
+  }
+}
+
+/** @deprecated Use getClientActivityLog instead. */
 export async function getClientHistory(
   clientId: string,
 ): Promise<ChangeHistoryRow[]> {
