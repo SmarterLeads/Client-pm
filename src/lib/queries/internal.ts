@@ -525,7 +525,7 @@ export async function getMeetings(
       participants:meeting_participants(
         id,
         team_member_id,
-        member:team_members(name, avatar_url)
+        member:team_members!meeting_participants_team_member_id_fkey(name, avatar_url)
       )
     `,
     )
@@ -537,7 +537,16 @@ export async function getMeetings(
   if (filters.to) query = query.lte("occurred_at", filters.to);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+
+  if (error) {
+    console.error("[getMeetings] Supabase error:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw new Error(error.message);
+  }
 
   let rows = (data ?? []) as Array<
     TeamMeeting & {
@@ -579,8 +588,63 @@ export async function getMeetings(
 }
 
 export async function getMeetingById(id: string): Promise<MeetingDetail | null> {
-  const meetings = await getMeetings({});
-  return meetings.find((m) => m.id === id) ?? null;
+  const supabase = await createClient();
+
+  const { data, error } = await internalPm(supabase)
+    .from("team_meetings")
+    .select(
+      `
+      *,
+      creator:team_members!team_meetings_created_by_fkey(name, avatar_url),
+      participants:meeting_participants(
+        id,
+        team_member_id,
+        member:team_members!meeting_participants_team_member_id_fkey(name, avatar_url)
+      )
+    `,
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getMeetingById] Supabase error:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw new Error(error.message);
+  }
+
+  if (!data) return null;
+
+  const row = data as TeamMeeting & {
+    creator?: { name: string | null; avatar_url: string | null } | null;
+    participants?: Array<{
+      id: string;
+      team_member_id: string;
+      member?: { name: string | null; avatar_url: string | null } | null;
+    }> | null;
+  };
+
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type,
+    summary: row.summary,
+    body: row.body,
+    occurred_at: row.occurred_at,
+    visibility: row.visibility,
+    created_by: row.created_by,
+    creator_name: row.creator?.name ?? null,
+    creator_avatar_url: row.creator?.avatar_url ?? null,
+    participants: (row.participants ?? []).map((p) => ({
+      id: p.id,
+      team_member_id: p.team_member_id,
+      name: p.member?.name ?? "Unknown",
+      avatar_url: p.member?.avatar_url ?? null,
+    })),
+  };
 }
 
 export async function getTeamMembersForInternalSelect(): Promise<

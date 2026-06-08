@@ -311,6 +311,7 @@ export async function createMeeting(
     revalidatePath("/internal/meetings");
     return { success: true, id: meetingId };
   } catch (err) {
+    console.error("[createMeeting] error:", err);
     return {
       error: err instanceof Error ? err.message : "Failed to log meeting.",
     };

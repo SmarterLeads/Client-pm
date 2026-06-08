@@ -28,45 +28,55 @@ export default async function InternalMeetingsPage({
     redirect("/login");
   }
 
-  const params = await searchParams;
-  const parsed = meetingFiltersSchema.safeParse({
-    type: params.type || undefined,
-    visibility: params.visibility || undefined,
-    participant: params.participant || undefined,
-    from: params.from ? `${params.from}T00:00:00.000Z` : undefined,
-    to: params.to ? `${params.to}T23:59:59.999Z` : undefined,
-  });
+  try {
+    const params = await searchParams;
+    const parsed = meetingFiltersSchema.safeParse({
+      type: params.type || undefined,
+      visibility: params.visibility || undefined,
+      participant: params.participant || undefined,
+      from: params.from ? `${params.from}T00:00:00.000Z` : undefined,
+      to: params.to ? `${params.to}T23:59:59.999Z` : undefined,
+    });
 
-  const filters = parsed.success ? parsed.data : {};
+    const filters = parsed.success ? parsed.data : {};
 
-  const [meetings, teamMembers] = await Promise.all([
-    getMeetings(filters),
-    getTeamMembersForInternalSelect(),
-  ]);
+    const [meetings, teamMembers] = await Promise.all([
+      getMeetings(filters),
+      getTeamMembersForInternalSelect(),
+    ]);
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Team Meetings</h1>
-          <p className="text-sm text-muted-foreground">
-            {meetings.length} meeting{meetings.length === 1 ? "" : "s"}
-          </p>
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Team Meetings
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {meetings.length} meeting{meetings.length === 1 ? "" : "s"}
+            </p>
+          </div>
         </div>
+
+        <Suspense fallback={<FiltersSkeleton />}>
+          <MeetingsFilters teamMembers={teamMembers} />
+        </Suspense>
+
+        <MeetingsPageClient
+          meetings={meetings}
+          teamMembers={teamMembers}
+          currentUserId={teamMember.id}
+          isAdmin={teamMember.role === "admin"}
+        />
       </div>
-
-      <Suspense fallback={<FiltersSkeleton />}>
-        <MeetingsFilters teamMembers={teamMembers} />
-      </Suspense>
-
-      <MeetingsPageClient
-        meetings={meetings}
-        teamMembers={teamMembers}
-        currentUserId={teamMember.id}
-        isAdmin={teamMember.role === "admin"}
-      />
-    </div>
-  );
+    );
+  } catch (err) {
+    console.error("[InternalMeetingsPage] failed to load meetings:", err);
+    if (err instanceof Error) {
+      console.error("[InternalMeetingsPage] stack:", err.stack);
+    }
+    throw err;
+  }
 }
 
 function FiltersSkeleton() {
