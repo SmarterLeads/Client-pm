@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { searchGlobal } from "@/lib/actions/search";
 import type { GlobalSearchResults, SearchResultItem } from "@/lib/queries/search";
-import { cn } from "@/lib/utils";
 import {
   Building2,
   CheckSquare,
   FolderKanban,
   Search,
   Users,
+  X,
 } from "lucide-react";
 
 const RECENT_SEARCHES_KEY = "pm-recent-searches";
@@ -122,6 +122,10 @@ export function GlobalSearch() {
     });
   }, []);
 
+  function closeSearch() {
+    setOpen(false);
+  }
+
   function navigate(href: string, title: string) {
     if (query.trim()) {
       saveRecentSearch(query.trim());
@@ -167,12 +171,10 @@ export function GlobalSearch() {
         open={open}
         onOpenChange={setOpen}
         label="Global search"
-        className={cn(
-          "fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]",
-          "[&_[cmdk-overlay]]:fixed [&_[cmdk-overlay]]:inset-0 [&_[cmdk-overlay]]:bg-black/50",
-        )}
+        overlayClassName="fixed inset-0 z-50 bg-black/50"
+        contentClassName="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh] pointer-events-none"
       >
-        <div className="w-full max-w-xl overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
+        <div className="pointer-events-auto w-full max-w-xl overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
           <Command
             shouldFilter={false}
             className="flex max-h-[70vh] flex-col"
@@ -185,6 +187,14 @@ export function GlobalSearch() {
                 placeholder="Search clients, projects, tasks, team…"
                 className="h-12 flex-1 bg-transparent px-3 text-sm outline-none"
               />
+              <button
+                type="button"
+                onClick={closeSearch}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Close search"
+              >
+                <X className="size-4" />
+              </button>
             </div>
 
             <Command.List className="overflow-y-auto p-2">
