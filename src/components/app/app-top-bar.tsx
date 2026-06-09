@@ -14,6 +14,7 @@ type AppTopBarProps = {
   unreadCount: number;
   notifications: Notification[];
   reportClientGroups: AgencyReportClientGroup[];
+  canViewBusinessDashboard?: boolean;
 };
 
 function initials(name: string) {
@@ -30,6 +31,7 @@ export function AppTopBar({
   unreadCount,
   notifications,
   reportClientGroups,
+  canViewBusinessDashboard = false,
 }: AppTopBarProps) {
   const admin = isAdmin(teamMember.role);
 
@@ -43,7 +45,11 @@ export function AppTopBar({
           <Menu className="size-5" />
         </SheetTrigger>
         <SheetContent side="left" className="w-56 p-0">
-          <AppSidebar isAdmin={admin} reportClientGroups={reportClientGroups} />
+          <AppSidebar
+            isAdmin={admin}
+            canViewBusinessDashboard={canViewBusinessDashboard}
+            reportClientGroups={reportClientGroups}
+          />
         </SheetContent>
       </Sheet>
 

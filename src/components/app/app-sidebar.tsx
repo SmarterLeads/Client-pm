@@ -8,8 +8,8 @@ import {
   adminNavItems,
   clientNavItems,
   deliveryNavItems,
+  getWorkspaceNavItems,
   type AppNavItem,
-  workspaceNavItems,
 } from "@/components/app/nav-config";
 import type { AgencyReportClientGroup } from "@/lib/marketing/types";
 
@@ -46,17 +46,22 @@ function NavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
 
 type AppSidebarProps = {
   isAdmin?: boolean;
+  canViewBusinessDashboard?: boolean;
   reportClientGroups?: AgencyReportClientGroup[];
 };
 
 export function AppSidebar({
   isAdmin = false,
+  canViewBusinessDashboard = false,
   reportClientGroups = [],
 }: AppSidebarProps) {
   const pathname = usePathname();
 
   const sections = [
-    { items: workspaceNavItems, showDividerBefore: false },
+    {
+      items: getWorkspaceNavItems(canViewBusinessDashboard),
+      showDividerBefore: false,
+    },
     { items: clientNavItems, showDividerBefore: false },
     { items: deliveryNavItems, showDividerBefore: false },
     ...(isAdmin

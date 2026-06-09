@@ -1,4 +1,5 @@
 ﻿import {
+  BarChart3,
   Building2,
   CheckSquare,
   FolderKanban,
@@ -20,21 +21,39 @@ export type AppNavItem = {
   matchPrefix?: boolean;
 };
 
-export const workspaceNavItems: AppNavItem[] = [
-  { href: "/dashboard", label: "PM Dashboard", icon: LayoutDashboard },
-  {
-    href: "/marketing",
-    label: "Marketing Overview",
-    icon: TrendingUp,
-    matchPrefix: true,
-  },
-  {
-    href: "/agencies",
-    label: "Agencies",
-    icon: Landmark,
-    matchPrefix: true,
-  },
-];
+export const pmDashboardNavItem: AppNavItem = {
+  href: "/dashboard",
+  label: "PM Dashboard",
+  icon: LayoutDashboard,
+};
+
+export const businessDashboardNavItem: AppNavItem = {
+  href: "/business-dashboard",
+  label: "Business Dashboard",
+  icon: BarChart3,
+  matchPrefix: true,
+};
+
+export function getWorkspaceNavItems(
+  canViewBusinessDashboard: boolean,
+): AppNavItem[] {
+  return [
+    pmDashboardNavItem,
+    ...(canViewBusinessDashboard ? [businessDashboardNavItem] : []),
+    {
+      href: "/marketing",
+      label: "Marketing Overview",
+      icon: TrendingUp,
+      matchPrefix: true,
+    },
+    {
+      href: "/agencies",
+      label: "Agencies",
+      icon: Landmark,
+      matchPrefix: true,
+    },
+  ];
+}
 
 export const clientNavItems: AppNavItem[] = [
   {
@@ -80,6 +99,9 @@ export const deliveryNavItems: AppNavItem[] = [
   { href: "/team", label: "Team", icon: Users, matchPrefix: true },
   { href: "/settings", label: "Settings", icon: Settings, matchPrefix: true },
 ];
+
+/** @deprecated Use getWorkspaceNavItems() for workspace section */
+export const workspaceNavItems: AppNavItem[] = getWorkspaceNavItems(false);
 
 export const appNavItems: AppNavItem[] = [
   ...workspaceNavItems,
