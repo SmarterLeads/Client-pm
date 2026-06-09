@@ -8,7 +8,6 @@ import {
   adminNavItems,
   clientNavItems,
   deliveryNavItems,
-  internalNavItems,
   type AppNavItem,
   workspaceNavItems,
 } from "@/components/app/nav-config";
@@ -27,26 +26,21 @@ function isActive(pathname: string, href: string, matchPrefix?: boolean) {
 function NavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
   const active = isActive(pathname, item.href, item.matchPrefix);
   const Icon = item.icon;
-  const showClientReports =
-    item.href === "/marketing" && item.label === "Marketing Overview";
 
   return (
-    <div className="contents">
-      <Link
-        href={item.href}
-        title={item.label}
-        className={cn(
-          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-          active
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-        )}
-      >
-        <Icon className="size-5 shrink-0" aria-hidden />
-        <span className="hidden truncate lg:inline">{item.label}</span>
-      </Link>
-      {showClientReports ? <ClientReportsNav groups={[]} /> : null}
-    </div>
+    <Link
+      href={item.href}
+      title={item.label}
+      className={cn(
+        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+        active
+          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+      )}
+    >
+      <Icon className="size-5 shrink-0" aria-hidden />
+      <span className="hidden truncate lg:inline">{item.label}</span>
+    </Link>
   );
 }
 
@@ -64,7 +58,6 @@ export function AppSidebar({
   const sections = [
     { items: workspaceNavItems, showDividerBefore: false },
     { items: clientNavItems, showDividerBefore: false },
-    { items: internalNavItems, showDividerBefore: true },
     { items: deliveryNavItems, showDividerBefore: false },
     ...(isAdmin
       ? [{ items: adminNavItems, showDividerBefore: true }]
