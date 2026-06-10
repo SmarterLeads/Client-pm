@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { InteractionTypeIcon } from "@/components/interactions/interaction-type-icon";
-import { FormattedText } from "@/components/shared/formatted-text";
+import { RichTextDisplay } from "@/components/shared/rich-text-display";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -95,9 +95,9 @@ function InteractionTimelineItem({
             {hasBody ? (
               <div className="mt-2">
                 <div className={cn(!isExpanded && "line-clamp-2")}>
-                  <FormattedText className="text-muted-foreground">
+                  <RichTextDisplay className="text-muted-foreground">
                     {item.body!}
-                  </FormattedText>
+                  </RichTextDisplay>
                 </div>
                 <button
                   type="button"

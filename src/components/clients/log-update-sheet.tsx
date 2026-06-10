@@ -8,6 +8,7 @@ import {
 } from "@/lib/actions/clients";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { getUpdateChannelOptionsForClient } from "@/lib/updates/display";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -23,9 +24,7 @@ import {
   SheetFormField,
   sheetInputClassName,
   sheetSelectClassName,
-  sheetTextareaClassName,
 } from "@/components/ui/sheet-form";
-import { Textarea } from "@/components/ui/textarea";
 
 const initialState: ClientFormState = {};
 
@@ -52,6 +51,7 @@ export function LogUpdateSheet({
   const boundAction = createClientUpdate.bind(null, clientId);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
   const [selectedChannel, setSelectedChannel] = useState("");
+  const [summary, setSummary] = useState("");
   const channelOptions = getUpdateChannelOptionsForClient(marketingChannels);
 
   useActionToast(state, {
@@ -59,6 +59,7 @@ export function LogUpdateSheet({
     onSuccess: () => {
       onOpenChange(false);
       setSelectedChannel("");
+      setSummary("");
       router.refresh();
     },
   });
@@ -134,11 +135,11 @@ export function LogUpdateSheet({
                 required
                 error={state.fieldErrors?.summary?.[0]}
               >
-                <Textarea
+                <RichTextEditor
                   name="summary"
-                  required
+                  value={summary}
+                  onChange={setSummary}
                   placeholder="What was done?"
-                  className={sheetTextareaClassName}
                 />
               </SheetFormField>
             </SheetFormBody>

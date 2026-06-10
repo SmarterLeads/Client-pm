@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { InteractionTypeIcon } from "@/components/interactions/interaction-type-icon";
+import { RichTextDisplay } from "@/components/shared/rich-text-display";
 import { Badge } from "@/components/ui/badge";
 import {
   channelLabels,
@@ -46,14 +47,11 @@ function PortalInteractionTimelineItem({ item }: { item: InteractionRow }) {
 
         {hasBody ? (
           <div className="mt-2">
-            <p
-              className={cn(
-                "text-sm text-muted-foreground",
-                !isExpanded && "line-clamp-2",
-              )}
-            >
-              {item.body}
-            </p>
+            <div className={cn(!isExpanded && "line-clamp-2")}>
+              <RichTextDisplay className="text-muted-foreground">
+                {item.body!}
+              </RichTextDisplay>
+            </div>
             <button
               type="button"
               onClick={() => setIsExpanded((v) => !v)}

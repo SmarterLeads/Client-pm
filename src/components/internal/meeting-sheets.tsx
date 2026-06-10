@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { createMeeting, type InternalFormState } from "@/lib/actions/internal";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,9 +20,7 @@ import {
   SheetFormField,
   sheetInputClassName,
   sheetSelectClassName,
-  sheetTextareaClassName,
 } from "@/components/ui/sheet-form";
-import { Textarea } from "@/components/ui/textarea";
 import {
   MeetingTypes,
   MeetingVisibilities,
@@ -51,6 +50,7 @@ export function LogMeetingSheet({
 }: LogMeetingSheetProps) {
   const [state, formAction, pending] = useActionState(createMeeting, initialState);
   const [occurredAt, setOccurredAt] = useState(defaultDateTimeLocal);
+  const [body, setBody] = useState("");
 
   useActionToast(state, {
     successMessage: "Meeting logged",
@@ -58,7 +58,10 @@ export function LogMeetingSheet({
   });
 
   useEffect(() => {
-    if (open) setOccurredAt(defaultDateTimeLocal());
+    if (open) {
+      setOccurredAt(defaultDateTimeLocal());
+      setBody("");
+    }
   }, [open]);
 
   return (
@@ -122,10 +125,11 @@ export function LogMeetingSheet({
               </SheetFormField>
 
               <SheetFormField label="Body" error={state.fieldErrors?.body?.[0]}>
-                <Textarea
+                <RichTextEditor
                   name="body"
+                  value={body}
+                  onChange={setBody}
                   placeholder="Detailed notes…"
-                  className={sheetTextareaClassName}
                 />
               </SheetFormField>
 
@@ -204,6 +208,13 @@ export function EditMeetingSheet({
 }: EditMeetingSheetProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [body, setBody] = useState(meeting.body ?? "");
+
+  useEffect(() => {
+    if (open) {
+      setBody(meeting.body ?? "");
+    }
+  }, [open, meeting.body]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -219,7 +230,7 @@ export function EditMeetingSheet({
       title: formData.get("title"),
       type: formData.get("type"),
       summary: formData.get("summary"),
-      body: formData.get("body"),
+      body,
       visibility: formData.get("visibility"),
       occurred_at: occurredAtRaw
         ? new Date(occurredAtRaw).toISOString()
@@ -302,11 +313,11 @@ export function EditMeetingSheet({
               </SheetFormField>
 
               <SheetFormField label="Body">
-                <Textarea
-                  name="body"
-                  defaultValue={meeting.body ?? ""}
+                <RichTextEditor
+                  value={body}
+                  onChange={setBody}
                   disabled={!canEdit}
-                  className={sheetTextareaClassName}
+                  placeholder="Detailed notes…"
                 />
               </SheetFormField>
 

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { TaskPriorityBadge } from "@/components/projects/task-priority-badge";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
   deleteInternalTask,
   loadInternalTaskDetail,
@@ -21,10 +22,9 @@ import { Input } from "@/components/ui/input";
 import {
   sheetFieldLabelClassName,
   sheetSelectClassName,
-  sheetTextareaClassName,
 } from "@/components/ui/sheet-form";
-import { Textarea } from "@/components/ui/textarea";
 import type { TeamMember } from "@/lib/types";
+import { normalizeRichTextHtml } from "@/lib/rich-text";
 import { closeInternalTaskDrawer } from "@/lib/stores/internal-task-drawer-store";
 import { cn } from "@/lib/utils";
 import { DELETE_TASK_CONFIRM_MESSAGE } from "@/lib/tasks/constants";
@@ -53,6 +53,7 @@ export function InternalTaskDrawer({
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
+  const [description, setDescription] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -100,6 +101,10 @@ export function InternalTaskDrawer({
       cancelled = true;
     };
   }, [isOpen, taskId]);
+
+  useEffect(() => {
+    setDescription(detail?.task.description ?? "");
+  }, [detail?.task.id, detail?.task.description]);
 
   function saveField(updates: Record<string, unknown>) {
     if (!detail) return;
@@ -210,16 +215,17 @@ export function InternalTaskDrawer({
                 <label className={sheetFieldLabelClassName} htmlFor="internal_task_description">
                   Description
                 </label>
-                <Textarea
-                  id="internal_task_description"
-                  defaultValue={detail.task.description ?? ""}
-                  className={cn(sheetTextareaClassName, "mt-0")}
-                  onBlur={(event) => {
-                    const value = event.target.value.trim() || null;
-                    if (value !== (detail.task.description ?? null)) {
-                      saveField({ description: value });
+                <RichTextEditor
+                  value={description}
+                  onChange={setDescription}
+                  onBlur={() => {
+                    const normalized = normalizeRichTextHtml(description) || null;
+                    if (normalized !== (detail.task.description ?? null)) {
+                      saveField({ description: normalized });
                     }
                   }}
+                  placeholder="Add a description…"
+                  className="mt-0"
                 />
               </div>
 

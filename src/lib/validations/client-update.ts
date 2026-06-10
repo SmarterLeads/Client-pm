@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeRichTextHtml } from "@/lib/rich-text";
 
 const emptyToNull = (value: unknown) => {
   if (typeof value === "string" && value.trim() === "") return null;
@@ -21,7 +22,11 @@ export const createClientUpdateSchema = z
         z.union([z.string().trim().max(200), z.null()]).optional(),
       )
       .optional(),
-    summary: z.string().trim().min(1, "Summary is required").max(5000),
+    summary: z.preprocess(
+      (value) =>
+        typeof value === "string" ? normalizeRichTextHtml(value) : value,
+      z.string().min(1, "Summary is required"),
+    ),
     occurred_at: z.string().min(1, "Date and time are required"),
   })
   .superRefine((data, ctx) => {

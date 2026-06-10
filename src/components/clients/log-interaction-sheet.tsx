@@ -10,6 +10,7 @@ import {
 import { useActionToast } from "@/hooks/use-action-toast";
 import { formatContactName } from "@/lib/clients/contact-utils";
 import { ClientSearchSelect } from "@/components/projects/client-search-select";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -25,15 +26,12 @@ import {
   SheetFormField,
   sheetInputClassName,
   sheetSelectClassName,
-  sheetTextareaClassName,
 } from "@/components/ui/sheet-form";
-import { Textarea } from "@/components/ui/textarea";
 import { interactionTypeOptions } from "@/lib/interactions/display";
 import type { InteractionRow } from "@/lib/interactions/types";
 import type { SelectOption } from "@/lib/queries/projects";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { ClientContact } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 const initialState: ClientFormState = {};
 const interactionChannels = PmEnumValues.interaction_channel;
@@ -74,16 +72,19 @@ export function LogInteractionSheet({
   const router = useRouter();
   const isEditing = Boolean(interaction);
   const [selectedClientId, setSelectedClientId] = useState(clientIdProp ?? "");
+  const [body, setBody] = useState(interaction?.body ?? "");
 
   useEffect(() => {
     if (!open) {
       setSelectedClientId(clientIdProp ?? "");
+      setBody("");
       return;
     }
     if (clientIdProp) {
       setSelectedClientId(clientIdProp);
     }
-  }, [open, clientIdProp]);
+    setBody(interaction?.body ?? "");
+  }, [open, clientIdProp, interaction?.body]);
 
   const effectiveClientId = clientIdProp ?? selectedClientId;
   const showClientPicker = Boolean(clients?.length) && !clientIdProp && !isEditing;
@@ -202,10 +203,11 @@ export function LogInteractionSheet({
               </SheetFormField>
 
               <SheetFormField label="Details" error={state.fieldErrors?.body?.[0]}>
-                <Textarea
+                <RichTextEditor
                   name="body"
-                  defaultValue={interaction?.body ?? ""}
-                  className={cn(sheetTextareaClassName, "min-h-[150px]")}
+                  value={body}
+                  onChange={setBody}
+                  placeholder="Add meeting notes, outcomes, follow-ups…"
                 />
               </SheetFormField>
 

@@ -1,9 +1,10 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { ClientSearchSelect } from "@/components/projects/client-search-select";
 import { ProjectTemplateSelector } from "@/components/templates/project-template-selector";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
   createProject,
   type ProjectFormState,
@@ -19,9 +20,7 @@ import {
   SheetFormField,
   sheetInputClassName,
   sheetSelectClassName,
-  sheetTextareaClassName,
 } from "@/components/ui/sheet-form";
-import { Textarea } from "@/components/ui/textarea";
 import type { SelectOption } from "@/lib/queries/projects";
 import type { TemplateSelectOption } from "@/lib/templates/types";
 import type { TeamMember } from "@/lib/types";
@@ -49,6 +48,7 @@ export function ProjectForm({
   onCancel,
 }: ProjectFormProps) {
   const [state, formAction, pending] = useActionState(createProject, initialState);
+  const [description, setDescription] = useState("");
 
   useActionToast(state, { successMessage: "Project created" });
 
@@ -56,7 +56,16 @@ export function ProjectForm({
     ? sheetSelectClassName
     : "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm dark:bg-input/30";
   const inputClass = sheetMode ? sheetInputClassName : undefined;
-  const textareaClass = sheetMode ? sheetTextareaClassName : undefined;
+
+  const descriptionField = (
+    <RichTextEditor
+      name="description"
+      value={description}
+      onChange={setDescription}
+      placeholder="Project scope, goals, notes…"
+      minHeightClassName="min-h-[120px]"
+    />
+  );
 
   const fields = sheetMode ? (
     <SheetFormBody>
@@ -99,7 +108,7 @@ export function ProjectForm({
         <Input id="due_date" name="due_date" type="date" className={inputClass} />
       </SheetFormField>
       <SheetFormField label="Description" htmlFor="description" error={state.fieldErrors?.description?.[0]}>
-        <Textarea id="description" name="description" rows={4} className={textareaClass} />
+        {descriptionField}
       </SheetFormField>
       <ProjectTemplateSelector templates={templates} />
     </SheetFormBody>
@@ -146,7 +155,7 @@ export function ProjectForm({
         <Input id="due_date" name="due_date" type="date" />
       </Field>
       <Field id="description" label="Description" className="sm:col-span-2" error={state.fieldErrors?.description?.[0]}>
-        <Textarea id="description" name="description" rows={4} />
+        {descriptionField}
       </Field>
       <ProjectTemplateSelector templates={templates} />
     </div>

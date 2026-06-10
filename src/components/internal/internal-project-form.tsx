@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   createInternalProject,
   type InternalFormState,
 } from "@/lib/actions/internal";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,9 +18,7 @@ import {
   SheetFormField,
   sheetInputClassName,
   sheetSelectClassName,
-  sheetTextareaClassName,
 } from "@/components/ui/sheet-form";
-import { Textarea } from "@/components/ui/textarea";
 import type { TeamMember } from "@/lib/types";
 import { PmEnumValues } from "@/lib/types/enums";
 
@@ -42,6 +41,7 @@ export function InternalProjectForm({
     createInternalProject,
     initialState,
   );
+  const [description, setDescription] = useState("");
 
   useActionToast(state, { successMessage: "Internal project created" });
 
@@ -49,7 +49,16 @@ export function InternalProjectForm({
     ? sheetSelectClassName
     : "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm dark:bg-input/30";
   const inputClass = sheetMode ? sheetInputClassName : undefined;
-  const textareaClass = sheetMode ? sheetTextareaClassName : undefined;
+
+  const descriptionField = (
+    <RichTextEditor
+      name="description"
+      value={description}
+      onChange={setDescription}
+      placeholder="Project scope, goals, notes…"
+      minHeightClassName="min-h-[120px]"
+    />
+  );
 
   const fields = sheetMode ? (
     <SheetFormBody>
@@ -66,12 +75,7 @@ export function InternalProjectForm({
         htmlFor="description"
         error={state.fieldErrors?.description?.[0]}
       >
-        <Textarea
-          id="description"
-          name="description"
-          rows={4}
-          className={textareaClass}
-        />
+        {descriptionField}
       </SheetFormField>
       <SheetFormField
         label="Owner"
@@ -169,7 +173,7 @@ export function InternalProjectForm({
         className="sm:col-span-2"
         error={state.fieldErrors?.description?.[0]}
       >
-        <Textarea id="description" name="description" rows={4} />
+        {descriptionField}
       </Field>
       <Field
         id="owner_id"

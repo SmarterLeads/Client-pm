@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { TaskPriorityBadge } from "@/components/projects/task-priority-badge";
 import { RecurrenceSection } from "@/components/tasks/recurrence-section";
 import { FileUploadZone } from "@/components/shared/file-upload-zone";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
   addDependency,
   createComment,
@@ -30,10 +31,11 @@ import type { TaskDetail } from "@/lib/queries/tasks";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { sheetFieldLabelClassName, sheetInputClassName, sheetSelectClassName, sheetTextareaClassName } from "@/components/ui/sheet-form";
+import { sheetFieldLabelClassName, sheetInputClassName, sheetSelectClassName } from "@/components/ui/sheet-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { TeamMember } from "@/lib/types";
+import { normalizeRichTextHtml } from "@/lib/rich-text";
 import { closeTaskDrawer } from "@/lib/stores/task-drawer-store";
 import { cn } from "@/lib/utils";
 import { DELETE_TASK_CONFIRM_MESSAGE } from "@/lib/tasks/constants";
@@ -83,6 +85,7 @@ export function TaskDrawer({
   const [, startTransition] = useTransition();
   const [showLogTime, setShowLogTime] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [description, setDescription] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -135,6 +138,10 @@ export function TaskDrawer({
       cancelled = true;
     };
   }, [isOpen, taskId]);
+
+  useEffect(() => {
+    setDescription(detail?.task.description ?? "");
+  }, [detail?.task.id, detail?.task.description]);
 
   function saveField(updates: Record<string, unknown>) {
     if (!detail) return;
@@ -249,16 +256,17 @@ export function TaskDrawer({
                 <label className={sheetFieldLabelClassName} htmlFor="task_description">
                   Description
                 </label>
-                <Textarea
-                  id="task_description"
-                  defaultValue={detail.task.description ?? ""}
-                  className={cn(sheetTextareaClassName, "mt-0")}
-                  onBlur={(e) => {
-                    const val = e.target.value.trim() || null;
-                    if (val !== (detail.task.description ?? null)) {
-                      saveField({ description: val });
+                <RichTextEditor
+                  value={description}
+                  onChange={setDescription}
+                  onBlur={() => {
+                    const normalized = normalizeRichTextHtml(description) || null;
+                    if (normalized !== (detail.task.description ?? null)) {
+                      saveField({ description: normalized });
                     }
                   }}
+                  placeholder="Add a description…"
+                  className="mt-0"
                 />
               </div>
 

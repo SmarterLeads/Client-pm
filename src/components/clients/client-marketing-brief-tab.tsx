@@ -5,8 +5,10 @@ import { useEffect, useState, useTransition } from "react";
 
 import { updateMarketingBrief } from "@/lib/actions/clients";
 import { toastError, toastSuccess } from "@/lib/toast";
+import { RichTextDisplay } from "@/components/shared/rich-text-display";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { normalizeRichTextHtml } from "@/lib/rich-text";
 
 type ClientMarketingBriefTabProps = {
   clientId: string;
@@ -37,7 +39,10 @@ export function ClientMarketingBriefTab({
 
   function handleSave() {
     startTransition(async () => {
-      const result = await updateMarketingBrief(clientId, draft);
+      const result = await updateMarketingBrief(
+        clientId,
+        normalizeRichTextHtml(draft),
+      );
       if (result.error) {
         toastError(result.error);
         return;
@@ -69,14 +74,12 @@ export function ClientMarketingBriefTab({
 
       {isEditing ? (
         <div className="space-y-3">
-          <Textarea
+          <RichTextEditor
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={setDraft}
             placeholder="Add campaign goals, audience notes, messaging, budget context…"
-            rows={16}
+            minHeightClassName="min-h-64"
             disabled={isPending}
-            className="min-h-64 font-mono text-sm leading-relaxed"
-            aria-label="Marketing brief"
           />
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={handleSave} disabled={isPending}>
@@ -94,7 +97,7 @@ export function ClientMarketingBriefTab({
         </div>
       ) : hasBrief ? (
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-4">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">{brief}</p>
+          <RichTextDisplay>{brief!}</RichTextDisplay>
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-border px-4 py-12 text-center">

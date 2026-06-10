@@ -1,7 +1,7 @@
 "use client";
 
 import { UpdateChannelBadge } from "@/components/clients/update-channel-badge";
-import { FormattedText } from "@/components/shared/formatted-text";
+import { RichTextDisplay } from "@/components/shared/rich-text-display";
 import { formatUpdateDateTime } from "@/lib/updates/display";
 import type { ClientUpdateRow } from "@/lib/updates/types";
 
@@ -18,7 +18,7 @@ export function ClientUpdatesTimeline({ updates }: ClientUpdatesTimelineProps) {
           <div className="rounded-lg border border-border bg-card p-4">
             <UpdateChannelBadge channel={item.marketing_channel} />
 
-            <FormattedText className="mt-2">{item.summary}</FormattedText>
+            <RichTextDisplay className="mt-2">{item.summary}</RichTextDisplay>
 
             <p className="mt-3 text-xs text-muted-foreground">
               {item.logged_by_name ? (

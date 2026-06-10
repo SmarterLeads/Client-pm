@@ -7,6 +7,7 @@ import { PortalMilestonesList } from "@/components/portal/portal-milestones-list
 import { PortalTasksBySection } from "@/components/portal/portal-tasks-by-section";
 import { ProjectStatusBadge } from "@/components/clients/project-status-badge";
 import { RagDot } from "@/components/clients/rag-dot";
+import { RichTextDisplay } from "@/components/shared/rich-text-display";
 import type { AttachmentListItem } from "@/lib/attachments/types";
 import type {
   PortalMilestoneRow,
@@ -76,9 +77,9 @@ export function PortalProjectDetailTabs({
       </div>
 
       {project.description ? (
-        <p className="max-w-3xl text-sm text-muted-foreground">
+        <RichTextDisplay className="max-w-3xl text-muted-foreground">
           {project.description}
-        </p>
+        </RichTextDisplay>
       ) : null}
 
       <nav className="flex gap-1 overflow-x-auto border-b border-border">
