@@ -259,11 +259,11 @@ export const createInteractionSchema = z.object({
       z.union([z.enum(interactionChannels), z.null()]).optional(),
     )
     .optional(),
-  summary: z.string().trim().min(1, "Summary is required").max(500),
+  summary: z.string().trim().min(1, "Summary is required"),
   body: z
     .preprocess(
       emptyToNull,
-      z.union([z.string().max(10000), z.null()]).optional(),
+      z.union([z.string(), z.null()]).optional(),
     )
     .optional(),
   occurred_at: z.string().min(1, "Date is required"),

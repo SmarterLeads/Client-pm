@@ -196,7 +196,6 @@ export function LogInteractionSheet({
                 <Input
                   name="summary"
                   required
-                  maxLength={500}
                   defaultValue={interaction?.summary ?? ""}
                   className={sheetInputClassName}
                 />
@@ -206,7 +205,7 @@ export function LogInteractionSheet({
                 <Textarea
                   name="body"
                   defaultValue={interaction?.body ?? ""}
-                  className={sheetTextareaClassName}
+                  className={cn(sheetTextareaClassName, "min-h-[150px]")}
                 />
               </SheetFormField>
 
