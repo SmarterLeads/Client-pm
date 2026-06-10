@@ -132,6 +132,12 @@ function InviteTeamMemberForm({
 
       {inviteComplete ? (
         <div className="mt-6 space-y-4">
+          {state.message ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+              {state.message}
+            </p>
+          ) : null}
+
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
             <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
               Temporary password

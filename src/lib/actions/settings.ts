@@ -20,6 +20,7 @@ export type SettingsFormState = {
   success?: boolean;
   tempPassword?: string;
   invitedName?: string;
+  message?: string;
 };
 
 function zodFieldErrors(error: z.ZodError): Record<string, string[]> {
@@ -38,6 +39,50 @@ function generateTempPassword(length = 12): string {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => chars[byte % chars.length]).join("");
+}
+
+function isAuthUserAlreadyExistsError(message: string) {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("already") &&
+    (lower.includes("registered") ||
+      lower.includes("exists") ||
+      lower.includes("duplicate"))
+  );
+}
+
+async function findAuthUserIdByEmail(
+  supabase: ReturnType<typeof createServiceClient>,
+  email: string,
+): Promise<string | null> {
+  let page = 1;
+  const perPage = 1000;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const match = data.users.find(
+      (user) => user.email?.toLowerCase() === email,
+    );
+    if (match) {
+      return match.id;
+    }
+
+    if (data.users.length < perPage) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return null;
 }
 
 async function requireTeamMember() {
@@ -119,6 +164,17 @@ export async function inviteTeamMember(
 
     const tempPassword = generateTempPassword();
     let authUserId: string;
+    let recoveredExistingAuthUser = false;
+
+    const memberPayload = {
+      auth_user_id: "" as string,
+      name,
+      email: normalizedEmail,
+      role,
+      can_view_mrr,
+      agency_id: agencyIds[0] ?? null,
+      is_active: true,
+    };
 
     if (existing?.auth_user_id) {
       const { data: updatedAuth, error: updateAuthError } =
@@ -133,17 +189,12 @@ export async function inviteTeamMember(
       }
 
       authUserId = updatedAuth.user.id;
+      memberPayload.auth_user_id = authUserId;
 
       const { error: updateMemberError } = await pm(supabase)
         .from("team_members")
         .update({
-          auth_user_id: authUserId,
-          name,
-          email: normalizedEmail,
-          role,
-          can_view_mrr,
-          agency_id: agencyIds[0] ?? null,
-          is_active: true,
+          ...memberPayload,
           updated_at: new Date().toISOString(),
         })
         .eq("id", existing.id);
@@ -161,44 +212,97 @@ export async function inviteTeamMember(
         });
 
       if (createAuthError) {
-        return { error: createAuthError.message };
-      }
-
-      authUserId = createdAuth.user.id;
-
-      if (existing) {
-        const { error: updateMemberError } = await pm(supabase)
-          .from("team_members")
-          .update({
-            auth_user_id: authUserId,
-            name,
-            email: normalizedEmail,
-            role,
-            can_view_mrr,
-            agency_id: agencyIds[0] ?? null,
-            is_active: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
-
-        if (updateMemberError) {
-          return { error: updateMemberError.message };
+        if (!isAuthUserAlreadyExistsError(createAuthError.message)) {
+          return { error: createAuthError.message };
         }
-      } else {
-        const { error: insertMemberError } = await pm(supabase)
-          .from("team_members")
-          .insert({
-            auth_user_id: authUserId,
-            name,
-            email: normalizedEmail,
-            role,
-            can_view_mrr,
-            agency_id: agencyIds[0] ?? null,
-            is_active: true,
+
+        const existingAuthUserId = await findAuthUserIdByEmail(
+          supabase,
+          normalizedEmail,
+        );
+
+        if (!existingAuthUserId) {
+          return { error: createAuthError.message };
+        }
+
+        authUserId = existingAuthUserId;
+        recoveredExistingAuthUser = true;
+        memberPayload.auth_user_id = authUserId;
+
+        const { error: updateAuthError } =
+          await supabase.auth.admin.updateUserById(authUserId, {
+            password: tempPassword,
+            email_confirm: true,
+            user_metadata: { name },
           });
 
-        if (insertMemberError) {
-          return { error: insertMemberError.message };
+        if (updateAuthError) {
+          return { error: updateAuthError.message };
+        }
+
+        const { data: memberByAuth, error: memberByAuthError } = await pm(
+          supabase,
+        )
+          .from("team_members")
+          .select("id, is_active")
+          .eq("auth_user_id", authUserId)
+          .maybeSingle();
+
+        if (memberByAuthError) {
+          return { error: memberByAuthError.message };
+        }
+
+        if (memberByAuth?.is_active) {
+          return { error: "A team member with this email already exists." };
+        }
+
+        const memberToUpdate = existing ?? memberByAuth;
+
+        if (memberToUpdate) {
+          const { error: updateMemberError } = await pm(supabase)
+            .from("team_members")
+            .update({
+              ...memberPayload,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", memberToUpdate.id);
+
+          if (updateMemberError) {
+            return { error: updateMemberError.message };
+          }
+        } else {
+          const { error: insertMemberError } = await pm(supabase)
+            .from("team_members")
+            .insert(memberPayload);
+
+          if (insertMemberError) {
+            return { error: insertMemberError.message };
+          }
+        }
+      } else {
+        authUserId = createdAuth.user.id;
+        memberPayload.auth_user_id = authUserId;
+
+        if (existing) {
+          const { error: updateMemberError } = await pm(supabase)
+            .from("team_members")
+            .update({
+              ...memberPayload,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existing.id);
+
+          if (updateMemberError) {
+            return { error: updateMemberError.message };
+          }
+        } else {
+          const { error: insertMemberError } = await pm(supabase)
+            .from("team_members")
+            .insert(memberPayload);
+
+          if (insertMemberError) {
+            return { error: insertMemberError.message };
+          }
         }
       }
     }
@@ -225,7 +329,14 @@ export async function inviteTeamMember(
     }
 
     revalidateSettingsPaths();
-    return { success: true, tempPassword, invitedName: name };
+    return {
+      success: true,
+      tempPassword,
+      invitedName: name,
+      message: recoveredExistingAuthUser
+        ? "User already exists — team member record created/reactivated"
+        : undefined,
+    };
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "Failed to invite team member.",

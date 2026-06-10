@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { EditMeetingSheet } from "@/components/internal/meeting-sheets";
+import { FormattedText } from "@/components/shared/formatted-text";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -110,7 +111,9 @@ function MeetingTimelineItem({
               </div>
               <h2 className="text-base font-semibold">{meeting.title}</h2>
               {meeting.summary ? (
-                <p className="text-sm text-muted-foreground">{meeting.summary}</p>
+                <FormattedText className="text-muted-foreground">
+                  {meeting.summary}
+                </FormattedText>
               ) : null}
             </div>
 
@@ -178,9 +181,9 @@ function MeetingTimelineItem({
                 {expanded ? "Hide notes" : "Show notes"}
               </button>
               {expanded ? (
-                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                <FormattedText className="mt-2 text-muted-foreground">
                   {meeting.body}
-                </p>
+                </FormattedText>
               ) : null}
             </div>
           ) : null}
