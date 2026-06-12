@@ -40,7 +40,7 @@ export async function getClientCredentials(
   const supabase = await createClient();
 
   const { data, error } = await pm(supabase)
-    .from("client_credentials" as "client_updates")
+    .from("client_credentials")
     .select(
       `
       id,

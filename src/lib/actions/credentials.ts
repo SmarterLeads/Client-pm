@@ -83,7 +83,7 @@ export async function createCredential(
     }
 
     const { error } = await pm(supabase)
-      .from("client_credentials" as "client_updates")
+      .from("client_credentials")
       .insert({
         client_id: clientId,
         platform: parsed.data.platform,
@@ -92,7 +92,7 @@ export async function createCredential(
         password: parsed.data.password ?? null,
         notes: parsed.data.notes ?? null,
         created_by: teamMember.id,
-      } as never);
+      });
 
     if (error) {
       return { error: error.message };
@@ -124,7 +124,14 @@ export async function updateCredential(
 
     const supabase = await createClient();
     const passwordRaw = formData.get("password");
-    const updatePayload: Record<string, unknown> = {
+    const updatePayload: {
+      platform: string;
+      url: string | null;
+      username: string | null;
+      notes: string | null;
+      updated_at: string;
+      password?: string;
+    } = {
       platform: parsed.data.platform,
       url: parsed.data.url ?? null,
       username: parsed.data.username ?? null,
@@ -137,8 +144,8 @@ export async function updateCredential(
     }
 
     const { error } = await pm(supabase)
-      .from("client_credentials" as "client_updates")
-      .update(updatePayload as never)
+      .from("client_credentials")
+      .update(updatePayload)
       .eq("id", credentialId)
       .eq("client_id", clientId);
 
@@ -165,7 +172,7 @@ export async function deleteCredential(
     const supabase = await createClient();
 
     const { error } = await pm(supabase)
-      .from("client_credentials" as "client_updates")
+      .from("client_credentials")
       .delete()
       .eq("id", credentialId)
       .eq("client_id", clientId);

@@ -1,5 +1,5 @@
 ﻿import type { ChangeHistoryDiff } from "@/lib/change-history/types";
-import type { Json } from "@/lib/types/database";
+import type { Json } from "@/lib/types";
 
 const SKIP_DIFF_FIELDS = new Set([
   "id",
