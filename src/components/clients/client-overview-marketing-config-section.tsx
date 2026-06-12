@@ -351,7 +351,7 @@ export function ClientOverviewMarketingConfigSection({
         <div className="space-y-4 px-1">
           {(client.marketing_channels ?? []).length > 0 ? (
             <ul className="divide-y divide-border rounded-md border border-border">
-              {(client.marketing_channels ?? []).map((channel) => {
+              {(client.marketing_channels ?? []).map((channel: string) => {
                 const label = getMarketingChannelLabel(channel);
                 const platformConfig = platformIdConfigForChannel(
                   channel as MarketingChannel,
