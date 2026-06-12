@@ -9,7 +9,7 @@ import { InternalProjectListTab } from "@/components/internal/internal-project-l
 import { InternalProjectMembersTab } from "@/components/internal/internal-project-members-tab";
 import { InternalProjectMilestonesTab } from "@/components/internal/internal-project-milestones-tab";
 import { ProjectHealthWidget } from "@/components/projects/project-health-widget";
-import { RichTextDisplay } from "@/components/shared/rich-text-display";
+import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import { FileUploadZone } from "@/components/shared/file-upload-zone";
 import type { AttachmentListItem } from "@/lib/attachments/types";
 import type {

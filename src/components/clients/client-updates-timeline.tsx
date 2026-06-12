@@ -1,7 +1,7 @@
 "use client";
 
 import { UpdateChannelBadge } from "@/components/clients/update-channel-badge";
-import { RichTextDisplay } from "@/components/shared/rich-text-display";
+import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import { formatUpdateDateTime } from "@/lib/updates/display";
 import type { ClientUpdateRow } from "@/lib/updates/types";
 

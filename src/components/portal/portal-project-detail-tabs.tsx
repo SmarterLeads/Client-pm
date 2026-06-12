@@ -7,7 +7,7 @@ import { PortalMilestonesList } from "@/components/portal/portal-milestones-list
 import { PortalTasksBySection } from "@/components/portal/portal-tasks-by-section";
 import { ProjectStatusBadge } from "@/components/clients/project-status-badge";
 import { RagDot } from "@/components/clients/rag-dot";
-import { RichTextDisplay } from "@/components/shared/rich-text-display";
+import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import type { AttachmentListItem } from "@/lib/attachments/types";
 import type {
   PortalMilestoneRow,

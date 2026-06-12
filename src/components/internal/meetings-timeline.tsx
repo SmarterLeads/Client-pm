@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { EditMeetingSheet } from "@/components/internal/meeting-sheets";
-import { RichTextDisplay } from "@/components/shared/rich-text-display";
+import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { InteractionTypeIcon } from "@/components/interactions/interaction-type-icon";
-import { RichTextDisplay } from "@/components/shared/rich-text-display";
+import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import { Badge } from "@/components/ui/badge";
 import {
   channelLabels,

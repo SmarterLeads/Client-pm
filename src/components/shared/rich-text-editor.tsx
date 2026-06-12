@@ -17,7 +17,7 @@ import {
   Underline as UnderlineIcon,
 } from "lucide-react";
 import { useEffect } from "react";
-import { richTextTypographyClassName } from "@/components/shared/rich-text-display";
+import { richTextTypographyClassName } from "@/lib/rich-text-styles";
 import { Button } from "@/components/ui/button";
 import { sheetFieldControlClassName } from "@/components/ui/sheet-form";
 import { normalizeRichTextHtml } from "@/lib/rich-text";

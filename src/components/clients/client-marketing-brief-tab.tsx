@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 
 import { updateMarketingBrief } from "@/lib/actions/clients";
 import { toastError, toastSuccess } from "@/lib/toast";
-import { RichTextDisplay } from "@/components/shared/rich-text-display";
+import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { normalizeRichTextHtml } from "@/lib/rich-text";
