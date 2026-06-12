@@ -8,7 +8,7 @@ import { toastError, toastSuccess } from "@/lib/toast";
 import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Button } from "@/components/ui/button";
-import { normalizeRichTextHtml } from "@/lib/rich-text";
+import { normalizeRichTextHtml, prepareRichTextForEditor } from "@/lib/rich-text";
 
 type ClientMarketingBriefTabProps = {
   clientId: string;
@@ -21,19 +21,26 @@ export function ClientMarketingBriefTab({
 }: ClientMarketingBriefTabProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState(brief ?? "");
+  const [editSession, setEditSession] = useState(0);
+  const [draft, setDraft] = useState(() => prepareRichTextForEditor(brief ?? ""));
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!isEditing) {
-      setDraft(brief ?? "");
+      setDraft(prepareRichTextForEditor(brief ?? ""));
     }
   }, [brief, isEditing]);
 
   const hasBrief = Boolean(brief?.trim());
 
+  function handleEdit() {
+    setDraft(prepareRichTextForEditor(brief ?? ""));
+    setEditSession((session) => session + 1);
+    setIsEditing(true);
+  }
+
   function handleCancel() {
-    setDraft(brief ?? "");
+    setDraft(prepareRichTextForEditor(brief ?? ""));
     setIsEditing(false);
   }
 
@@ -66,7 +73,7 @@ export function ClientMarketingBriefTab({
           </p>
         </div>
         {!isEditing ? (
-          <Button type="button" variant="outline" onClick={() => setIsEditing(true)}>
+          <Button type="button" variant="outline" onClick={handleEdit}>
             Edit
           </Button>
         ) : null}
@@ -75,6 +82,7 @@ export function ClientMarketingBriefTab({
       {isEditing ? (
         <div className="space-y-3">
           <RichTextEditor
+            key={`marketing-brief-edit-${editSession}`}
             value={draft}
             onChange={setDraft}
             placeholder="Add campaign goals, audience notes, messaging, budget context…"

@@ -20,7 +20,7 @@ import { useEffect } from "react";
 import { richTextTypographyClassName } from "@/lib/rich-text-styles";
 import { Button } from "@/components/ui/button";
 import { sheetFieldControlClassName } from "@/components/ui/sheet-form";
-import { normalizeRichTextHtml } from "@/lib/rich-text";
+import { normalizeRichTextHtml, prepareRichTextForEditor } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
 
 export type RichTextEditorProps = {
@@ -73,6 +73,8 @@ export function RichTextEditor({
   name,
   minHeightClassName = "min-h-[150px]",
 }: RichTextEditorProps) {
+  const editorContent = prepareRichTextForEditor(value);
+
   const editor = useEditor({
     immediatelyRender: false,
     editable: !disabled,
@@ -83,7 +85,7 @@ export function RichTextEditor({
       Underline,
       Placeholder.configure({ placeholder }),
     ],
-    content: value,
+    content: editorContent,
     onUpdate: ({ editor: currentEditor }) => {
       onChange?.(normalizeRichTextHtml(currentEditor.getHTML()));
     },
@@ -104,9 +106,10 @@ export function RichTextEditor({
   useEffect(() => {
     if (!editor) return;
 
+    const next = prepareRichTextForEditor(value);
     const current = normalizeRichTextHtml(editor.getHTML());
-    const next = normalizeRichTextHtml(value);
-    if (current !== next) {
+    const normalizedNext = normalizeRichTextHtml(next);
+    if (current !== normalizedNext) {
       editor.commands.setContent(next || "", { emitUpdate: false });
     }
   }, [editor, value]);
