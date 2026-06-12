@@ -50,7 +50,7 @@ export function ChangeHistoryTimeline({
                     variant="outline"
                     className={cn(
                       "capitalize",
-                      actionBadgeClass[entry.action],
+                      actionBadgeClass[entry.action as keyof typeof actionBadgeClass],
                     )}
                   >
                     {entry.action}
