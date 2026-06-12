@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { ClientAccessTab } from "@/components/clients/client-access-tab";
 import { ClientActionsMenu } from "@/components/clients/client-actions-menu";
 import { ClientUpdatesTab } from "@/components/clients/client-updates-tab";
 import { ClientInteractionsTab } from "@/components/clients/client-interactions-tab";
@@ -19,6 +20,7 @@ import type {
   ClientPlatformConnection,
   ClientProjectRow,
 } from "@/lib/queries/clients";
+import type { ClientCredentialsResult } from "@/lib/credentials/types";
 import type { InteractionRow } from "@/lib/interactions/types";
 import type { ClientUpdateRow } from "@/lib/updates/types";
 import type { Client, ClientContact, ClientUser, TeamMember } from "@/lib/types";
@@ -29,6 +31,7 @@ const tabs = [
   { id: "updates", label: "Updates" },
   { id: "interactions", label: "Interactions" },
   { id: "files", label: "Files" },
+  { id: "access", label: "Access" },
   { id: "history", label: "History" },
   { id: "marketing-brief", label: "Marketing Brief" },
   { id: "marketing", label: "Marketing" },
@@ -49,6 +52,7 @@ type ClientDetailTabsProps = {
   historyPanel: React.ReactNode;
   marketingPanel: React.ReactNode;
   attachments: AttachmentListItem[];
+  access: ClientCredentialsResult;
   portalUsers: ClientUser[];
   platformConnections: ClientPlatformConnection[];
   canViewMrr: boolean;
@@ -69,6 +73,7 @@ export function ClientDetailTabs({
   historyPanel,
   marketingPanel,
   attachments,
+  access,
   portalUsers,
   platformConnections,
   canViewMrr,
@@ -204,6 +209,10 @@ export function ClientDetailTabs({
           entityId={client.id}
           attachments={attachments ?? []}
         />
+      ) : null}
+
+      {activeTab === "access" ? (
+        <ClientAccessTab clientId={client.id} access={access} />
       ) : null}
     </div>
   );

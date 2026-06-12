@@ -17,6 +17,7 @@ import {
   getClientProjects,
 } from "@/lib/queries/clients";
 import { getClientUpdates } from "@/lib/queries/client-updates";
+import { getClientCredentials } from "@/lib/queries/credentials";
 import { clientActivityFiltersSchema } from "@/lib/validations/client-activity";
 import { clientInteractionFiltersSchema } from "@/lib/validations/interaction";
 import { clientUpdateFiltersSchema } from "@/lib/validations/client-update";
@@ -102,13 +103,14 @@ export default async function ClientDetailPage({
   const { client, primaryContact, contacts, agencyName, lastInteractionAt } =
     result;
 
-  const [teamMembers, projects, updates, interactions, attachments, portalUsers, platformConnections, teamMember] =
+  const [teamMembers, projects, updates, interactions, attachments, access, portalUsers, platformConnections, teamMember] =
     await Promise.all([
       getActiveTeamMembers().catch(() => [] as Awaited<ReturnType<typeof getActiveTeamMembers>>),
       getClientProjects(id),
       getClientUpdates(id, updateFilters),
       getClientInteractions(id, interactionFilters),
       getAttachmentsForEntity("client", id).catch(() => [] as Awaited<ReturnType<typeof getAttachmentsForEntity>>),
+      getClientCredentials(id, client.account_manager_id),
       getClientPortalUsers(id),
       getClientPlatformConnections(id),
       getTeamMember(),
@@ -145,6 +147,7 @@ export default async function ClientDetailPage({
             <ClientMarketingTab client={client} searchParams={query} />
           }
           attachments={attachments ?? []}
+          access={access}
           portalUsers={portalUsers ?? []}
           platformConnections={platformConnections ?? []}
           canViewMrr={teamMember?.can_view_mrr ?? false}
