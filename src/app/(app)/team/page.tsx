@@ -40,7 +40,7 @@ export default async function TeamPage() {
           Capacity, open tasks, and reassignment for your team
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Signed in as {roleLabels[currentMember.role]}
+          Signed in as {roleLabels[currentMember.role as keyof typeof roleLabels] ?? currentMember.role}
           {!canManage
             ? " — set your role to Admin or Manager in Supabase (team_members) to manage availability and reassign tasks."
             : null}
