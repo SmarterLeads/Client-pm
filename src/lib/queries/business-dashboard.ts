@@ -1,4 +1,9 @@
-import { getMrrBreakdownItemLabel, parseMrrBreakdown } from "@/lib/clients/mrr-breakdown";
+import {
+  activeMrrBreakdownKeys,
+  channelMrrCents,
+  getMrrBreakdownItemLabel,
+  parseMrrBreakdown,
+} from "@/lib/clients/mrr-breakdown";
 import { normalizeClientCurrency } from "@/lib/clients/overview-fields";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -218,7 +223,7 @@ export async function getActiveClientsByService(): Promise<
 
   const { data, error } = await supabase
     .from("clients")
-    .select("marketing_channels")
+    .select("marketing_channels, tracking_setup")
     .eq("status", "active");
 
   if (error) throw new Error(error.message);
@@ -226,8 +231,10 @@ export async function getActiveClientsByService(): Promise<
   const counts = new Map<string, number>();
 
   for (const client of data ?? []) {
-    for (const channel of client.marketing_channels ?? []) {
-      if (!channel) continue;
+    for (const channel of activeMrrBreakdownKeys(
+      client.marketing_channels,
+      client.tracking_setup,
+    )) {
       counts.set(channel, (counts.get(channel) ?? 0) + 1);
     }
   }
@@ -246,7 +253,7 @@ export async function getMrrByService(): Promise<BusinessDashboardMrrServiceRow[
 
   const { data, error } = await supabase
     .from("clients")
-    .select("mrr_breakdown, currency")
+    .select("mrr_breakdown, currency, marketing_channels, tracking_setup")
     .eq("status", "active");
 
   if (error) throw new Error(error.message);
@@ -260,8 +267,12 @@ export async function getMrrByService(): Promise<BusinessDashboardMrrServiceRow[
     const currency = normalizeClientCurrency(client.currency);
     const breakdown = parseMrrBreakdown(client.mrr_breakdown);
 
-    for (const [channel, cents] of Object.entries(breakdown)) {
-      if (!channel || cents <= 0) continue;
+    for (const channel of activeMrrBreakdownKeys(
+      client.marketing_channels,
+      client.tracking_setup,
+    )) {
+      const cents = channelMrrCents(breakdown, channel);
+      if (cents <= 0) continue;
       const cadCents = mrrCentsToCad(cents, currency);
       const row = totals.get(channel) ?? { mrrCadCents: 0, clientCount: 0 };
       row.mrrCadCents += cadCents;
