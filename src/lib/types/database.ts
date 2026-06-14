@@ -181,6 +181,60 @@ export type Database = {
           },
         ]
       }
+      monthly_financials: {
+        Row: {
+          cdn_exp_cents: number
+          cdn_sales_cents: number
+          created_at: string
+          id: string
+          month: number
+          updated_at: string
+          updated_by: string | null
+          us_exp_cents: number
+          us_sales_cents: number
+          year: number
+        }
+        Insert: {
+          cdn_exp_cents?: number
+          cdn_sales_cents?: number
+          created_at?: string
+          id?: string
+          month: number
+          updated_at?: string
+          updated_by?: string | null
+          us_exp_cents?: number
+          us_sales_cents?: number
+          year: number
+        }
+        Update: {
+          cdn_exp_cents?: number
+          cdn_sales_cents?: number
+          created_at?: string
+          id?: string
+          month?: number
+          updated_at?: string
+          updated_by?: string | null
+          us_exp_cents?: number
+          us_sales_cents?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_financials_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_financials_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_team_workload"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_portal_users: {
         Row: {
           access_level: Database["pm"]["Enums"]["access_level"]

@@ -1,15 +1,17 @@
 import { redirect } from "next/navigation";
+import { BusinessDashboardFinancialsTable } from "@/components/business-dashboard/business-dashboard-financials-table";
 import { BusinessDashboardAgencyCards } from "@/components/business-dashboard/business-dashboard-agency-cards";
 import { BusinessDashboardKpiCards } from "@/components/business-dashboard/business-dashboard-kpi-cards";
 import { BusinessDashboardMonthlyTable } from "@/components/business-dashboard/business-dashboard-monthly-table";
 import { ServicesOverviewCards } from "@/components/business-dashboard/business-dashboard-service-cards";
-import { canViewBusinessDashboard } from "@/lib/auth/business-dashboard";
+import { canViewBusinessDashboard, canViewMonthlyFinancials } from "@/lib/auth/business-dashboard";
 import { mergeServiceOverviewRows } from "@/lib/business-dashboard/service-overview";
 import { getTeamMember } from "@/lib/auth/session";
 import {
   getActiveClientsByService,
   getBusinessDashboardKpis,
   getMonthlyBusinessResults,
+  getMonthlyFinancials,
   getMrrByAgency,
   getMrrByService,
 } from "@/lib/queries/business-dashboard";
@@ -25,8 +27,10 @@ export default async function BusinessDashboardPage() {
   }
 
   const canViewMonthlyResults = teamMember.can_view_mrr;
+  const showFinancials = canViewMonthlyFinancials(teamMember);
+  const currentYear = new Date().getFullYear();
 
-  const [kpis, mrrByAgency, clientsByService, mrrByService, monthlyResults] =
+  const [kpis, mrrByAgency, clientsByService, mrrByService, monthlyResults, monthlyFinancials] =
     await Promise.all([
       getBusinessDashboardKpis(),
       getMrrByAgency(),
@@ -34,6 +38,9 @@ export default async function BusinessDashboardPage() {
       getMrrByService(),
       canViewMonthlyResults
         ? getMonthlyBusinessResults()
+        : Promise.resolve(null),
+      showFinancials
+        ? getMonthlyFinancials(currentYear)
         : Promise.resolve(null),
     ]);
 
@@ -71,6 +78,13 @@ export default async function BusinessDashboardPage() {
           </h2>
           <BusinessDashboardMonthlyTable rows={monthlyResults} />
         </section>
+      ) : null}
+
+      {showFinancials && monthlyFinancials ? (
+        <BusinessDashboardFinancialsTable
+          initialYear={currentYear}
+          initialRows={monthlyFinancials}
+        />
       ) : null}
     </div>
   );

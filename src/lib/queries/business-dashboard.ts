@@ -6,13 +6,16 @@ import {
 } from "@/lib/clients/mrr-breakdown";
 import { normalizeClientCurrency } from "@/lib/clients/overview-fields";
 import { createClient } from "@/lib/supabase/server";
+import { buildMonthlyFinancialRow } from "@/lib/business-dashboard/financials";
 import type {
   BusinessDashboardAgencyRow,
   BusinessDashboardKpis,
   BusinessDashboardMonthlyResultRow,
   BusinessDashboardMrrServiceRow,
   BusinessDashboardServiceRow,
+  MonthlyFinancialRow,
 } from "@/lib/business-dashboard/types";
+import { pm } from "@/lib/supabase/pm";
 
 export type {
   BusinessDashboardAgencyRow,
@@ -20,6 +23,7 @@ export type {
   BusinessDashboardMonthlyResultRow,
   BusinessDashboardMrrServiceRow,
   BusinessDashboardServiceRow,
+  MonthlyFinancialRow,
 } from "@/lib/business-dashboard/types";
 
 const USD_TO_CAD_RATE = 1.35;
@@ -378,4 +382,37 @@ export async function getMrrByAgency(): Promise<BusinessDashboardAgencyRow[]> {
       if (orderDiff !== 0) return orderDiff;
       return a.name.localeCompare(b.name);
     });
+}
+
+export async function getMonthlyFinancials(
+  year: number,
+): Promise<MonthlyFinancialRow[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await pm(supabase)
+    .from("monthly_financials")
+    .select(
+      "month, cdn_sales_cents, cdn_exp_cents, us_sales_cents, us_exp_cents",
+    )
+    .eq("year", year)
+    .order("month");
+
+  if (error) throw new Error(error.message);
+
+  const byMonth = new Map(
+    (data ?? []).map((row) => [
+      row.month,
+      {
+        cdnSalesCents: row.cdn_sales_cents ?? 0,
+        cdnExpCents: row.cdn_exp_cents ?? 0,
+        usSalesCents: row.us_sales_cents ?? 0,
+        usExpCents: row.us_exp_cents ?? 0,
+      },
+    ]),
+  );
+
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+    return buildMonthlyFinancialRow(month, byMonth.get(month));
+  });
 }

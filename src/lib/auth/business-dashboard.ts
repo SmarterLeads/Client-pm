@@ -10,3 +10,9 @@ export function canViewBusinessDashboard(
     teamMember.email.toLowerCase() === BUSINESS_DASHBOARD_OWNER_EMAIL
   );
 }
+
+export function canViewMonthlyFinancials(
+  teamMember: Pick<TeamMember, "email">,
+): boolean {
+  return teamMember.email.toLowerCase() === BUSINESS_DASHBOARD_OWNER_EMAIL;
+}

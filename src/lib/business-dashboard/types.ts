@@ -47,3 +47,22 @@ export type BusinessDashboardMonthlyResultRow = {
   churnedClients: number;
   isCurrentMonth: boolean;
 };
+
+export type MonthlyFinancialRow = {
+  month: number;
+  monthLabel: string;
+  cdnSalesCents: number;
+  cdnExpCents: number;
+  usSalesCents: number;
+  usExpCents: number;
+  totalSalesCadCents: number;
+  totalExpCadCents: number;
+  profitCadCents: number;
+};
+
+export type MonthlyFinancialSaveInput = {
+  cdnSalesCents: number;
+  cdnExpCents: number;
+  usSalesCents: number;
+  usExpCents: number;
+};
