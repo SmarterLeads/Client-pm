@@ -33,11 +33,16 @@ function thirtyDaysAgoIso() {
 export async function getBusinessDashboardKpis(): Promise<BusinessDashboardKpis> {
   const supabase = await createClient();
 
-  const [activeRes, churnedRes] = await Promise.all([
+  const [activeRes, newClientsRes, churnedRes] = await Promise.all([
     supabase
       .from("clients")
       .select("mrr_cents, currency")
       .eq("status", "active"),
+    supabase
+      .from("clients")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["active", "prospect"])
+      .gte("created_at", thirtyDaysAgoIso()),
     supabase
       .from("clients")
       .select("id", { count: "exact", head: true })
@@ -46,6 +51,7 @@ export async function getBusinessDashboardKpis(): Promise<BusinessDashboardKpis>
   ]);
 
   if (activeRes.error) throw new Error(activeRes.error.message);
+  if (newClientsRes.error) throw new Error(newClientsRes.error.message);
   if (churnedRes.error) throw new Error(churnedRes.error.message);
 
   const activeClients = activeRes.data ?? [];
@@ -65,6 +71,7 @@ export async function getBusinessDashboardKpis(): Promise<BusinessDashboardKpis>
     activeClients: count,
     totalMrrCadCents,
     averageMrrCadCents: count > 0 ? Math.round(totalMrrCadCents / count) : null,
+    newClientsLast30Days: newClientsRes.count ?? 0,
     churnedLast30Days: churnedRes.count ?? 0,
   };
 }
@@ -109,7 +116,10 @@ export async function getMrrByService(): Promise<BusinessDashboardMrrServiceRow[
 
   if (error) throw new Error(error.message);
 
-  const totals = new Map<string, number>();
+  const totals = new Map<
+    string,
+    { mrrCadCents: number; clientCount: number }
+  >();
 
   for (const client of data ?? []) {
     const currency = normalizeClientCurrency(client.currency);
@@ -118,15 +128,21 @@ export async function getMrrByService(): Promise<BusinessDashboardMrrServiceRow[
     for (const [channel, cents] of Object.entries(breakdown)) {
       if (!channel || cents <= 0) continue;
       const cadCents = mrrCentsToCad(cents, currency);
-      totals.set(channel, (totals.get(channel) ?? 0) + cadCents);
+      const row = totals.get(channel) ?? { mrrCadCents: 0, clientCount: 0 };
+      row.mrrCadCents += cadCents;
+      row.clientCount += 1;
+      totals.set(channel, row);
     }
   }
 
   return [...totals.entries()]
-    .map(([channel, mrrCadCents]) => ({
+    .filter(([, row]) => row.mrrCadCents > 0)
+    .map(([channel, row]) => ({
       channel,
       label: getMrrBreakdownItemLabel(channel),
-      mrrCadCents,
+      mrrCadCents: row.mrrCadCents,
+      clientCount: row.clientCount,
+      averageMrrCadCents: Math.round(row.mrrCadCents / row.clientCount),
     }))
     .sort((a, b) => b.mrrCadCents - a.mrrCadCents);
 }

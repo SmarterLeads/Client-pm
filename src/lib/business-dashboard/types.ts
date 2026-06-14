@@ -2,6 +2,7 @@ export type BusinessDashboardKpis = {
   activeClients: number;
   totalMrrCadCents: number;
   averageMrrCadCents: number | null;
+  newClientsLast30Days: number;
   churnedLast30Days: number;
 };
 
@@ -15,6 +16,8 @@ export type BusinessDashboardMrrServiceRow = {
   channel: string;
   label: string;
   mrrCadCents: number;
+  clientCount: number;
+  averageMrrCadCents: number;
 };
 
 export type BusinessDashboardAgencyRow = {

@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
-import {
-  ActiveClientsByServiceChart,
-  MrrByServiceChart,
-} from "@/components/business-dashboard/business-dashboard-charts";
 import { BusinessDashboardAgencyCards } from "@/components/business-dashboard/business-dashboard-agency-cards";
 import { BusinessDashboardKpiCards } from "@/components/business-dashboard/business-dashboard-kpi-cards";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ActiveClientsByServiceCards,
+  MrrByServiceCards,
+} from "@/components/business-dashboard/business-dashboard-service-cards";
 import { canViewBusinessDashboard } from "@/lib/auth/business-dashboard";
 import { getTeamMember } from "@/lib/auth/session";
 import {
@@ -48,23 +47,17 @@ export default async function BusinessDashboardPage() {
 
       <BusinessDashboardAgencyCards agencies={mrrByAgency} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Active clients by service</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ActiveClientsByServiceChart data={clientsByService} />
-        </CardContent>
-      </Card>
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold tracking-tight">
+          Active Clients by Service
+        </h2>
+        <ActiveClientsByServiceCards data={clientsByService} />
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>MRR by service</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MrrByServiceChart data={mrrByService} />
-        </CardContent>
-      </Card>
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold tracking-tight">MRR by Service</h2>
+        <MrrByServiceCards data={mrrByService} />
+      </section>
     </div>
   );
 }
