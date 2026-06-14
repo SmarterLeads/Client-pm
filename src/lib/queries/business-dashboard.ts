@@ -24,6 +24,17 @@ export type {
 
 const USD_TO_CAD_RATE = 1.35;
 
+const AGENCY_DISPLAY_ORDER: Record<string, number> = {
+  "Smarter Leads": 1,
+  "Zev Media": 2,
+  "Blue Flamingo": 3,
+  "Napkin Marketing": 4,
+};
+
+function agencyDisplayOrder(name: string): number {
+  return AGENCY_DISPLAY_ORDER[name] ?? 5;
+}
+
 function mrrCentsToCad(cents: number, currency: string): number {
   if (currency === "USD") {
     return Math.round(cents * USD_TO_CAD_RATE);
@@ -298,10 +309,7 @@ export async function getMrrByAgency(): Promise<BusinessDashboardAgencyRow[]> {
   const churnedSince = thirtyDaysAgoIso();
 
   const [agenciesRes, clientsRes] = await Promise.all([
-    supabase
-      .from("agencies")
-      .select("id, name, primary_color")
-      .order("name"),
+    supabase.from("agencies").select("id, name, primary_color"),
     supabase
       .from("clients")
       .select("agency_id, status, mrr_cents, currency, updated_at"),
@@ -344,24 +352,30 @@ export async function getMrrByAgency(): Promise<BusinessDashboardAgencyRow[]> {
     stats.set(client.agency_id, row);
   }
 
-  return (agenciesRes.data ?? []).map((agency) => {
-    const row = stats.get(agency.id) ?? {
-      activeClients: 0,
-      totalMrrCadCents: 0,
-      churnedLast30Days: 0,
-    };
+  return (agenciesRes.data ?? [])
+    .map((agency) => {
+      const row = stats.get(agency.id) ?? {
+        activeClients: 0,
+        totalMrrCadCents: 0,
+        churnedLast30Days: 0,
+      };
 
-    return {
-      id: agency.id,
-      name: agency.name,
-      primaryColor: agency.primary_color,
-      activeClients: row.activeClients,
-      totalMrrCadCents: row.totalMrrCadCents,
-      averageMrrCadCents:
-        row.activeClients > 0
-          ? Math.round(row.totalMrrCadCents / row.activeClients)
-          : null,
-      churnedLast30Days: row.churnedLast30Days,
-    };
-  });
+      return {
+        id: agency.id,
+        name: agency.name,
+        primaryColor: agency.primary_color,
+        activeClients: row.activeClients,
+        totalMrrCadCents: row.totalMrrCadCents,
+        averageMrrCadCents:
+          row.activeClients > 0
+            ? Math.round(row.totalMrrCadCents / row.activeClients)
+            : null,
+        churnedLast30Days: row.churnedLast30Days,
+      };
+    })
+    .sort((a, b) => {
+      const orderDiff = agencyDisplayOrder(a.name) - agencyDisplayOrder(b.name);
+      if (orderDiff !== 0) return orderDiff;
+      return a.name.localeCompare(b.name);
+    });
 }
