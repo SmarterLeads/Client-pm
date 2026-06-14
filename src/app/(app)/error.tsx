@@ -10,6 +10,11 @@ export default function AppError({
   reset: () => void;
 }) {
   return (
-    <RouteError error={error} reset={reset} dashboardHref="/dashboard" />
+    <RouteError
+      error={error}
+      reset={reset}
+      dashboardHref="/dashboard"
+      logLabel="AppError"
+    />
   );
 }

@@ -39,6 +39,11 @@ function agencyDisplayOrder(name: string): number {
   return AGENCY_DISPLAY_ORDER[name] ?? 5;
 }
 
+function throwQueryError(query: string, error: { message: string }): never {
+  console.error(`[business-dashboard:${query}]`, error.message);
+  throw new Error(error.message);
+}
+
 function mrrCentsToCad(cents: number, currency: string): number {
   if (currency === "USD") {
     return Math.round(cents * USD_TO_CAD_RATE);
@@ -114,7 +119,7 @@ export async function getMonthlyBusinessResults(): Promise<
     .from("clients")
     .select("id, status, created_at, updated_at, mrr_cents, currency");
 
-  if (error) throw new Error(error.message);
+  if (error) throwQueryError("getMonthlyBusinessResults", error);
 
   const clients = data ?? [];
   const currentMonthStart = startOfMonth(new Date());
@@ -205,9 +210,9 @@ export async function getBusinessDashboardKpis(): Promise<BusinessDashboardKpis>
       .gte("updated_at", thirtyDaysAgoIso()),
   ]);
 
-  if (activeRes.error) throw new Error(activeRes.error.message);
-  if (newClientsRes.error) throw new Error(newClientsRes.error.message);
-  if (churnedRes.error) throw new Error(churnedRes.error.message);
+  if (activeRes.error) throwQueryError("getBusinessDashboardKpis:active", activeRes.error);
+  if (newClientsRes.error) throwQueryError("getBusinessDashboardKpis:newClients", newClientsRes.error);
+  if (churnedRes.error) throwQueryError("getBusinessDashboardKpis:churned", churnedRes.error);
 
   const activeClients = activeRes.data ?? [];
   const totalMrrCadCents = activeClients.reduce(
@@ -241,7 +246,7 @@ export async function getActiveClientsByService(): Promise<
     .select("marketing_channels, tracking_setup")
     .eq("status", "active");
 
-  if (error) throw new Error(error.message);
+  if (error) throwQueryError("getActiveClientsByService", error);
 
   const counts = new Map<string, number>();
 
@@ -271,7 +276,7 @@ export async function getMrrByService(): Promise<BusinessDashboardMrrServiceRow[
     .select("mrr_breakdown, currency, marketing_channels, tracking_setup")
     .eq("status", "active");
 
-  if (error) throw new Error(error.message);
+  if (error) throwQueryError("getMrrByService", error);
 
   const totals = new Map<
     string,
@@ -319,8 +324,8 @@ export async function getMrrByAgency(): Promise<BusinessDashboardAgencyRow[]> {
       .select("agency_id, status, mrr_cents, currency, updated_at"),
   ]);
 
-  if (agenciesRes.error) throw new Error(agenciesRes.error.message);
-  if (clientsRes.error) throw new Error(clientsRes.error.message);
+  if (agenciesRes.error) throwQueryError("getMrrByAgency:agencies", agenciesRes.error);
+  if (clientsRes.error) throwQueryError("getMrrByAgency:clients", clientsRes.error);
 
   const stats = new Map<
     string,
@@ -397,10 +402,7 @@ export async function getMonthlyFinancials(
     .eq("year", year)
     .order("month");
 
-  if (error) {
-    console.error("[getMonthlyFinancials] error:", error.message);
-    throw new Error(error.message);
-  }
+  if (error) throwQueryError("getMonthlyFinancials", error);
 
   const byMonth = new Map(
     (data ?? []).map((row) => [

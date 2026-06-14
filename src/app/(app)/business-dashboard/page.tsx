@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import { BusinessDashboardFinancialsTable } from "@/components/business-dashboard/business-dashboard-financials-table";
 import { BusinessDashboardAgencyCards } from "@/components/business-dashboard/business-dashboard-agency-cards";
+import { BusinessDashboardFinancialsTable } from "@/components/business-dashboard/business-dashboard-financials-table";
 import { BusinessDashboardKpiCards } from "@/components/business-dashboard/business-dashboard-kpi-cards";
 import { BusinessDashboardMonthlyTable } from "@/components/business-dashboard/business-dashboard-monthly-table";
+import { BusinessDashboardSectionError } from "@/components/business-dashboard/business-dashboard-section-error";
 import { ServicesOverviewCards } from "@/components/business-dashboard/business-dashboard-service-cards";
 import {
   canViewBusinessDashboard,
@@ -19,87 +20,122 @@ import {
   getMrrByService,
 } from "@/lib/queries/business-dashboard";
 
+async function fetchDashboardSection<T>(
+  label: string,
+  query: () => Promise<T>,
+): Promise<T | null> {
+  return query().catch((error) => {
+    console.error(`[BusinessDashboard] ${label} error:`, error);
+    return null;
+  });
+}
+
 export default async function BusinessDashboardPage() {
-  try {
-    const teamMember = await getTeamMember();
-    if (!teamMember) {
-      redirect("/login");
-    }
+  const teamMember = await getTeamMember();
+  if (!teamMember) {
+    redirect("/login");
+  }
 
-    if (!canViewBusinessDashboard(teamMember)) {
-      redirect("/dashboard");
-    }
+  if (!canViewBusinessDashboard(teamMember)) {
+    redirect("/dashboard");
+  }
 
-    const canViewMonthlyResults = teamMember.can_view_mrr;
-    const showFinancials = canViewMonthlyFinancials(teamMember);
-    const currentYear = new Date().getFullYear();
+  const canViewMonthlyResults = teamMember.can_view_mrr;
+  const showFinancials = canViewMonthlyFinancials(teamMember);
+  const currentYear = new Date().getFullYear();
 
-    const [kpis, mrrByAgency, clientsByService, mrrByService, monthlyResults] =
-      await Promise.all([
-        getBusinessDashboardKpis(),
-        getMrrByAgency(),
-        getActiveClientsByService(),
-        getMrrByService(),
-        canViewMonthlyResults
-          ? getMonthlyBusinessResults()
-          : Promise.resolve(null),
-      ]);
+  const kpis = await fetchDashboardSection("kpis", getBusinessDashboardKpis);
+  const mrrByAgency = await fetchDashboardSection(
+    "mrrByAgency",
+    getMrrByAgency,
+  );
+  const clientsByService = await fetchDashboardSection(
+    "clientsByService",
+    getActiveClientsByService,
+  );
+  const mrrByService = await fetchDashboardSection(
+    "mrrByService",
+    getMrrByService,
+  );
+  const monthlyResults = canViewMonthlyResults
+    ? await fetchDashboardSection(
+        "monthlyResults",
+        getMonthlyBusinessResults,
+      )
+    : null;
+  const monthlyFinancials = showFinancials
+    ? await fetchDashboardSection("monthlyFinancials", () =>
+        getMonthlyFinancials(currentYear),
+      )
+    : null;
 
-    let monthlyFinancials = null;
-    if (showFinancials) {
-      try {
-        monthlyFinancials = await getMonthlyFinancials(currentYear);
-      } catch (error) {
-        console.error("[BusinessDashboard] getMonthlyFinancials error:", error);
-      }
-    }
+  const servicesOverview = mergeServiceOverviewRows(
+    clientsByService ?? [],
+    mrrByService ?? [],
+  );
 
-    const servicesOverview = mergeServiceOverviewRows(
-      clientsByService,
-      mrrByService,
-    );
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Business Dashboard
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Client count, MRR, and service mix across active accounts.
+        </p>
+      </div>
 
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Business Dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Client count, MRR, and service mix across active accounts.
-          </p>
-        </div>
-
+      {kpis ? (
         <BusinessDashboardKpiCards kpis={kpis} />
+      ) : (
+        <BusinessDashboardSectionError section="KPI summary" />
+      )}
 
+      {mrrByAgency ? (
         <BusinessDashboardAgencyCards agencies={mrrByAgency} />
+      ) : (
+        <BusinessDashboardSectionError section="agency MRR cards" />
+      )}
 
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold tracking-tight">
+          Services Overview
+        </h2>
+        {clientsByService || mrrByService ? (
+          <ServicesOverviewCards data={servicesOverview} />
+        ) : (
+          <BusinessDashboardSectionError section="services overview" />
+        )}
+      </section>
+
+      {canViewMonthlyResults ? (
         <section className="space-y-4">
           <h2 className="text-lg font-semibold tracking-tight">
-            Services Overview
+            Monthly Results
           </h2>
-          <ServicesOverviewCards data={servicesOverview} />
-        </section>
-
-        {canViewMonthlyResults && monthlyResults ? (
-          <section className="space-y-4">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Monthly Results
-            </h2>
+          {monthlyResults ? (
             <BusinessDashboardMonthlyTable rows={monthlyResults} />
-          </section>
-        ) : null}
+          ) : (
+            <BusinessDashboardSectionError section="monthly results" />
+          )}
+        </section>
+      ) : null}
 
-        {showFinancials && monthlyFinancials ? (
+      {showFinancials ? (
+        monthlyFinancials ? (
           <BusinessDashboardFinancialsTable
             initialYear={currentYear}
             initialRows={monthlyFinancials}
           />
-        ) : null}
-      </div>
-    );
-  } catch (error) {
-    console.error("[BusinessDashboard] error:", error);
-    throw error;
-  }
+        ) : (
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Monthly Financials
+            </h2>
+            <BusinessDashboardSectionError section="monthly financials" />
+          </section>
+        )
+      ) : null}
+    </div>
+  );
 }
