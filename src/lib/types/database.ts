@@ -183,39 +183,39 @@ export type Database = {
       }
       monthly_financials: {
         Row: {
-          cdn_exp_cents: number
-          cdn_sales_cents: number
+          cdn_expenses: number
+          cdn_sales: number
           created_at: string
           id: string
           month: number
           updated_at: string
           updated_by: string | null
-          us_exp_cents: number
-          us_sales_cents: number
+          usd_expenses: number
+          usd_sales: number
           year: number
         }
         Insert: {
-          cdn_exp_cents?: number
-          cdn_sales_cents?: number
+          cdn_expenses?: number
+          cdn_sales?: number
           created_at?: string
           id?: string
           month: number
           updated_at?: string
           updated_by?: string | null
-          us_exp_cents?: number
-          us_sales_cents?: number
+          usd_expenses?: number
+          usd_sales?: number
           year: number
         }
         Update: {
-          cdn_exp_cents?: number
-          cdn_sales_cents?: number
+          cdn_expenses?: number
+          cdn_sales?: number
           created_at?: string
           id?: string
           month?: number
           updated_at?: string
           updated_by?: string | null
-          us_exp_cents?: number
-          us_sales_cents?: number
+          usd_expenses?: number
+          usd_sales?: number
           year?: number
         }
         Relationships: [

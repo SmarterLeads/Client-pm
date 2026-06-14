@@ -51,18 +51,18 @@ export type BusinessDashboardMonthlyResultRow = {
 export type MonthlyFinancialRow = {
   month: number;
   monthLabel: string;
-  cdnSalesCents: number;
-  cdnExpCents: number;
-  usSalesCents: number;
-  usExpCents: number;
-  totalSalesCadCents: number;
-  totalExpCadCents: number;
-  profitCadCents: number;
+  cdnSales: number;
+  cdnExpenses: number;
+  usdSales: number;
+  usdExpenses: number;
+  totalSalesCad: number;
+  totalExpCad: number;
+  profitCad: number;
 };
 
 export type MonthlyFinancialSaveInput = {
-  cdnSalesCents: number;
-  cdnExpCents: number;
-  usSalesCents: number;
-  usExpCents: number;
+  cdnSales: number;
+  cdnExpenses: number;
+  usdSales: number;
+  usdExpenses: number;
 };

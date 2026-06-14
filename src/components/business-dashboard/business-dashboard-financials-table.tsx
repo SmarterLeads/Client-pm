@@ -30,7 +30,7 @@ import {
   formatFinancialCad,
   formatFinancialInputDollars,
   formatFinancialUsd,
-  parseFinancialDollarsToCents,
+  parseFinancialDollars,
   sumMonthlyFinancialRows,
   type MonthlyFinancialEditableField,
 } from "@/lib/business-dashboard/financials";
@@ -38,10 +38,10 @@ import type { MonthlyFinancialRow } from "@/lib/business-dashboard/types";
 import { cn } from "@/lib/utils";
 
 const EDITABLE_FIELDS: MonthlyFinancialEditableField[] = [
-  "cdnSalesCents",
-  "cdnExpCents",
-  "usSalesCents",
-  "usExpCents",
+  "cdnSales",
+  "cdnExpenses",
+  "usdSales",
+  "usdExpenses",
 ];
 
 function cellKey(month: number, field: MonthlyFinancialEditableField) {
@@ -49,9 +49,7 @@ function cellKey(month: number, field: MonthlyFinancialEditableField) {
 }
 
 function EditableMoneyCell({
-  month,
-  field,
-  cents,
+  value,
   currency,
   saved,
   disabled,
@@ -59,43 +57,41 @@ function EditableMoneyCell({
   onCommit,
   onTabNext,
 }: {
-  month: number;
-  field: MonthlyFinancialEditableField;
-  cents: number;
+  value: number;
   currency: "CAD" | "USD";
   saved: boolean;
   disabled?: boolean;
   inputRef: (node: HTMLInputElement | null) => void;
-  onCommit: (cents: number) => Promise<void>;
+  onCommit: (dollars: number) => Promise<void>;
   onTabNext: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(formatFinancialInputDollars(cents));
+  const [draft, setDraft] = useState(formatFinancialInputDollars(value));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!editing) {
-      setDraft(formatFinancialInputDollars(cents));
+      setDraft(formatFinancialInputDollars(value));
     }
-  }, [cents, editing]);
+  }, [value, editing]);
 
   const display =
-    cents === 0
+    value === 0
       ? "—"
       : currency === "CAD"
-        ? formatFinancialCad(cents)
-        : formatFinancialUsd(cents);
+        ? formatFinancialCad(value)
+        : formatFinancialUsd(value);
 
   async function commitValue() {
     try {
-      const nextCents = parseFinancialDollarsToCents(draft);
+      const nextValue = parseFinancialDollars(draft);
       setEditing(false);
-      if (nextCents === cents) return;
+      if (nextValue === value) return;
 
       setSaving(true);
-      await onCommit(nextCents);
+      await onCommit(nextValue);
     } catch {
-      setDraft(formatFinancialInputDollars(cents));
+      setDraft(formatFinancialInputDollars(value));
       setEditing(false);
     } finally {
       setSaving(false);
@@ -149,7 +145,7 @@ function EditableMoneyCell({
             void commitValue();
           }
           if (event.key === "Escape") {
-            setDraft(formatFinancialInputDollars(cents));
+            setDraft(formatFinancialInputDollars(value));
             setEditing(false);
           }
         }}
@@ -187,25 +183,25 @@ export function BusinessDashboardFinancialsTable({
   }, []);
 
   const handleCommit = useCallback(
-    async (month: number, field: MonthlyFinancialEditableField, cents: number) => {
+    async (month: number, field: MonthlyFinancialEditableField, dollars: number) => {
       let payload:
         | {
-            cdnSalesCents: number;
-            cdnExpCents: number;
-            usSalesCents: number;
-            usExpCents: number;
+            cdnSales: number;
+            cdnExpenses: number;
+            usdSales: number;
+            usdExpenses: number;
           }
         | null = null;
 
       setRows((prev) =>
         prev.map((row) => {
           if (row.month !== month) return row;
-          const updated = { ...row, [field]: cents };
+          const updated = { ...row, [field]: dollars };
           payload = {
-            cdnSalesCents: updated.cdnSalesCents,
-            cdnExpCents: updated.cdnExpCents,
-            usSalesCents: updated.usSalesCents,
-            usExpCents: updated.usExpCents,
+            cdnSales: updated.cdnSales,
+            cdnExpenses: updated.cdnExpenses,
+            usdSales: updated.usdSales,
+            usdExpenses: updated.usdExpenses,
           };
           return buildMonthlyFinancialRow(month, updated);
         }),
@@ -311,95 +307,87 @@ export function BusinessDashboardFinancialsTable({
                 <TableCell className="font-medium">{row.monthLabel}</TableCell>
                 <TableCell className="min-w-28 p-1">
                   <EditableMoneyCell
-                    month={row.month}
-                    field="cdnSalesCents"
-                    cents={row.cdnSalesCents}
+                    value={row.cdnSales}
                     currency="CAD"
-                    saved={Boolean(savedCells[cellKey(row.month, "cdnSalesCents")])}
+                    saved={Boolean(savedCells[cellKey(row.month, "cdnSales")])}
                     disabled={isLoadingYear}
                     inputRef={(node) => {
-                      const key = cellKey(row.month, "cdnSalesCents");
+                      const key = cellKey(row.month, "cdnSales");
                       if (node) inputRefs.current.set(key, node);
                       else inputRefs.current.delete(key);
                     }}
-                    onCommit={(cents) =>
-                      handleCommit(row.month, "cdnSalesCents", cents)
+                    onCommit={(dollars) =>
+                      handleCommit(row.month, "cdnSales", dollars)
                     }
-                    onTabNext={() => focusNextCell(row.month, "cdnSalesCents")}
+                    onTabNext={() => focusNextCell(row.month, "cdnSales")}
                   />
                 </TableCell>
                 <TableCell className="min-w-28 p-1">
                   <EditableMoneyCell
-                    month={row.month}
-                    field="cdnExpCents"
-                    cents={row.cdnExpCents}
+                    value={row.cdnExpenses}
                     currency="CAD"
-                    saved={Boolean(savedCells[cellKey(row.month, "cdnExpCents")])}
+                    saved={Boolean(savedCells[cellKey(row.month, "cdnExpenses")])}
                     disabled={isLoadingYear}
                     inputRef={(node) => {
-                      const key = cellKey(row.month, "cdnExpCents");
+                      const key = cellKey(row.month, "cdnExpenses");
                       if (node) inputRefs.current.set(key, node);
                       else inputRefs.current.delete(key);
                     }}
-                    onCommit={(cents) =>
-                      handleCommit(row.month, "cdnExpCents", cents)
+                    onCommit={(dollars) =>
+                      handleCommit(row.month, "cdnExpenses", dollars)
                     }
-                    onTabNext={() => focusNextCell(row.month, "cdnExpCents")}
+                    onTabNext={() => focusNextCell(row.month, "cdnExpenses")}
                   />
                 </TableCell>
                 <TableCell className="min-w-28 p-1">
                   <EditableMoneyCell
-                    month={row.month}
-                    field="usSalesCents"
-                    cents={row.usSalesCents}
+                    value={row.usdSales}
                     currency="USD"
-                    saved={Boolean(savedCells[cellKey(row.month, "usSalesCents")])}
+                    saved={Boolean(savedCells[cellKey(row.month, "usdSales")])}
                     disabled={isLoadingYear}
                     inputRef={(node) => {
-                      const key = cellKey(row.month, "usSalesCents");
+                      const key = cellKey(row.month, "usdSales");
                       if (node) inputRefs.current.set(key, node);
                       else inputRefs.current.delete(key);
                     }}
-                    onCommit={(cents) =>
-                      handleCommit(row.month, "usSalesCents", cents)
+                    onCommit={(dollars) =>
+                      handleCommit(row.month, "usdSales", dollars)
                     }
-                    onTabNext={() => focusNextCell(row.month, "usSalesCents")}
+                    onTabNext={() => focusNextCell(row.month, "usdSales")}
                   />
                 </TableCell>
                 <TableCell className="min-w-28 p-1">
                   <EditableMoneyCell
-                    month={row.month}
-                    field="usExpCents"
-                    cents={row.usExpCents}
+                    value={row.usdExpenses}
                     currency="USD"
-                    saved={Boolean(savedCells[cellKey(row.month, "usExpCents")])}
+                    saved={Boolean(savedCells[cellKey(row.month, "usdExpenses")])}
                     disabled={isLoadingYear}
                     inputRef={(node) => {
-                      const key = cellKey(row.month, "usExpCents");
+                      const key = cellKey(row.month, "usdExpenses");
                       if (node) inputRefs.current.set(key, node);
                       else inputRefs.current.delete(key);
                     }}
-                    onCommit={(cents) =>
-                      handleCommit(row.month, "usExpCents", cents)
+                    onCommit={(dollars) =>
+                      handleCommit(row.month, "usdExpenses", dollars)
                     }
-                    onTabNext={() => focusNextCell(row.month, "usExpCents")}
+                    onTabNext={() => focusNextCell(row.month, "usdExpenses")}
                   />
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
-                  {formatFinancialCad(row.totalSalesCadCents)}
+                  {formatFinancialCad(row.totalSalesCad)}
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
-                  {formatFinancialCad(row.totalExpCadCents)}
+                  {formatFinancialCad(row.totalExpCad)}
                 </TableCell>
                 <TableCell
                   className={cn(
                     "text-center tabular-nums font-medium",
-                    row.profitCadCents > 0 &&
+                    row.profitCad > 0 &&
                       "text-emerald-700 dark:text-emerald-400",
-                    row.profitCadCents < 0 && "text-destructive",
+                    row.profitCad < 0 && "text-destructive",
                   )}
                 >
-                  {formatFinancialCad(row.profitCadCents)}
+                  {formatFinancialCad(row.profitCad)}
                 </TableCell>
               </TableRow>
             ))}
@@ -408,32 +396,32 @@ export function BusinessDashboardFinancialsTable({
             <TableRow className="bg-muted/30 font-semibold hover:bg-muted/30">
               <TableCell>Total</TableCell>
               <TableCell className="text-center tabular-nums">
-                {formatFinancialCad(totals.cdnSalesCents)}
+                {formatFinancialCad(totals.cdnSales)}
               </TableCell>
               <TableCell className="text-center tabular-nums">
-                {formatFinancialCad(totals.cdnExpCents)}
+                {formatFinancialCad(totals.cdnExpenses)}
               </TableCell>
               <TableCell className="text-center tabular-nums">
-                {formatFinancialUsd(totals.usSalesCents)}
+                {formatFinancialUsd(totals.usdSales)}
               </TableCell>
               <TableCell className="text-center tabular-nums">
-                {formatFinancialUsd(totals.usExpCents)}
+                {formatFinancialUsd(totals.usdExpenses)}
               </TableCell>
               <TableCell className="text-center tabular-nums">
-                {formatFinancialCad(totals.totalSalesCadCents)}
+                {formatFinancialCad(totals.totalSalesCad)}
               </TableCell>
               <TableCell className="text-center tabular-nums">
-                {formatFinancialCad(totals.totalExpCadCents)}
+                {formatFinancialCad(totals.totalExpCad)}
               </TableCell>
               <TableCell
                 className={cn(
                   "text-center tabular-nums",
-                  totals.profitCadCents > 0 &&
+                  totals.profitCad > 0 &&
                     "text-emerald-700 dark:text-emerald-400",
-                  totals.profitCadCents < 0 && "text-destructive",
+                  totals.profitCad < 0 && "text-destructive",
                 )}
               >
-                {formatFinancialCad(totals.profitCadCents)}
+                {formatFinancialCad(totals.profitCad)}
               </TableCell>
             </TableRow>
           </TableFooter>

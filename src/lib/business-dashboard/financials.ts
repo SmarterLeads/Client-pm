@@ -18,31 +18,26 @@ export const FINANCIAL_MONTH_NAMES = [
 ] as const;
 
 export type MonthlyFinancialEditableField =
-  | "cdnSalesCents"
-  | "cdnExpCents"
-  | "usSalesCents"
-  | "usExpCents";
+  | "cdnSales"
+  | "cdnExpenses"
+  | "usdSales"
+  | "usdExpenses";
 
 export type MonthlyFinancialDraft = Pick<
   MonthlyFinancialRow,
-  | "month"
-  | "cdnSalesCents"
-  | "cdnExpCents"
-  | "usSalesCents"
-  | "usExpCents"
+  "month" | "cdnSales" | "cdnExpenses" | "usdSales" | "usdExpenses"
 >;
 
 export function calculateMonthlyFinancialTotals(row: MonthlyFinancialDraft) {
-  const totalSalesCadCents =
-    row.cdnSalesCents +
-    Math.round(row.usSalesCents * FINANCIALS_USD_TO_CAD_RATE);
-  const totalExpCadCents =
-    row.cdnExpCents + Math.round(row.usExpCents * FINANCIALS_USD_TO_CAD_RATE);
+  const totalSalesCad =
+    row.cdnSales + row.usdSales * FINANCIALS_USD_TO_CAD_RATE;
+  const totalExpCad =
+    row.cdnExpenses + row.usdExpenses * FINANCIALS_USD_TO_CAD_RATE;
 
   return {
-    totalSalesCadCents,
-    totalExpCadCents,
-    profitCadCents: totalSalesCadCents - totalExpCadCents,
+    totalSalesCad,
+    totalExpCad,
+    profitCad: totalSalesCad - totalExpCad,
   };
 }
 
@@ -52,10 +47,10 @@ export function buildMonthlyFinancialRow(
 ): MonthlyFinancialRow {
   const base: MonthlyFinancialDraft = {
     month,
-    cdnSalesCents: draft.cdnSalesCents ?? 0,
-    cdnExpCents: draft.cdnExpCents ?? 0,
-    usSalesCents: draft.usSalesCents ?? 0,
-    usExpCents: draft.usExpCents ?? 0,
+    cdnSales: draft.cdnSales ?? 0,
+    cdnExpenses: draft.cdnExpenses ?? 0,
+    usdSales: draft.usdSales ?? 0,
+    usdExpenses: draft.usdExpenses ?? 0,
   };
 
   return {
@@ -65,7 +60,7 @@ export function buildMonthlyFinancialRow(
   };
 }
 
-export function parseFinancialDollarsToCents(value: string): number {
+export function parseFinancialDollars(value: string): number {
   const normalized = value.replace(/[$,\s]/g, "").trim();
   if (!normalized) return 0;
 
@@ -74,51 +69,51 @@ export function parseFinancialDollarsToCents(value: string): number {
     throw new Error("Enter a valid dollar amount.");
   }
 
-  return Math.round(dollars * 100);
+  return dollars;
 }
 
-export function formatFinancialCad(cents: number): string {
+export function formatFinancialCad(dollars: number): string {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(cents / 100);
+  }).format(dollars);
 }
 
-export function formatFinancialUsd(cents: number): string {
+export function formatFinancialUsd(dollars: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(cents / 100);
+  }).format(dollars);
 }
 
-export function formatFinancialInputDollars(cents: number): string {
-  if (cents === 0) return "";
-  return (cents / 100).toFixed(2).replace(/\.00$/, "");
+export function formatFinancialInputDollars(dollars: number): string {
+  if (dollars === 0) return "";
+  return String(dollars).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
 }
 
 export function sumMonthlyFinancialRows(rows: MonthlyFinancialRow[]) {
   return rows.reduce(
     (totals, row) => ({
-      cdnSalesCents: totals.cdnSalesCents + row.cdnSalesCents,
-      cdnExpCents: totals.cdnExpCents + row.cdnExpCents,
-      usSalesCents: totals.usSalesCents + row.usSalesCents,
-      usExpCents: totals.usExpCents + row.usExpCents,
-      totalSalesCadCents: totals.totalSalesCadCents + row.totalSalesCadCents,
-      totalExpCadCents: totals.totalExpCadCents + row.totalExpCadCents,
-      profitCadCents: totals.profitCadCents + row.profitCadCents,
+      cdnSales: totals.cdnSales + row.cdnSales,
+      cdnExpenses: totals.cdnExpenses + row.cdnExpenses,
+      usdSales: totals.usdSales + row.usdSales,
+      usdExpenses: totals.usdExpenses + row.usdExpenses,
+      totalSalesCad: totals.totalSalesCad + row.totalSalesCad,
+      totalExpCad: totals.totalExpCad + row.totalExpCad,
+      profitCad: totals.profitCad + row.profitCad,
     }),
     {
-      cdnSalesCents: 0,
-      cdnExpCents: 0,
-      usSalesCents: 0,
-      usExpCents: 0,
-      totalSalesCadCents: 0,
-      totalExpCadCents: 0,
-      profitCadCents: 0,
+      cdnSales: 0,
+      cdnExpenses: 0,
+      usdSales: 0,
+      usdExpenses: 0,
+      totalSalesCad: 0,
+      totalExpCad: 0,
+      profitCad: 0,
     },
   );
 }

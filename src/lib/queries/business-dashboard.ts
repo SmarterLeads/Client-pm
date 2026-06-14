@@ -396,22 +396,27 @@ export async function getMonthlyFinancials(
 
   const { data, error } = await pm(supabase)
     .from("monthly_financials")
-    .select(
-      "month, cdn_sales_cents, cdn_exp_cents, us_sales_cents, us_exp_cents",
-    )
+    .select("month, cdn_sales, cdn_expenses, usd_sales, usd_expenses")
     .eq("year", year)
     .order("month");
 
-  if (error) throwQueryError("getMonthlyFinancials", error);
+  if (error) {
+    console.error("[getMonthlyFinancials] year:", year);
+    console.log(
+      "[getMonthlyFinancials] query error:",
+      JSON.stringify(error, null, 2),
+    );
+    throwQueryError("getMonthlyFinancials", error);
+  }
 
   const byMonth = new Map(
     (data ?? []).map((row) => [
       row.month,
       {
-        cdnSalesCents: row.cdn_sales_cents ?? 0,
-        cdnExpCents: row.cdn_exp_cents ?? 0,
-        usSalesCents: row.us_sales_cents ?? 0,
-        usExpCents: row.us_exp_cents ?? 0,
+        cdnSales: Number(row.cdn_sales ?? 0),
+        cdnExpenses: Number(row.cdn_expenses ?? 0),
+        usdSales: Number(row.usd_sales ?? 0),
+        usdExpenses: Number(row.usd_expenses ?? 0),
       },
     ]),
   );
