@@ -5,7 +5,7 @@ import {
 } from "@/lib/business-dashboard/format";
 import type { BusinessDashboardServiceOverviewRow } from "@/lib/business-dashboard/types";
 
-const serviceGridClassName = "grid gap-4 sm:grid-cols-2 xl:grid-cols-4";
+const serviceGridClassName = "grid gap-4 sm:grid-cols-2 lg:grid-cols-3";
 
 export function ServicesOverviewCards({
   data,

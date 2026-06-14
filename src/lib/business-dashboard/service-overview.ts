@@ -4,6 +4,29 @@ import type {
   BusinessDashboardServiceRow,
 } from "@/lib/business-dashboard/types";
 
+export const SERVICE_OVERVIEW_CHANNEL_ORDER = [
+  "google_ads",
+  "meta_ads",
+  "seo",
+  "microsoft_ads",
+  "tiktok_ads",
+  "linkedin_ads",
+  "ghl",
+  "whatconverts",
+] as const;
+
+export const SERVICE_OVERVIEW_HIDDEN_CHANNELS = new Set([
+  "ga4",
+  "website_maintenance",
+]);
+
+function serviceOverviewChannelIndex(channel: string): number {
+  const index = (SERVICE_OVERVIEW_CHANNEL_ORDER as readonly string[]).indexOf(
+    channel,
+  );
+  return index === -1 ? SERVICE_OVERVIEW_CHANNEL_ORDER.length : index;
+}
+
 export function mergeServiceOverviewRows(
   clientsByService: BusinessDashboardServiceRow[],
   mrrByService: BusinessDashboardMrrServiceRow[],
@@ -37,11 +60,14 @@ export function mergeServiceOverviewRows(
   }
 
   return [...map.values()]
-    .filter((row) => row.clientCount > 0 || row.mrrCadCents > 0)
-    .sort((a, b) => {
-      if (b.clientCount !== a.clientCount) {
-        return b.clientCount - a.clientCount;
-      }
-      return b.mrrCadCents - a.mrrCadCents;
-    });
+    .filter(
+      (row) =>
+        !SERVICE_OVERVIEW_HIDDEN_CHANNELS.has(row.channel) &&
+        (row.clientCount > 0 || row.mrrCadCents > 0),
+    )
+    .sort(
+      (a, b) =>
+        serviceOverviewChannelIndex(a.channel) -
+        serviceOverviewChannelIndex(b.channel),
+    );
 }
