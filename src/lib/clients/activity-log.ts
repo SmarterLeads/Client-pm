@@ -36,6 +36,14 @@ export type ClientActivityLogFilters = {
   teamMemberId?: string;
 };
 
+export type ClientActivityLogPage = {
+  entries: ActivityEvent[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
+export const DEFAULT_CLIENT_ACTIVITY_PAGE_SIZE = 25;
+
 export function normalizeHistoryEntityType(entityType: string) {
   return entityType.replace(/^(public|pm)\./, "");
 }

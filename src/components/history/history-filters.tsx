@@ -28,7 +28,9 @@ export function HistoryFilters({
     }
 
     startTransition(() => {
-      router.replace(`/history?${params.toString()}`);
+      params.delete("page");
+      const query = params.toString();
+      router.replace(query ? `/history?${query}` : "/history");
     });
   }
 

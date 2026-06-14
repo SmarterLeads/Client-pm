@@ -1,7 +1,9 @@
 ﻿import type {
+  ChangeHistoryPageResult,
   ChangeHistoryRow,
   GlobalChangeHistoryFilters,
 } from "@/lib/change-history/types";
+import { DEFAULT_CHANGE_HISTORY_PAGE_SIZE } from "@/lib/change-history/types";
 import { pm } from "@/lib/supabase/pm";
 import { createClient } from "@/lib/supabase/server";
 
@@ -40,6 +42,24 @@ function mapHistoryRows(
   }));
 }
 
+function applyGlobalChangeHistoryFilters<
+  T extends {
+    eq: (column: string, value: string) => T;
+  },
+>(query: T, filters: GlobalChangeHistoryFilters): T {
+  let next = query;
+
+  if (filters.entity_type) {
+    next = next.eq("entity_type", filters.entity_type);
+  }
+
+  if (filters.changed_by) {
+    next = next.eq("changed_by", filters.changed_by);
+  }
+
+  return next;
+}
+
 export async function getChangeHistoryForEntity(
   entityType: string,
   entityId: string,
@@ -51,35 +71,57 @@ export async function getChangeHistoryForEntity(
     .select(HISTORY_SELECT)
     .eq("entity_type", entityType)
     .eq("entity_id", entityId)
-    .order("changed_at", { ascending: false })
-    .limit(100);
+    .order("changed_at", { ascending: false });
 
   if (error) throw new Error(error.message);
   return mapHistoryRows(data);
 }
 
-export async function getGlobalChangeHistory(
+export async function getChangeHistory(
   filters: GlobalChangeHistoryFilters = {},
-): Promise<ChangeHistoryRow[]> {
+  page = 0,
+  pageSize = DEFAULT_CHANGE_HISTORY_PAGE_SIZE,
+): Promise<ChangeHistoryPageResult> {
   const supabase = await createClient();
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
 
-  let query = pm(supabase)
+  let countQuery = pm(supabase)
+    .from("change_history")
+    .select("*", { count: "exact", head: true });
+
+  countQuery = applyGlobalChangeHistoryFilters(countQuery, filters);
+
+  let dataQuery = pm(supabase)
     .from("change_history")
     .select(HISTORY_SELECT)
     .order("changed_at", { ascending: false })
-    .limit(100);
+    .range(from, to);
 
-  if (filters.entity_type) {
-    query = query.eq("entity_type", filters.entity_type);
-  }
+  dataQuery = applyGlobalChangeHistoryFilters(dataQuery, filters);
 
-  if (filters.changed_by) {
-    query = query.eq("changed_by", filters.changed_by);
-  }
+  const [{ count, error: countError }, { data, error: dataError }] =
+    await Promise.all([countQuery, dataQuery]);
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return mapHistoryRows(data);
+  if (countError) throw new Error(countError.message);
+  if (dataError) throw new Error(dataError.message);
+
+  const totalCount = count ?? 0;
+  const entries = mapHistoryRows(data);
+
+  return {
+    entries,
+    totalCount,
+    hasMore: from + entries.length < totalCount,
+  };
+}
+
+/** @deprecated Use getChangeHistory instead. */
+export async function getGlobalChangeHistory(
+  filters: GlobalChangeHistoryFilters = {},
+): Promise<ChangeHistoryRow[]> {
+  const result = await getChangeHistory(filters, 0, DEFAULT_CHANGE_HISTORY_PAGE_SIZE);
+  return result.entries;
 }
 
 export async function getChangeHistoryEntityTypes(): Promise<string[]> {
@@ -98,3 +140,5 @@ export async function getChangeHistoryEntityTypes(): Promise<string[]> {
   }
   return Array.from(types).sort();
 }
+
+export type { ChangeHistoryPageResult };

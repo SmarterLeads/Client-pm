@@ -490,6 +490,8 @@ export type {
   ActivityEvent,
   ActivityEventCategory,
   ClientActivityLogFilters,
+  ClientActivityLogPage,
+  DEFAULT_CLIENT_ACTIVITY_PAGE_SIZE,
 } from "@/lib/clients/activity-log";
 
 const CLIENT_HISTORY_ENTITY_TYPES = [
@@ -502,7 +504,9 @@ const CLIENT_HISTORY_ENTITY_TYPES = [
 export async function getClientActivityLog(
   clientId: string,
   filters: ClientActivityLogFilters = {},
-): Promise<ActivityEvent[]> {
+  page = 0,
+  pageSize = DEFAULT_CLIENT_ACTIVITY_PAGE_SIZE,
+): Promise<ClientActivityLogPage> {
   try {
     const supabase = await createClient();
 
@@ -656,8 +660,7 @@ export async function getClientActivityLog(
         `,
         )
         .in("entity_id", historyEntityIds)
-        .order("changed_at", { ascending: false })
-        .limit(500);
+        .order("changed_at", { ascending: false });
 
       if (error) {
         console.error("[getClientActivityLog] change_history:", error.message);
@@ -786,10 +789,19 @@ export async function getClientActivityLog(
       }
     }
 
-    return applyActivityLogFilters(events, filters);
+    const sorted = applyActivityLogFilters(events, filters);
+    const totalCount = sorted.length;
+    const from = page * pageSize;
+    const entries = sorted.slice(from, from + pageSize);
+
+    return {
+      entries,
+      totalCount,
+      hasMore: from + pageSize < totalCount,
+    };
   } catch (err) {
     console.error("[getClientActivityLog]", err);
-    return [];
+    return { entries: [], totalCount: 0, hasMore: false };
   }
 }
 
@@ -839,8 +851,7 @@ export async function getClientHistory(
       )
       .in("entity_id", entityIds)
       .in("entity_type", [...CLIENT_HISTORY_ENTITY_TYPES])
-      .order("changed_at", { ascending: false })
-      .limit(200);
+      .order("changed_at", { ascending: false });
 
     if (error) {
       console.error("[getClientHistory] change_history:", error.message);

@@ -12,7 +12,8 @@ export function canViewBusinessDashboard(
 }
 
 export function canViewMonthlyFinancials(
-  teamMember: Pick<TeamMember, "email">,
+  teamMember: Pick<TeamMember, "email"> | null | undefined,
 ): boolean {
+  if (!teamMember?.email) return false;
   return teamMember.email.toLowerCase() === BUSINESS_DASHBOARD_OWNER_EMAIL;
 }

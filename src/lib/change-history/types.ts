@@ -21,3 +21,11 @@ export type GlobalChangeHistoryFilters = {
   entity_type?: string;
   changed_by?: string;
 };
+
+export type ChangeHistoryPageResult = {
+  entries: ChangeHistoryRow[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
+export const DEFAULT_CHANGE_HISTORY_PAGE_SIZE = 25;

@@ -397,7 +397,10 @@ export async function getMonthlyFinancials(
     .eq("year", year)
     .order("month");
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[getMonthlyFinancials] error:", error.message);
+    throw new Error(error.message);
+  }
 
   const byMonth = new Map(
     (data ?? []).map((row) => [
