@@ -19,7 +19,7 @@ export async function ClientHistoryPanel({
   filters = {},
   hasActiveFilters = false,
 }: ClientHistoryPanelProps) {
-  const [events, teamMembers] = await Promise.all([
+  const [activityLog, teamMembers] = await Promise.all([
     getClientActivityLog(clientId, filters),
     getActiveTeamMembers(),
   ]);
@@ -29,13 +29,14 @@ export async function ClientHistoryPanel({
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Activity</h2>
         <p className="text-sm text-muted-foreground">
-          {events.length} event{events.length === 1 ? "" : "s"} for this client
+          {activityLog.totalCount} event
+          {activityLog.totalCount === 1 ? "" : "s"} for this client
         </p>
       </div>
 
       <Suspense fallback={<FiltersSkeleton />}>
         <ClientActivityFilters
-          teamMembers={teamMembers.map((member) => ({
+          teamMembers={teamMembers.map((member: { id: string; name: string }) => ({
             id: member.id,
             name: member.name,
           }))}
@@ -43,7 +44,11 @@ export async function ClientHistoryPanel({
       </Suspense>
 
       <ClientActivityTimelineShell
-        events={events}
+        key={JSON.stringify(filters)}
+        clientId={clientId}
+        initialEvents={activityLog.entries}
+        initialHasMore={activityLog.hasMore}
+        filters={filters}
         hasActiveFilters={hasActiveFilters}
         clientPath={`/clients/${clientId}`}
       />

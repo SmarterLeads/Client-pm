@@ -1,7 +1,8 @@
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { DEFAULT_CHANGE_HISTORY_PAGE_SIZE } from "@/lib/change-history/types";
+import { cn } from "@/lib/utils";
 
 type HistoryPaginationSearchParams = {
   entity_type?: string;
@@ -86,22 +87,24 @@ export function HistoryPagination({
       </p>
       <div className="flex items-center gap-2">
         {safePage > 1 ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={buildHistoryHref(safePage - 1, searchParams)}>
-              Previous
-            </Link>
-          </Button>
+          <Link
+            href={buildHistoryHref(safePage - 1, searchParams)}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            Previous
+          </Link>
         ) : (
           <Button variant="outline" size="sm" disabled>
             Previous
           </Button>
         )}
         {safePage < totalPages ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={buildHistoryHref(safePage + 1, searchParams)}>
-              Next
-            </Link>
-          </Button>
+          <Link
+            href={buildHistoryHref(safePage + 1, searchParams)}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            Next
+          </Link>
         ) : (
           <Button variant="outline" size="sm" disabled>
             Next

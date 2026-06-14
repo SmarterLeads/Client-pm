@@ -1,6 +1,7 @@
 ﻿import { formatContactName } from "@/lib/clients/contact-utils";
 import {
   applyActivityLogFilters,
+  DEFAULT_CLIENT_ACTIVITY_PAGE_SIZE,
   mapAttachmentActivityEvent,
   mapClientChangeHistoryEvent,
   mapClientUpdateActivityEvent,
@@ -9,6 +10,7 @@ import {
   type ActivityEvent,
   type ActivityEventCategory,
   type ClientActivityLogFilters,
+  type ClientActivityLogPage,
 } from "@/lib/clients/activity-log";
 import {
   contactNameFromMap,
@@ -491,8 +493,8 @@ export type {
   ActivityEventCategory,
   ClientActivityLogFilters,
   ClientActivityLogPage,
-  DEFAULT_CLIENT_ACTIVITY_PAGE_SIZE,
 } from "@/lib/clients/activity-log";
+export { DEFAULT_CLIENT_ACTIVITY_PAGE_SIZE } from "@/lib/clients/activity-log";
 
 const CLIENT_HISTORY_ENTITY_TYPES = [
   "clients",
