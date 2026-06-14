@@ -20,6 +20,14 @@ export type BusinessDashboardMrrServiceRow = {
   averageMrrCadCents: number;
 };
 
+export type BusinessDashboardServiceOverviewRow = {
+  channel: string;
+  label: string;
+  clientCount: number;
+  mrrCadCents: number;
+  averageMrrCadCents: number | null;
+};
+
 export type BusinessDashboardAgencyRow = {
   id: string;
   name: string;
@@ -28,4 +36,14 @@ export type BusinessDashboardAgencyRow = {
   totalMrrCadCents: number;
   averageMrrCadCents: number | null;
   churnedLast30Days: number;
+};
+
+export type BusinessDashboardMonthlyResultRow = {
+  monthStart: string;
+  monthLabel: string;
+  activeClients: number;
+  totalMrrCadCents: number;
+  newClients: number;
+  churnedClients: number;
+  isCurrentMonth: boolean;
 };

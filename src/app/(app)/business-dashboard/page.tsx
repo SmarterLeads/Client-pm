@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
 import { BusinessDashboardAgencyCards } from "@/components/business-dashboard/business-dashboard-agency-cards";
 import { BusinessDashboardKpiCards } from "@/components/business-dashboard/business-dashboard-kpi-cards";
-import {
-  ActiveClientsByServiceCards,
-  MrrByServiceCards,
-} from "@/components/business-dashboard/business-dashboard-service-cards";
+import { BusinessDashboardMonthlyTable } from "@/components/business-dashboard/business-dashboard-monthly-table";
+import { ServicesOverviewCards } from "@/components/business-dashboard/business-dashboard-service-cards";
 import { canViewBusinessDashboard } from "@/lib/auth/business-dashboard";
+import { mergeServiceOverviewRows } from "@/lib/business-dashboard/service-overview";
 import { getTeamMember } from "@/lib/auth/session";
 import {
   getActiveClientsByService,
   getBusinessDashboardKpis,
+  getMonthlyBusinessResults,
   getMrrByAgency,
   getMrrByService,
 } from "@/lib/queries/business-dashboard";
@@ -24,13 +24,23 @@ export default async function BusinessDashboardPage() {
     redirect("/dashboard");
   }
 
-  const [kpis, mrrByAgency, clientsByService, mrrByService] =
+  const canViewMonthlyResults = teamMember.can_view_mrr;
+
+  const [kpis, mrrByAgency, clientsByService, mrrByService, monthlyResults] =
     await Promise.all([
       getBusinessDashboardKpis(),
       getMrrByAgency(),
       getActiveClientsByService(),
       getMrrByService(),
+      canViewMonthlyResults
+        ? getMonthlyBusinessResults()
+        : Promise.resolve(null),
     ]);
+
+  const servicesOverview = mergeServiceOverviewRows(
+    clientsByService,
+    mrrByService,
+  );
 
   return (
     <div className="space-y-6">
@@ -49,15 +59,19 @@ export default async function BusinessDashboardPage() {
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold tracking-tight">
-          Active Clients by Service
+          Services Overview
         </h2>
-        <ActiveClientsByServiceCards data={clientsByService} />
+        <ServicesOverviewCards data={servicesOverview} />
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold tracking-tight">MRR by Service</h2>
-        <MrrByServiceCards data={mrrByService} />
-      </section>
+      {canViewMonthlyResults && monthlyResults ? (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Monthly Results
+          </h2>
+          <BusinessDashboardMonthlyTable rows={monthlyResults} />
+        </section>
+      ) : null}
     </div>
   );
 }

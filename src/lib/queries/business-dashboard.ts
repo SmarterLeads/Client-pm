@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   BusinessDashboardAgencyRow,
   BusinessDashboardKpis,
+  BusinessDashboardMonthlyResultRow,
   BusinessDashboardMrrServiceRow,
   BusinessDashboardServiceRow,
 } from "@/lib/business-dashboard/types";
@@ -11,6 +12,7 @@ import type {
 export type {
   BusinessDashboardAgencyRow,
   BusinessDashboardKpis,
+  BusinessDashboardMonthlyResultRow,
   BusinessDashboardMrrServiceRow,
   BusinessDashboardServiceRow,
 } from "@/lib/business-dashboard/types";
@@ -28,6 +30,139 @@ function thirtyDaysAgoIso() {
   const date = new Date();
   date.setDate(date.getDate() - 30);
   return date.toISOString();
+}
+
+function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfMonth(monthStart: Date): Date {
+  return new Date(
+    monthStart.getFullYear(),
+    monthStart.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
+}
+
+function formatMonthLabel(monthStart: Date): string {
+  return monthStart.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function buildMonthlyRange(
+  earliestCreatedAt: Date | null,
+  maxMonths = 12,
+): Date[] {
+  const currentMonthStart = startOfMonth(new Date());
+  const rangeFloor = new Date(
+    currentMonthStart.getFullYear(),
+    currentMonthStart.getMonth() - (maxMonths - 1),
+    1,
+  );
+
+  let rangeStart = rangeFloor;
+  if (earliestCreatedAt) {
+    const earliestMonth = startOfMonth(earliestCreatedAt);
+    if (earliestMonth > rangeStart) {
+      rangeStart = earliestMonth;
+    }
+  }
+
+  const months: Date[] = [];
+  let cursor = new Date(currentMonthStart);
+
+  while (cursor >= rangeStart && months.length < maxMonths) {
+    months.push(new Date(cursor));
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
+  }
+
+  return months;
+}
+
+export async function getMonthlyBusinessResults(): Promise<
+  BusinessDashboardMonthlyResultRow[]
+> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, status, created_at, updated_at, mrr_cents, currency");
+
+  if (error) throw new Error(error.message);
+
+  const clients = data ?? [];
+  const currentMonthStart = startOfMonth(new Date());
+  const currentActiveMrrCadCents = clients.reduce((sum, client) => {
+    if (client.status !== "active") return sum;
+    return (
+      sum +
+      mrrCentsToCad(
+        client.mrr_cents ?? 0,
+        normalizeClientCurrency(client.currency),
+      )
+    );
+  }, 0);
+
+  const earliestCreatedAt =
+    clients.length > 0
+      ? clients.reduce((earliest, client) => {
+          const createdAt = new Date(client.created_at);
+          return createdAt < earliest ? createdAt : earliest;
+        }, new Date(clients[0]!.created_at))
+      : null;
+
+  return buildMonthlyRange(earliestCreatedAt).map((monthStart) => {
+    const monthEnd = endOfMonth(monthStart);
+    const nextMonthStart = new Date(
+      monthStart.getFullYear(),
+      monthStart.getMonth() + 1,
+      1,
+    );
+
+    let activeClients = 0;
+    let newClients = 0;
+    let churnedClients = 0;
+
+    for (const client of clients) {
+      const createdAt = new Date(client.created_at);
+      const updatedAt = new Date(client.updated_at);
+
+      if (createdAt >= monthStart && createdAt < nextMonthStart) {
+        newClients += 1;
+      }
+
+      if (
+        client.status === "churned" &&
+        updatedAt >= monthStart &&
+        updatedAt < nextMonthStart
+      ) {
+        churnedClients += 1;
+      }
+
+      if (
+        createdAt <= monthEnd &&
+        (client.status === "active" || updatedAt > monthEnd)
+      ) {
+        activeClients += 1;
+      }
+    }
+
+    return {
+      monthStart: monthStart.toISOString(),
+      monthLabel: formatMonthLabel(monthStart),
+      activeClients,
+      totalMrrCadCents: currentActiveMrrCadCents,
+      newClients,
+      churnedClients,
+      isCurrentMonth: monthStart.getTime() === currentMonthStart.getTime(),
+    };
+  });
 }
 
 export async function getBusinessDashboardKpis(): Promise<BusinessDashboardKpis> {
