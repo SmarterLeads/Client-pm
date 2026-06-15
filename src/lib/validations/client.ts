@@ -239,6 +239,13 @@ export const updateClientOverviewFieldsSchema = z
       )
       .optional(),
     currency: z.enum(["CAD", "USD"]).optional(),
+    is_hourly: z.boolean().optional(),
+    hourly_rate: z
+      .preprocess(
+        (v) => (v === null || v === "" ? null : v),
+        z.union([z.coerce.number().min(0).max(999_999.99), z.null()]).optional(),
+      )
+      .optional(),
     status: z.enum(CLIENT_STATUSES).optional(),
     rag_status: z.enum(ragStatuses).optional(),
     account_manager_id: z

@@ -18,6 +18,8 @@ import {
 } from "@/lib/queries/clients";
 import { getClientUpdates } from "@/lib/queries/client-updates";
 import { getClientCredentials } from "@/lib/queries/credentials";
+import { getClientBillableHoursThisMonth } from "@/lib/queries/hourly-billing";
+import { buildClientHourlyWorkSummary } from "@/lib/clients/hourly-billing";
 import { clientActivityFiltersSchema } from "@/lib/validations/client-activity";
 import { clientInteractionFiltersSchema } from "@/lib/validations/interaction";
 import { clientUpdateFiltersSchema } from "@/lib/validations/client-update";
@@ -116,6 +118,15 @@ export default async function ClientDetailPage({
       getTeamMember(),
     ]);
 
+  const canViewMrr = teamMember?.can_view_mrr ?? false;
+  const hourlyWork =
+    canViewMrr && client.is_hourly
+      ? buildClientHourlyWorkSummary(
+          await getClientBillableHoursThisMonth(id).catch(() => 0),
+          Number(client.hourly_rate ?? 0),
+        )
+      : null;
+
   return (
     <div className="space-y-4">
       <Link
@@ -150,7 +161,8 @@ export default async function ClientDetailPage({
           access={access}
           portalUsers={portalUsers ?? []}
           platformConnections={platformConnections ?? []}
-          canViewMrr={teamMember?.can_view_mrr ?? false}
+          canViewMrr={canViewMrr}
+          hourlyWork={hourlyWork}
           isAdmin={teamMember ? isAdmin(teamMember.role) : false}
           currentTeamMemberId={teamMember?.id ?? null}
         />

@@ -66,3 +66,13 @@ export type MonthlyFinancialSaveInput = {
   usdSales: number;
   usdExpenses: number;
 };
+
+export type HourlyBillingRow = {
+  clientId: string;
+  clientName: string;
+  agencyName: string | null;
+  hourlyRate: number;
+  currency: string;
+  hours: number;
+  amountDue: number;
+};

@@ -21,6 +21,7 @@ import type {
   ClientProjectRow,
 } from "@/lib/queries/clients";
 import type { ClientCredentialsResult } from "@/lib/credentials/types";
+import type { ClientHourlyWorkSummary } from "@/lib/clients/hourly-billing";
 import type { InteractionRow } from "@/lib/interactions/types";
 import type { ClientUpdateRow } from "@/lib/updates/types";
 import type { Client, ClientContact, ClientUser, TeamMember } from "@/lib/types";
@@ -56,6 +57,7 @@ type ClientDetailTabsProps = {
   portalUsers: ClientUser[];
   platformConnections: ClientPlatformConnection[];
   canViewMrr: boolean;
+  hourlyWork?: ClientHourlyWorkSummary | null;
   isAdmin: boolean;
   currentTeamMemberId: string | null;
 };
@@ -77,6 +79,7 @@ export function ClientDetailTabs({
   portalUsers,
   platformConnections,
   canViewMrr,
+  hourlyWork = null,
   isAdmin,
   currentTeamMemberId,
 }: ClientDetailTabsProps) {
@@ -161,6 +164,7 @@ export function ClientDetailTabs({
           portalUsers={portalUsers ?? []}
           platformConnections={platformConnections ?? []}
           canViewMrr={canViewMrr}
+          hourlyWork={hourlyWork}
         />
       ) : null}
 

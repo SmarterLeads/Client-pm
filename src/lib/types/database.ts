@@ -2340,8 +2340,10 @@ export type Database = {
           ghl_pipeline_config: Json | null
           gmb_url: string | null
           hst_number: string | null
+          hourly_rate: number
           id: string
           industry: string | null
+          is_hourly: boolean
           lead_quality_score: number | null
           legal_name: string | null
           marketing_brief: string | null
@@ -2380,8 +2382,10 @@ export type Database = {
           ghl_pipeline_config?: Json | null
           gmb_url?: string | null
           hst_number?: string | null
+          hourly_rate?: number
           id?: string
           industry?: string | null
+          is_hourly?: boolean
           lead_quality_score?: number | null
           legal_name?: string | null
           marketing_brief?: string | null
@@ -2420,8 +2424,10 @@ export type Database = {
           ghl_pipeline_config?: Json | null
           gmb_url?: string | null
           hst_number?: string | null
+          hourly_rate?: number
           id?: string
           industry?: string | null
+          is_hourly?: boolean
           lead_quality_score?: number | null
           legal_name?: string | null
           marketing_brief?: string | null

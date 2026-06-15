@@ -6,6 +6,7 @@ import {
 } from "@/lib/clients/mrr-breakdown";
 import { normalizeClientCurrency } from "@/lib/clients/overview-fields";
 import { createClient } from "@/lib/supabase/server";
+import { pm, pmRpc } from "@/lib/supabase/pm";
 import { buildMonthlyFinancialRow } from "@/lib/business-dashboard/financials";
 import type {
   BusinessDashboardAgencyRow,
@@ -13,9 +14,9 @@ import type {
   BusinessDashboardMonthlyResultRow,
   BusinessDashboardMrrServiceRow,
   BusinessDashboardServiceRow,
+  HourlyBillingRow,
   MonthlyFinancialRow,
 } from "@/lib/business-dashboard/types";
-import { pm } from "@/lib/supabase/pm";
 
 export type {
   BusinessDashboardAgencyRow,
@@ -23,6 +24,7 @@ export type {
   BusinessDashboardMonthlyResultRow,
   BusinessDashboardMrrServiceRow,
   BusinessDashboardServiceRow,
+  HourlyBillingRow,
   MonthlyFinancialRow,
 } from "@/lib/business-dashboard/types";
 
@@ -425,4 +427,36 @@ export async function getMonthlyFinancials(
     const month = index + 1;
     return buildMonthlyFinancialRow(month, byMonth.get(month));
   });
+}
+
+type HourlyBillingRpcRow = {
+  client_id: string;
+  client_name: string;
+  agency_name: string | null;
+  hourly_rate: number | string;
+  currency: string;
+  hours: number | string;
+  amount_due: number | string;
+};
+
+export async function getHourlyBillingThisMonth(): Promise<HourlyBillingRow[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await pmRpc<HourlyBillingRpcRow[]>(
+    supabase,
+    "get_hourly_billing_this_month",
+    {},
+  );
+
+  if (error) throwQueryError("getHourlyBillingThisMonth", error);
+
+  return (data ?? []).map((row) => ({
+    clientId: row.client_id,
+    clientName: row.client_name,
+    agencyName: row.agency_name,
+    hourlyRate: Number(row.hourly_rate ?? 0),
+    currency: row.currency ?? "CAD",
+    hours: Number(row.hours ?? 0),
+    amountDue: Number(row.amount_due ?? 0),
+  }));
 }

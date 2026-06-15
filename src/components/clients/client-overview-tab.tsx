@@ -11,9 +11,14 @@ import { ClientContactsSection } from "@/components/clients/client-contacts-sect
 import { ClientOverviewMarketingConfigSection } from "@/components/clients/client-overview-marketing-config-section";
 import { EditAddressSheet } from "@/components/clients/edit-address-sheet";
 import { InlineDollarField } from "@/components/clients/inline-dollar-field";
+import { InlineHourlyRateField } from "@/components/clients/inline-hourly-rate-field";
 import { InlineSelectField } from "@/components/clients/inline-select-field";
 import { InlineTextField } from "@/components/clients/inline-text-field";
 import { LastContactedIndicator } from "@/components/clients/last-contacted-indicator";
+import {
+  buildClientHourlyWorkSummary,
+  type ClientHourlyWorkSummary,
+} from "@/lib/clients/hourly-billing";
 import {
   OverviewCard,
   OverviewFieldRow,
@@ -48,6 +53,7 @@ type ClientOverviewTabProps = {
   portalUsers: ClientUser[];
   platformConnections: ClientPlatformConnection[];
   canViewMrr: boolean;
+  hourlyWork?: ClientHourlyWorkSummary | null;
 };
 
 export function ClientOverviewTab({
@@ -59,6 +65,7 @@ export function ClientOverviewTab({
   portalUsers = [],
   platformConnections,
   canViewMrr,
+  hourlyWork = null,
 }: ClientOverviewTabProps) {
   const [addressEditOpen, setAddressEditOpen] = useState(false);
 
@@ -226,8 +233,44 @@ export function ClientOverviewTab({
                   onSave={(cents) => saveField({ mrr_cents: cents })}
                 />
               </OverviewFieldRow>
+              <OverviewFieldRow editable label="Hourly Client">
+                <InlineSelectField
+                  aria-label="Hourly client"
+                  value={client.is_hourly ? "true" : "false"}
+                  options={[
+                    { value: "false", label: "No" },
+                    { value: "true", label: "Yes" },
+                  ]}
+                  className="min-w-[5rem]"
+                  successMessage="Client updated"
+                  onSave={(value) =>
+                    saveField({ is_hourly: value === "true" })
+                  }
+                />
+              </OverviewFieldRow>
+              {client.is_hourly ? (
+                <OverviewFieldRow editable label="Hourly Rate (per hour)">
+                  <InlineHourlyRateField
+                    rate={Number(client.hourly_rate ?? 0)}
+                    currency={currencyValue}
+                    aria-label="Hourly rate per hour"
+                    onSave={(rate) =>
+                      saveField({ hourly_rate: rate ?? 0 })
+                    }
+                  />
+                </OverviewFieldRow>
+              ) : null}
               <ClientMrrBreakdownSection
                 client={client}
+                hourlyWork={
+                  client.is_hourly
+                    ? (hourlyWork ??
+                      buildClientHourlyWorkSummary(
+                        0,
+                        Number(client.hourly_rate ?? 0),
+                      ))
+                    : null
+                }
                 onSaveBreakdown={(mrr_breakdown) =>
                   saveField({ mrr_breakdown })
                 }

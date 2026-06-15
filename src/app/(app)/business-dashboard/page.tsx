@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BusinessDashboardAgencyCards } from "@/components/business-dashboard/business-dashboard-agency-cards";
 import { BusinessDashboardFinancialsTable } from "@/components/business-dashboard/business-dashboard-financials-table";
+import { BusinessDashboardHourlyBillingTable } from "@/components/business-dashboard/business-dashboard-hourly-billing-table";
 import { BusinessDashboardKpiCards } from "@/components/business-dashboard/business-dashboard-kpi-cards";
 import { BusinessDashboardMonthlyTable } from "@/components/business-dashboard/business-dashboard-monthly-table";
 import { BusinessDashboardSectionError } from "@/components/business-dashboard/business-dashboard-section-error";
@@ -14,6 +15,7 @@ import { getTeamMember } from "@/lib/auth/session";
 import {
   getActiveClientsByService,
   getBusinessDashboardKpis,
+  getHourlyBillingThisMonth,
   getMonthlyBusinessResults,
   getMonthlyFinancials,
   getMrrByAgency,
@@ -45,6 +47,12 @@ export default async function BusinessDashboardPage() {
   const currentYear = new Date().getFullYear();
 
   const kpis = await fetchDashboardSection("kpis", getBusinessDashboardKpis);
+  const hourlyBilling = canViewMonthlyResults
+    ? await fetchDashboardSection(
+        "hourlyBilling",
+        getHourlyBillingThisMonth,
+      )
+    : null;
   const mrrByAgency = await fetchDashboardSection(
     "mrrByAgency",
     getMrrByAgency,
@@ -107,6 +115,19 @@ export default async function BusinessDashboardPage() {
           <BusinessDashboardSectionError section="services overview" />
         )}
       </section>
+
+      {canViewMonthlyResults ? (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Hourly Billing This Month
+          </h2>
+          {hourlyBilling ? (
+            <BusinessDashboardHourlyBillingTable rows={hourlyBilling} />
+          ) : (
+            <BusinessDashboardSectionError section="hourly billing" />
+          )}
+        </section>
+      ) : null}
 
       {canViewMonthlyResults ? (
         <section className="space-y-4">

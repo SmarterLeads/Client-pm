@@ -3,6 +3,10 @@
 import { InlineDollarField } from "@/components/clients/inline-dollar-field";
 import { OverviewFieldRow } from "@/components/clients/overview-ui";
 import {
+  formatHourlyWorkSummary,
+  type ClientHourlyWorkSummary,
+} from "@/lib/clients/hourly-billing";
+import {
   activeMrrBreakdownKeys,
   channelMrrCents,
   getMrrBreakdownItemLabel,
@@ -14,6 +18,7 @@ import type { Client } from "@/lib/types";
 
 type ClientMrrBreakdownSectionProps = {
   client: Client;
+  hourlyWork?: ClientHourlyWorkSummary | null;
   onSaveBreakdown: (
     breakdown: Record<string, number>,
   ) => Promise<{ error?: string }>;
@@ -21,6 +26,7 @@ type ClientMrrBreakdownSectionProps = {
 
 export function ClientMrrBreakdownSection({
   client,
+  hourlyWork,
   onSaveBreakdown,
 }: ClientMrrBreakdownSectionProps) {
   const currency = normalizeClientCurrency(client.currency);
@@ -44,7 +50,7 @@ export function ClientMrrBreakdownSection({
         MRR Breakdown
       </p>
 
-      {itemKeys.length === 0 ? (
+      {itemKeys.length === 0 && !(client.is_hourly && hourlyWork) ? (
         <p className="px-2 text-sm text-muted-foreground">
           No marketing channels or tracking tools configured.
         </p>
@@ -64,6 +70,17 @@ export function ClientMrrBreakdownSection({
               />
             </OverviewFieldRow>
           ))}
+          {client.is_hourly && hourlyWork ? (
+            <OverviewFieldRow label="Hourly Work">
+              <span className="px-1 text-sm font-medium tabular-nums">
+                {formatHourlyWorkSummary(
+                  hourlyWork.billableHours,
+                  hourlyWork.hourlyRate,
+                  currency,
+                )}
+              </span>
+            </OverviewFieldRow>
+          ) : null}
         </div>
       )}
     </div>
