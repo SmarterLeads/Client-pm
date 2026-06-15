@@ -18,6 +18,7 @@ import type { AttachmentListItem } from "@/lib/attachments/types";
 import { cn } from "@/lib/utils";
 import type {
   ClientPlatformConnection,
+  ClientProjectOpenTaskRow,
   ClientProjectRow,
 } from "@/lib/queries/clients";
 import type { ClientCredentialsResult } from "@/lib/credentials/types";
@@ -48,6 +49,7 @@ type ClientDetailTabsProps = {
   lastInteractionAt: string | null;
   teamMembers: Pick<TeamMember, "id" | "name" | "email">[];
   projects: ClientProjectRow[];
+  openTasksByProject: Record<string, ClientProjectOpenTaskRow[]>;
   updates: ClientUpdateRow[];
   interactions: InteractionRow[];
   historyPanel: React.ReactNode;
@@ -70,6 +72,7 @@ export function ClientDetailTabs({
   lastInteractionAt,
   teamMembers,
   projects,
+  openTasksByProject,
   updates,
   interactions,
   historyPanel,
@@ -169,7 +172,11 @@ export function ClientDetailTabs({
       ) : null}
 
       {activeTab === "projects" ? (
-        <ClientProjectsTab clientId={client.id} projects={projects ?? []} />
+        <ClientProjectsTab
+          clientId={client.id}
+          projects={projects ?? []}
+          openTasksByProject={openTasksByProject}
+        />
       ) : null}
 
       {activeTab === "updates" ? (

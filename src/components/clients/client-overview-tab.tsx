@@ -69,6 +69,8 @@ export function ClientOverviewTab({
 }: ClientOverviewTabProps) {
   const [addressEditOpen, setAddressEditOpen] = useState(false);
 
+  console.log("[ClientOverview] canViewMrr:", canViewMrr, "is_hourly:", client.is_hourly, "hourly_rate:", client.hourly_rate);
+
   const saveField = (updates: Record<string, unknown>) =>
     updateClientOverviewFields(client.id, updates);
 

@@ -31,8 +31,17 @@ import type {
   Json,
   ProjectStatus,
   RagStatus,
+  TaskPriority,
+  TaskStatus,
   TeamMember,
 } from "@/lib/types";
+
+const OPEN_TASK_STATUSES: TaskStatus[] = [
+  "backlog",
+  "todo",
+  "in_progress",
+  "in_review",
+];
 import type { ClientStatus } from "@/lib/pm/constants";
 
 export type { InteractionRow as ClientInteractionRow } from "@/lib/interactions/types";
@@ -102,6 +111,8 @@ function normalizeClientRow(client: Client): Client {
     account_manager_id: client.account_manager_id ?? null,
     marketing_channels: client.marketing_channels ?? [],
     address_country: client.address_country ?? "Canada",
+    is_hourly: client.is_hourly ?? false,
+    hourly_rate: Number(client.hourly_rate ?? 0),
   };
 }
 
@@ -421,6 +432,89 @@ export async function getClientProjects(
       done_tasks,
     };
   });
+}
+
+export type ClientProjectOpenTaskRow = {
+  id: string;
+  project_id: string;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  due_date: string | null;
+  section_name: string | null;
+  assignee_name: string | null;
+  assignee_avatar_url: string | null;
+};
+
+export async function getClientOpenTasks(
+  clientId: string,
+): Promise<ClientProjectOpenTaskRow[]> {
+  const supabase = await createClient();
+
+  const { data: projects, error: projectsError } = await pm(supabase)
+    .from("projects")
+    .select("id")
+    .eq("client_id", clientId);
+
+  if (projectsError) {
+    console.error("[getClientOpenTasks] projects", projectsError.message);
+    return [];
+  }
+
+  const projectIds = (projects ?? []).map((p) => p.id);
+  if (projectIds.length === 0) return [];
+
+  const { data, error } = await pm(supabase)
+    .from("tasks")
+    .select(
+      `
+      id,
+      project_id,
+      title,
+      status,
+      priority,
+      due_date,
+      section:project_sections(name),
+      assignee:team_members(name, avatar_url)
+    `,
+    )
+    .in("project_id", projectIds)
+    .in("status", OPEN_TASK_STATUSES)
+    .is("parent_task_id", null)
+    .order("project_id", { ascending: true })
+    .order("due_date", { ascending: true, nullsFirst: false });
+
+  if (error) {
+    console.error("[getClientOpenTasks]", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    project_id: row.project_id,
+    title: row.title,
+    status: row.status,
+    priority: row.priority,
+    due_date: row.due_date,
+    section_name: row.section?.name ?? null,
+    assignee_name: row.assignee?.name ?? null,
+    assignee_avatar_url: row.assignee?.avatar_url ?? null,
+  }));
+}
+
+export function groupClientOpenTasksByProject(
+  tasks: ClientProjectOpenTaskRow[],
+): Record<string, ClientProjectOpenTaskRow[]> {
+  const grouped: Record<string, ClientProjectOpenTaskRow[]> = {};
+
+  for (const task of tasks) {
+    if (!grouped[task.project_id]) {
+      grouped[task.project_id] = [];
+    }
+    grouped[task.project_id].push(task);
+  }
+
+  return grouped;
 }
 
 export async function getClientInteractions(

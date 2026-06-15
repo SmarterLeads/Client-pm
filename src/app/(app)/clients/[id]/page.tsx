@@ -6,7 +6,7 @@ import { ClientHistoryPanel } from "@/components/clients/client-history-panel";
 import { ClientMarketingTab } from "@/components/clients/client-marketing-tab";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAttachmentsForEntity } from "@/lib/queries/attachments";
-import { getTeamMember } from "@/lib/auth/session";
+import { getTeamMember, canViewClientMrr } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/roles";
 import {
   getActiveTeamMembers,
@@ -14,7 +14,9 @@ import {
   getClientInteractions,
   getClientPlatformConnections,
   getClientPortalUsers,
+  getClientOpenTasks,
   getClientProjects,
+  groupClientOpenTasksByProject,
 } from "@/lib/queries/clients";
 import { getClientUpdates } from "@/lib/queries/client-updates";
 import { getClientCredentials } from "@/lib/queries/credentials";
@@ -105,10 +107,11 @@ export default async function ClientDetailPage({
   const { client, primaryContact, contacts, agencyName, lastInteractionAt } =
     result;
 
-  const [teamMembers, projects, updates, interactions, attachments, access, portalUsers, platformConnections, teamMember] =
+  const [teamMembers, projects, openTasks, updates, interactions, attachments, access, portalUsers, platformConnections, teamMember] =
     await Promise.all([
       getActiveTeamMembers().catch(() => [] as Awaited<ReturnType<typeof getActiveTeamMembers>>),
       getClientProjects(id),
+      getClientOpenTasks(id),
       getClientUpdates(id, updateFilters),
       getClientInteractions(id, interactionFilters),
       getAttachmentsForEntity("client", id).catch(() => [] as Awaited<ReturnType<typeof getAttachmentsForEntity>>),
@@ -118,7 +121,10 @@ export default async function ClientDetailPage({
       getTeamMember(),
     ]);
 
-  const canViewMrr = teamMember?.can_view_mrr ?? false;
+  const openTasksByProject = groupClientOpenTasksByProject(openTasks);
+
+  const canViewMrr = canViewClientMrr(teamMember);
+  console.log("[ClientDetailPage] can_view_mrr:", teamMember?.can_view_mrr, "role:", teamMember?.role, "canViewMrr:", canViewMrr, "is_hourly:", client.is_hourly);
   const hourlyWork =
     canViewMrr && client.is_hourly
       ? buildClientHourlyWorkSummary(
@@ -145,6 +151,7 @@ export default async function ClientDetailPage({
           lastInteractionAt={lastInteractionAt ?? null}
           teamMembers={teamMembers ?? []}
           projects={projects ?? []}
+          openTasksByProject={openTasksByProject}
           updates={updates ?? []}
           interactions={interactions ?? []}
           historyPanel={

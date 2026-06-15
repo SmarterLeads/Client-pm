@@ -1,11 +1,20 @@
 ﻿import { pm } from "@/lib/supabase/pm";
 import { createClient } from "@/lib/supabase/server";
 import type { UserPersona } from "@/lib/auth/types";
+import { isAdmin } from "@/lib/auth/roles";
 import type { ClientUser, TeamMember } from "@/lib/types";
 
 export type { UserPersona } from "@/lib/auth/types";
 export type { TeamMemberRole } from "@/lib/auth/roles";
 export { canManageTeam } from "@/lib/auth/roles";
+
+/** MRR, hourly billing, and related client financial fields. */
+export function canViewClientMrr(
+  teamMember: Pick<TeamMember, "can_view_mrr" | "role"> | null | undefined,
+): boolean {
+  if (!teamMember) return false;
+  return teamMember.can_view_mrr || isAdmin(teamMember.role);
+}
 
 export async function getSessionUser() {
   const supabase = await createClient();
