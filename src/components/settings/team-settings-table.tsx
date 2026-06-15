@@ -6,6 +6,7 @@ import { AgencyBadge } from "@/components/team/agency-badge";
 import { AvailabilityToggle } from "@/components/team/availability-toggle";
 import { RoleBadge } from "@/components/team/role-badge";
 import { InviteTeamMemberSheet } from "@/components/settings/invite-team-member-sheet";
+import { TeamMemberNameEditor } from "@/components/settings/team-member-name-editor";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -108,7 +109,14 @@ export function TeamSettingsTable({
                   key={member.id}
                   className={member.is_active ? undefined : "opacity-60"}
                 >
-                  <TableCell className="font-medium">{member.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <TeamMemberNameEditor
+                      memberId={member.id}
+                      name={member.name}
+                      editable={isAdmin}
+                      onSaved={() => router.refresh()}
+                    />
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {member.email}
                   </TableCell>

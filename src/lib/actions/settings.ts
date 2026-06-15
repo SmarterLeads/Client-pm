@@ -10,6 +10,7 @@ import {
   changePasswordSchema,
   inviteTeamMemberSchema,
   updateAccountProfileSchema,
+  updateTeamMemberNameSchema,
   updateTeamMemberRoleSchema,
 } from "@/lib/validations/settings";
 import type { z } from "zod";
@@ -404,6 +405,42 @@ export async function updateTeamMemberRole(
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "Failed to update role.",
+    };
+  }
+}
+
+export async function updateTeamMemberName(
+  teamMemberId: string,
+  name: string,
+): Promise<{ error?: string }> {
+  try {
+    await requireAdmin();
+
+    const parsed = updateTeamMemberNameSchema.safeParse({ name });
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Invalid name." };
+    }
+
+    const supabase = createServiceClient();
+    const { error } = await pm(supabase)
+      .from("team_members")
+      .update({
+        name: parsed.data.name,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", teamMemberId);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    revalidatePath("/settings/team");
+    revalidateSettingsPaths();
+    return {};
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : "Failed to update team member name.",
     };
   }
 }

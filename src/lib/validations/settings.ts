@@ -70,3 +70,7 @@ export const changePasswordSchema = z
 export const updateTeamMemberRoleSchema = z.object({
   role: z.enum(["admin", "manager", "member", "agency_contact"]),
 });
+
+export const updateTeamMemberNameSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200),
+});
