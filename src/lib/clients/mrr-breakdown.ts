@@ -1,5 +1,6 @@
 import {
   getMarketingChannelLabel,
+  MARKETING_CHANNEL_VALUES,
   type ClientCurrency,
 } from "@/lib/clients/overview-fields";
 
@@ -42,7 +43,15 @@ export function sumMrrBreakdown(breakdown: MrrBreakdown): number {
 export function orderedMrrBreakdownChannels(
   marketingChannels: string[] | null | undefined,
 ): string[] {
-  return [...new Set((marketingChannels ?? []).filter(Boolean))];
+  const selected = new Set((marketingChannels ?? []).filter(Boolean));
+  const ordered = MARKETING_CHANNEL_VALUES.filter((channel) =>
+    selected.has(channel),
+  );
+  const extras = [...selected].filter(
+    (channel) =>
+      !(MARKETING_CHANNEL_VALUES as readonly string[]).includes(channel),
+  );
+  return [...ordered, ...extras];
 }
 
 export function orderedTrackingCrmBreakdownKeys(

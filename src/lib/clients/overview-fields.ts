@@ -12,6 +12,7 @@ export const MARKETING_CHANNEL_OPTIONS = [
   { value: "tiktok_ads", label: "TikTok Ads" },
   { value: "seo", label: "SEO" },
   { value: "linkedin_ads", label: "LinkedIn Ads" },
+  { value: "email_marketing", label: "Email Marketing" },
   { value: "website_maintenance", label: "Website Maintenance" },
   { value: "ga4", label: "GA4" },
 ] as const;
@@ -23,6 +24,7 @@ export const MARKETING_CHANNEL_VALUES = [
   "tiktok_ads",
   "seo",
   "linkedin_ads",
+  "email_marketing",
   "website_maintenance",
   "ga4",
 ] as const;
@@ -241,7 +243,7 @@ export function getTrackingSetupLabel(value: string | null | undefined): string 
 /** Marketing channels that do not have an associated platform account ID. */
 export const MARKETING_CHANNELS_WITHOUT_PLATFORM_ID = new Set<
   MarketingChannel
->(["seo", "website_maintenance"]);
+>(["seo", "email_marketing", "website_maintenance"]);
 
 export type ChannelPlatformIdConfig = {
   platform: string;

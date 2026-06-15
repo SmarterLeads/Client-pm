@@ -5,6 +5,7 @@ const CHANNEL_ACCENT_COLORS: Record<string, string> = {
   tiktok_ads: "#ec4899",
   seo: "#10b981",
   linkedin_ads: "#06b6d4",
+  email_marketing: "#10b981",
   website_maintenance: "#8b5cf6",
   ga4: "#f59e0b",
   ghl: "#f97316",

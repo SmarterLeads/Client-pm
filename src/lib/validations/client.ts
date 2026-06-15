@@ -76,6 +76,10 @@ export const createClientSchema = z.object({
     )
     .optional(),
   primary_contact: primaryContactSchema,
+  marketing_channels: z
+    .array(z.enum(MARKETING_CHANNEL_VALUES))
+    .optional()
+    .default([]),
 });
 
 export type CreateClientInput = z.infer<typeof createClientSchema>;

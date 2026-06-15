@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sheet-form";
 import { Textarea } from "@/components/ui/textarea";
 import { CLIENT_STATUSES } from "@/lib/pm/constants";
+import { MARKETING_CHANNEL_OPTIONS } from "@/lib/clients/overview-fields";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { AgencyListRow } from "@/lib/queries/agencies";
 import type { TeamMember } from "@/lib/types";
@@ -157,6 +158,7 @@ export function ClientForm({
           <Field id="notes" label="Notes" sheetMode error={state.fieldErrors?.notes?.[0]}>
             <Textarea id="notes" name="notes" rows={4} className={textareaClass} />
           </Field>
+          <MarketingChannelsField sheetMode />
           <Field id="contact_first_name" label="First name" required sheetMode error={state.fieldErrors?.["primary_contact.first_name"]?.[0]}>
             <Input id="contact_first_name" name="contact_first_name" required className={inputClass} />
           </Field>
@@ -218,6 +220,12 @@ export function ClientForm({
             </div>
           </section>
           <section className="space-y-4">
+            <h2 className="text-sm font-medium text-muted-foreground">
+              Marketing channels
+            </h2>
+            <MarketingChannelsField />
+          </section>
+          <section className="space-y-4">
             <h2 className="text-sm font-medium text-muted-foreground">Primary contact</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="contact_first_name" label="First name" required error={state.fieldErrors?.["primary_contact.first_name"]?.[0]}>
@@ -260,6 +268,37 @@ export function ClientForm({
       )}
     </form>
   );
+}
+
+function MarketingChannelsField({ sheetMode = false }: { sheetMode?: boolean }) {
+  const grid = (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {MARKETING_CHANNEL_OPTIONS.map((option) => (
+        <label
+          key={option.value}
+          className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm transition hover:bg-muted/40"
+        >
+          <input
+            type="checkbox"
+            name="marketing_channels"
+            value={option.value}
+            className="size-4 rounded border-input"
+          />
+          <span>{option.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+
+  if (sheetMode) {
+    return (
+      <SheetFormField label="Marketing channels">
+        {grid}
+      </SheetFormField>
+    );
+  }
+
+  return grid;
 }
 
 function Field({

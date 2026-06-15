@@ -11,6 +11,7 @@ export const SERVICE_OVERVIEW_CHANNEL_ORDER = [
   "microsoft_ads",
   "tiktok_ads",
   "linkedin_ads",
+  "email_marketing",
   "ghl",
   "whatconverts",
 ] as const;

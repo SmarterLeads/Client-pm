@@ -71,6 +71,7 @@ function parseCreateClientForm(formData: FormData) {
     website_url: formData.get("website_url"),
     gmb_url: formData.get("gmb_url"),
     business_phone: formData.get("business_phone"),
+    marketing_channels: formData.getAll("marketing_channels"),
     primary_contact: {
       first_name: formData.get("contact_first_name"),
       last_name: formData.get("contact_last_name"),
@@ -179,6 +180,15 @@ export async function createClient(
       clientPayload,
       contactPayload,
     );
+
+    const marketingChannels = normalizeMarketingChannelsPayload(
+      parsed.data.marketing_channels,
+    );
+    if (marketingChannels.length > 0) {
+      await updateClientWithTeamMemberContext(teamMember.id, clientId, {
+        marketing_channels: marketingChannels,
+      });
+    }
 
     console.log("[createClient] created client:", clientId);
     revalidateClient(clientId);

@@ -6,6 +6,7 @@ export const DEFAULT_UPDATE_CHANNEL_OPTIONS = [
   { value: "tiktok_ads", label: "TikTok Ads" },
   { value: "seo", label: "SEO" },
   { value: "linkedin_ads", label: "LinkedIn Ads" },
+  { value: "email_marketing", label: "Email Marketing" },
   { value: "website_maintenance", label: "Website Maintenance" },
   { value: "ga4", label: "GA4" },
   { value: "ghl", label: "GHL" },
@@ -24,6 +25,8 @@ const CHANNEL_BADGE_CLASSES: Record<string, string> = {
   tiktok_ads: "bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-200",
   seo: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
   linkedin_ads: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200",
+  email_marketing:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
   website_maintenance:
     "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
   ga4: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
