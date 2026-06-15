@@ -39,10 +39,10 @@ import { normalizeRichTextHtml } from "@/lib/rich-text";
 import { closeTaskDrawer } from "@/lib/stores/task-drawer-store";
 import { cn } from "@/lib/utils";
 import { DELETE_TASK_CONFIRM_MESSAGE } from "@/lib/tasks/constants";
+import { getTaskStatusSelectOptions } from "@/lib/tasks/status-options";
 import { PmEnumValues } from "@/lib/types/enums";
 import { XIcon } from "lucide-react";
 
-const statuses = PmEnumValues.task_status;
 const priorities = PmEnumValues.task_priority;
 
 const commentInitial: TaskFormState = {};
@@ -274,10 +274,7 @@ export function TaskDrawer({
                 <FieldSelect
                   label="Status"
                   value={detail.task.status}
-                  options={statuses.map((s) => ({
-                    value: s,
-                    label: s.replace("_", " "),
-                  }))}
+                  options={getTaskStatusSelectOptions(detail.task.status)}
                   onChange={(v) => saveField({ status: v })}
                 />
                 <FieldSelect

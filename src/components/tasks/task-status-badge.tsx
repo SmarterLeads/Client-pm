@@ -1,14 +1,6 @@
 import type { TaskStatus } from "@/lib/types";
+import { TASK_STATUS_LABELS } from "@/lib/tasks/status-options";
 import { cn } from "@/lib/utils";
-
-const labels: Record<TaskStatus, string> = {
-  backlog: "Backlog",
-  todo: "To Do",
-  in_progress: "In Progress",
-  in_review: "In Review",
-  done: "Done",
-  cancelled: "Cancelled",
-};
 
 const statusClassName: Record<TaskStatus, string> = {
   backlog: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
@@ -36,7 +28,7 @@ export function TaskStatusBadge({
         className,
       )}
     >
-      {labels[status]}
+      {TASK_STATUS_LABELS[status]}
     </span>
   );
 }

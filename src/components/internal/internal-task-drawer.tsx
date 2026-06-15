@@ -28,10 +28,10 @@ import { normalizeRichTextHtml } from "@/lib/rich-text";
 import { closeInternalTaskDrawer } from "@/lib/stores/internal-task-drawer-store";
 import { cn } from "@/lib/utils";
 import { DELETE_TASK_CONFIRM_MESSAGE } from "@/lib/tasks/constants";
+import { getTaskStatusSelectOptions } from "@/lib/tasks/status-options";
 import { PmEnumValues } from "@/lib/types/enums";
 import { XIcon } from "lucide-react";
 
-const statuses = PmEnumValues.task_status;
 const priorities = PmEnumValues.task_priority;
 
 type InternalTaskDrawerProps = {
@@ -239,11 +239,13 @@ export function InternalTaskDrawer({
                       saveField({ status: event.target.value })
                     }
                   >
-                    {statuses.map((status) => (
-                      <option key={status} value={status}>
-                        {status.replace("_", " ")}
-                      </option>
-                    ))}
+                    {getTaskStatusSelectOptions(detail.task.status).map(
+                      (option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </div>
                 <div>
