@@ -13,6 +13,7 @@ type InlineSelectFieldProps = {
   onSave: (value: string) => Promise<{ error?: string }>;
   className?: string;
   "aria-label": string;
+  successMessage?: string;
 };
 
 export function InlineSelectField({
@@ -21,6 +22,7 @@ export function InlineSelectField({
   onSave,
   className,
   "aria-label": ariaLabel,
+  successMessage = "Client updated",
 }: InlineSelectFieldProps) {
   const router = useRouter();
   const [localValue, setLocalValue] = useState(value);
@@ -45,7 +47,7 @@ export function InlineSelectField({
         setLocalValue(value);
         return;
       }
-      toastSuccess("Client updated");
+      toastSuccess(successMessage);
       router.refresh();
     });
   }

@@ -6,6 +6,10 @@ import {
   createInternalProject,
   type InternalFormState,
 } from "@/lib/actions/internal";
+import {
+  PROJECT_STATUS_OPTIONS,
+  RAG_STATUS_OPTIONS,
+} from "@/lib/projects/field-options";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Button } from "@/components/ui/button";
@@ -20,11 +24,8 @@ import {
   sheetSelectClassName,
 } from "@/components/ui/sheet-form";
 import type { TeamMember } from "@/lib/types";
-import { PmEnumValues } from "@/lib/types/enums";
 
 const initialState: InternalFormState = {};
-const statuses = PmEnumValues.project_status;
-const ragStatuses = PmEnumValues.rag_status;
 
 type InternalProjectFormProps = {
   teamMembers: Pick<TeamMember, "id" | "name" | "email">[];
@@ -109,9 +110,9 @@ export function InternalProjectForm({
           defaultValue="planned"
           className={selectClass}
         >
-          {statuses.map((s) => (
-            <option key={s} value={s}>
-              {s.replace("_", " ").replace(/^\w/, (m) => m.toUpperCase())}
+          {PROJECT_STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
             </option>
           ))}
         </select>
@@ -129,9 +130,9 @@ export function InternalProjectForm({
           defaultValue="green"
           className={selectClass}
         >
-          {ragStatuses.map((r) => (
-            <option key={r} value={r}>
-              {r.charAt(0).toUpperCase() + r.slice(1)}
+          {RAG_STATUS_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.label}
             </option>
           ))}
         </select>
@@ -207,9 +208,9 @@ export function InternalProjectForm({
           defaultValue="planned"
           className={selectClass}
         >
-          {statuses.map((s) => (
-            <option key={s} value={s}>
-              {s.replace("_", " ").replace(/^\w/, (m) => m.toUpperCase())}
+          {PROJECT_STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
             </option>
           ))}
         </select>
@@ -227,9 +228,9 @@ export function InternalProjectForm({
           defaultValue="green"
           className={selectClass}
         >
-          {ragStatuses.map((r) => (
-            <option key={r} value={r}>
-              {r.charAt(0).toUpperCase() + r.slice(1)}
+          {RAG_STATUS_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.label}
             </option>
           ))}
         </select>

@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ProjectStatusBadge } from "@/components/clients/project-status-badge";
-import { RagDot } from "@/components/clients/rag-dot";
 import { InternalProjectBoardTab } from "@/components/internal/internal-project-board-tab";
 import { InternalProjectListTab } from "@/components/internal/internal-project-list-tab";
 import { InternalProjectMembersTab } from "@/components/internal/internal-project-members-tab";
 import { InternalProjectMilestonesTab } from "@/components/internal/internal-project-milestones-tab";
+import { ProjectEditableHeader } from "@/components/projects/project-editable-header";
 import { ProjectHealthWidget } from "@/components/projects/project-health-widget";
 import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import { FileUploadZone } from "@/components/shared/file-upload-zone";
 import type { AttachmentListItem } from "@/lib/attachments/types";
+import { updateInternalProject } from "@/lib/actions/internal";
 import type {
   InternalProjectHealth,
   InternalProjectMemberRow,
@@ -38,7 +38,6 @@ type TabId = (typeof tabs)[number]["id"];
 
 type InternalProjectDetailTabsProps = {
   project: InternalProject;
-  ownerName: string | null;
   health: InternalProjectHealth;
   sections: InternalProjectSection[];
   tasks: InternalProjectTaskRow[];
@@ -48,18 +47,8 @@ type InternalProjectDetailTabsProps = {
   attachments: AttachmentListItem[];
 };
 
-function formatDueDate(iso: string | null) {
-  if (!iso) return null;
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 export function InternalProjectDetailTabs({
   project,
-  ownerName,
   health,
   sections,
   tasks,
@@ -71,32 +60,29 @@ export function InternalProjectDetailTabs({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeTab = (searchParams.get("tab") as TabId) || "board";
-  const dueLabel = formatDueDate(project.due_date);
 
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {project.name}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Internal project
-              {ownerName ? ` · ${ownerName}` : ""}
-              {dueLabel ? ` · Due ${dueLabel}` : ""}
-            </p>
-            {project.description ? (
+        <ProjectEditableHeader
+          name={project.name}
+          status={project.status}
+          ragStatus={project.rag_status}
+          dueDate={project.due_date}
+          ownerId={project.owner_id}
+          teamMembers={teamMembers}
+          onUpdate={(updates) => updateInternalProject(project.id, updates)}
+          subtitlePrefix={
+            <span className="text-muted-foreground">Internal project</span>
+          }
+          footer={
+            project.description ? (
               <RichTextDisplay className="mt-2 text-muted-foreground">
                 {project.description}
               </RichTextDisplay>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2">
-            <RagDot status={project.rag_status} />
-            <ProjectStatusBadge status={project.status} />
-          </div>
-        </div>
+            ) : null
+          }
+        />
 
         <ProjectHealthWidget health={health} />
       </div>

@@ -25,7 +25,7 @@ export const createProjectSchema = z.object({
       z.union([z.string().max(5000), z.null()]).optional(),
     )
     .optional(),
-  status: z.enum(projectStatuses),
+  status: z.enum(projectStatuses).default("planned"),
   rag_status: z.enum(ragStatuses),
   start_date: z
     .preprocess(
@@ -48,6 +48,15 @@ export const createProjectSchema = z.object({
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+
+export const updateProjectSchema = createProjectSchema
+  .omit({ client_id: true, template_id: true })
+  .partial()
+  .extend({
+    name: z.string().trim().min(1, "Project name is required").max(200).optional(),
+  });
+
+export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 
 export const projectListFiltersSchema = z.object({
   q: z.string().optional(),

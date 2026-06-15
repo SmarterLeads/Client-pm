@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, Repeat } from "lucide-react";
 import { TaskPriorityDot } from "@/components/projects/task-priority-badge";
+import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import { useTaskDrawer } from "@/components/tasks/task-drawer-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,7 @@ function TaskRow({
       className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
     >
       <TaskPriorityDot priority={task.priority} />
+      <TaskStatusBadge status={task.status} />
 
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
         <span className="truncate font-medium">{task.title}</span>

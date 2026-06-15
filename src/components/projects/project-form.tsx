@@ -9,6 +9,10 @@ import {
   createProject,
   type ProjectFormState,
 } from "@/lib/actions/projects";
+import {
+  PROJECT_STATUS_OPTIONS,
+  RAG_STATUS_OPTIONS,
+} from "@/lib/projects/field-options";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,11 +28,8 @@ import {
 import type { SelectOption } from "@/lib/queries/projects";
 import type { TemplateSelectOption } from "@/lib/templates/types";
 import type { TeamMember } from "@/lib/types";
-import { PmEnumValues } from "@/lib/types/enums";
 
 const initialState: ProjectFormState = {};
-const statuses = PmEnumValues.project_status;
-const ragStatuses = PmEnumValues.rag_status;
 
 type ProjectFormProps = {
   clients: SelectOption[];
@@ -87,17 +88,17 @@ export function ProjectForm({
       </SheetFormField>
       <SheetFormField label="Status" required htmlFor="status" error={state.fieldErrors?.status?.[0]}>
         <select id="status" name="status" required defaultValue="planned" className={selectClass}>
-          {statuses.map((s) => (
-            <option key={s} value={s}>
-              {s.replace("_", " ").replace(/^\w/, (m) => m.toUpperCase())}
+          {PROJECT_STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
             </option>
           ))}
         </select>
       </SheetFormField>
       <SheetFormField label="RAG status" required htmlFor="rag_status" error={state.fieldErrors?.rag_status?.[0]}>
         <select id="rag_status" name="rag_status" required defaultValue="green" className={selectClass}>
-          {ragStatuses.map((r) => (
-            <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+          {RAG_STATUS_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </select>
       </SheetFormField>
@@ -134,17 +135,17 @@ export function ProjectForm({
       </Field>
       <Field id="status" label="Status" required error={state.fieldErrors?.status?.[0]}>
         <select id="status" name="status" required defaultValue="planned" className={selectClass}>
-          {statuses.map((s) => (
-            <option key={s} value={s}>
-              {s.replace("_", " ").replace(/^\w/, (m) => m.toUpperCase())}
+          {PROJECT_STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
             </option>
           ))}
         </select>
       </Field>
       <Field id="rag_status" label="RAG status" required error={state.fieldErrors?.rag_status?.[0]}>
         <select id="rag_status" name="rag_status" required defaultValue="green" className={selectClass}>
-          {ragStatuses.map((r) => (
-            <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+          {RAG_STATUS_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </select>
       </Field>

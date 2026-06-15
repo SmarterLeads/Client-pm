@@ -4,6 +4,7 @@ import { Repeat } from "lucide-react";
 import { InternalQuickAddTaskForm } from "@/components/internal/internal-quick-add-task-form";
 import { useInternalTaskDrawer } from "@/components/internal/internal-task-drawer-provider";
 import { TaskPriorityBadge } from "@/components/projects/task-priority-badge";
+import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import type { InternalProjectTaskRow } from "@/lib/queries/internal";
 import type { InternalProjectSection } from "@/lib/types/internal";
 import type { TeamMember } from "@/lib/types";
@@ -58,10 +59,11 @@ export function InternalProjectListTab({
                     <button
                       type="button"
                       onClick={() => openTask(task.id)}
-                      className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/50"
+                      className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-muted/50"
                     >
-                      <span className="flex items-center gap-2 font-medium">
-                        {task.title}
+                      <span className="flex min-w-0 items-center gap-2 font-medium">
+                        <TaskStatusBadge status={task.status} />
+                        <span className="truncate">{task.title}</span>
                         {task.is_recurring ? (
                           <Repeat
                             className="size-3.5 shrink-0 text-muted-foreground"

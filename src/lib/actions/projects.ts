@@ -10,6 +10,7 @@ import {
   insertProjectMemberWithTeamMemberContext,
   insertProjectWithTeamMemberContext,
   updateMilestoneWithTeamMemberContext,
+  updateProjectWithTeamMemberContext,
   updateTaskSectionWithTeamMemberContext,
 } from "@/lib/supabase/with-team-member-context";
 import { applyTemplate } from "@/lib/actions/templates";
@@ -18,6 +19,7 @@ import {
   createMilestoneSchema,
   createProjectSchema,
   moveTaskSectionSchema,
+  updateProjectSchema,
 } from "@/lib/validations/project";
 import type { z } from "zod";
 
@@ -105,6 +107,42 @@ export async function createProject(
     if (isRedirectError(err)) throw err;
     return {
       error: err instanceof Error ? err.message : "Failed to create project.",
+    };
+  }
+}
+
+export async function updateProject(
+  projectId: string,
+  updates: Record<string, unknown>,
+): Promise<{ error?: string }> {
+  try {
+    const teamMember = await requireTeamMember();
+    const parsed = updateProjectSchema.safeParse(updates);
+
+    if (!parsed.success) {
+      return {
+        error: parsed.error.issues[0]?.message ?? "Invalid project data.",
+      };
+    }
+
+    const payload = Object.fromEntries(
+      Object.entries(parsed.data).filter(([, value]) => value !== undefined),
+    ) as Record<string, unknown>;
+
+    if (Object.keys(payload).length === 0) {
+      return { error: "No fields to update." };
+    }
+
+    await updateProjectWithTeamMemberContext(
+      teamMember.id,
+      projectId,
+      payload,
+    );
+    revalidateProject(projectId);
+    return {};
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Failed to update project.",
     };
   }
 }

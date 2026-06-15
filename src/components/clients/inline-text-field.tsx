@@ -17,6 +17,7 @@ type InlineTextFieldProps = {
   inputClassName?: string;
   emptyLabel?: string;
   type?: "text" | "url";
+  successMessage?: string;
 };
 
 function externalUrl(value: string) {
@@ -34,6 +35,7 @@ export function InlineTextField({
   inputClassName,
   emptyLabel = "—",
   type = "text",
+  successMessage = "Client updated",
 }: InlineTextFieldProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +82,7 @@ export function InlineTextField({
         setDraft(value ?? "");
         return;
       }
-      toastSuccess("Client updated");
+      toastSuccess(successMessage);
       setEditing(false);
       router.refresh();
     });

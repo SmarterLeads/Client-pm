@@ -212,6 +212,30 @@ export async function insertProjectWithTeamMemberContext(
   return data;
 }
 
+export async function updateProjectWithTeamMemberContext(
+  teamMemberId: string,
+  projectId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const supabase = createServiceClient();
+
+  const { error } = await pmRpc(
+    supabase,
+    "update_project_with_team_member_context",
+    {
+      p_team_member_id: teamMemberId,
+      p_project_id: projectId,
+      p_payload: payload as Json,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Failed to update project: ${error.message}. Apply supabase/migrations/20260624140000_update_project_rpc.sql`,
+    );
+  }
+}
+
 export async function updateTaskSectionWithTeamMemberContext(
   teamMemberId: string,
   taskId: string,

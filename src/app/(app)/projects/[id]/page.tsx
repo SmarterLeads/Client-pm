@@ -29,7 +29,7 @@ export default async function ProjectDetailPage({
     notFound();
   }
 
-  const { project, client_name, owner_name, template_name } = result;
+  const { project, client_name, template_name } = result;
 
   const [
     health,
@@ -62,7 +62,6 @@ export default async function ProjectDetailPage({
         <ProjectDetailTabs
           project={project}
           clientName={client_name}
-          ownerName={owner_name}
           templateName={template_name}
           health={health}
           sections={sections}

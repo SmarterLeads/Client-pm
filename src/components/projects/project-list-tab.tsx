@@ -3,6 +3,7 @@
 import { Repeat } from "lucide-react";
 import { TaskPriorityBadge } from "@/components/projects/task-priority-badge";
 import { QuickAddTaskForm } from "@/components/tasks/quick-add-task-form";
+import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import { useTaskDrawer } from "@/components/tasks/task-drawer-provider";
 import type { ProjectTaskRow } from "@/lib/queries/projects";
 import type { ProjectSection, TeamMember } from "@/lib/types";
@@ -57,10 +58,11 @@ export function ProjectListTab({
                     <button
                       type="button"
                       onClick={() => openTask(task.id)}
-                      className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/50"
+                      className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-muted/50"
                     >
-                      <span className="flex items-center gap-2 font-medium">
-                        {task.title}
+                      <span className="flex min-w-0 items-center gap-2 font-medium">
+                        <TaskStatusBadge status={task.status} />
+                        <span className="truncate">{task.title}</span>
                         {task.is_recurring ? (
                           <Repeat
                             className="size-3.5 shrink-0 text-muted-foreground"
