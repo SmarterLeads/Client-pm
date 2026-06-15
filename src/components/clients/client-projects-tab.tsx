@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { ProjectStatusBadge } from "@/components/clients/project-status-badge";
 import { RagDot } from "@/components/clients/rag-dot";
 import { TaskProgressBar } from "@/components/clients/task-progress-bar";
@@ -182,7 +182,9 @@ export function ClientProjectsTab({
   projects: ClientProjectRow[];
   openTasksByProject: Record<string, ClientProjectOpenTaskRow[]>;
 }) {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(projects.map((project) => project.id)),
+  );
 
   const openCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -279,13 +281,11 @@ export function ClientProjectsTab({
                         />
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        <ChevronDown
-                          className={cn(
-                            "size-4 transition-transform",
-                            expanded && "rotate-180",
-                          )}
-                          aria-hidden
-                        />
+                        {expanded ? (
+                          <ChevronUp className="size-4" aria-hidden />
+                        ) : (
+                          <ChevronDown className="size-4" aria-hidden />
+                        )}
                       </TableCell>
                     </TableRow>
                     {expanded ? (
