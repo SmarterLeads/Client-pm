@@ -28,6 +28,7 @@ import {
   updateMarketingBriefSchema,
   updateMarketingChannelsSchema,
   updatePlatformConnectionSchema,
+  type InteractionAttendeeInput,
 } from "@/lib/validations/client";
 import type { ClientStatus } from "@/lib/pm/constants";
 import { buildStoredMarketingChannel } from "@/lib/updates/display";
@@ -58,6 +59,52 @@ function zodFieldErrors(error: z.ZodError): Record<string, string[]> {
 function emptyToNull(value: FormDataEntryValue | null) {
   if (typeof value !== "string" || value.trim() === "") return null;
   return value;
+}
+
+function parseInteractionForm(formData: FormData) {
+  return {
+    type: formData.get("type"),
+    channel: formData.get("channel"),
+    summary: formData.get("summary"),
+    body: formData.get("body"),
+    occurred_at: formData.get("occurred_at"),
+    contact_ids: formData.getAll("contact_ids"),
+    attendees: formData.get("attendees_json"),
+  };
+}
+
+async function insertInteractionAttendees(
+  interactionId: string,
+  attendees: InteractionAttendeeInput[],
+) {
+  if (attendees.length === 0) return;
+
+  const service = createServiceClient();
+  const { error } = await pm(service).from("interaction_attendees").insert(
+    attendees.map((attendee) => ({
+      interaction_id: interactionId,
+      name: attendee.name,
+      email: attendee.email ?? null,
+      company: attendee.company ?? null,
+    })),
+  );
+
+  if (error) throw new Error(error.message);
+}
+
+async function replaceInteractionAttendees(
+  interactionId: string,
+  attendees: InteractionAttendeeInput[],
+) {
+  const service = createServiceClient();
+  const { error: deleteError } = await pm(service)
+    .from("interaction_attendees")
+    .delete()
+    .eq("interaction_id", interactionId);
+
+  if (deleteError) throw new Error(deleteError.message);
+
+  await insertInteractionAttendees(interactionId, attendees);
 }
 
 function parseCreateClientForm(formData: FormData) {
@@ -728,28 +775,26 @@ export async function createInteraction(
   try {
     const teamMember = await requireTeamMember();
 
-    const parsed = createInteractionSchema.safeParse({
-      type: formData.get("type"),
-      channel: formData.get("channel"),
-      summary: formData.get("summary"),
-      body: formData.get("body"),
-      occurred_at: formData.get("occurred_at"),
-      contact_id: emptyToNull(formData.get("contact_id")),
-    });
+    const parsed = createInteractionSchema.safeParse(parseInteractionForm(formData));
 
     if (!parsed.success) {
       return { fieldErrors: zodFieldErrors(parsed.error) };
     }
 
-    await insertInteractionWithTeamMemberContext(teamMember.id, {
+    const contactIds = parsed.data.contact_ids;
+
+    const interactionId = await insertInteractionWithTeamMemberContext(teamMember.id, {
       client_id: clientId,
-      contact_id: parsed.data.contact_id ?? null,
+      contact_ids: contactIds,
+      contact_id: contactIds[0] ?? null,
       type: parsed.data.type,
       channel: parsed.data.channel ?? null,
       summary: parsed.data.summary,
       body: parsed.data.body ?? null,
       occurred_at: new Date(parsed.data.occurred_at).toISOString(),
     });
+
+    await insertInteractionAttendees(interactionId, parsed.data.attendees);
 
     revalidateClient(clientId);
     return { success: true };
@@ -770,27 +815,25 @@ export async function updateInteraction(
   try {
     const teamMember = await requireTeamMember();
 
-    const parsed = updateInteractionSchema.safeParse({
-      type: formData.get("type"),
-      channel: formData.get("channel"),
-      summary: formData.get("summary"),
-      body: formData.get("body"),
-      occurred_at: formData.get("occurred_at"),
-      contact_id: emptyToNull(formData.get("contact_id")),
-    });
+    const parsed = updateInteractionSchema.safeParse(parseInteractionForm(formData));
 
     if (!parsed.success) {
       return { fieldErrors: zodFieldErrors(parsed.error) };
     }
 
+    const contactIds = parsed.data.contact_ids;
+
     await updateInteractionWithTeamMemberContext(teamMember.id, interactionId, {
-      contact_id: parsed.data.contact_id ?? null,
+      contact_ids: contactIds,
+      contact_id: contactIds[0] ?? null,
       type: parsed.data.type,
       channel: parsed.data.channel ?? null,
       summary: parsed.data.summary,
       body: parsed.data.body ?? null,
       occurred_at: new Date(parsed.data.occurred_at).toISOString(),
     });
+
+    await replaceInteractionAttendees(interactionId, parsed.data.attendees);
 
     revalidateClient(clientId);
     return { success: true };

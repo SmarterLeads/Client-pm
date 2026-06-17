@@ -262,6 +262,46 @@ export const updatePlatformConnectionSchema = z.object({
   externalAccountId: optionalText(200),
 });
 
+export const interactionAttendeeSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200),
+  email: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string().email("Invalid email"), z.null()]).optional(),
+    )
+    .optional(),
+  company: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string().max(200), z.null()]).optional(),
+    )
+    .optional(),
+});
+
+export type InteractionAttendeeInput = z.infer<typeof interactionAttendeeSchema>;
+
+const parseContactIds = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is string => typeof item === "string" && item.length > 0,
+    );
+  }
+  if (typeof value === "string" && value.trim()) {
+    return [value.trim()];
+  }
+  return [];
+};
+
+const parseAttendeesJson = (value: unknown) => {
+  if (typeof value !== "string" || !value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 export const createInteractionSchema = z.object({
   type: z.enum(INTERACTION_TYPES),
   channel: z
@@ -278,6 +318,10 @@ export const createInteractionSchema = z.object({
     )
     .optional(),
   occurred_at: z.string().min(1, "Date is required"),
+  contact_ids: z
+    .preprocess(parseContactIds, z.array(z.string().uuid()).default([])),
+  attendees: z
+    .preprocess(parseAttendeesJson, z.array(interactionAttendeeSchema).default([])),
   contact_id: z
     .preprocess(
       emptyToNull,

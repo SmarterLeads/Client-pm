@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { InteractionPeopleDetails, InteractionPeopleSummary } from "@/components/interactions/interaction-people";
 import { InteractionTypeIcon } from "@/components/interactions/interaction-type-icon";
 import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import { Pencil, Trash2 } from "lucide-react";
 
 type InteractionTimelineProps = {
   interactions: InteractionRow[];
+  clientId?: string;
   currentTeamMemberId?: string | null;
   isAdmin?: boolean;
   deletingId?: string | null;
@@ -34,6 +36,7 @@ function canManageInteraction(
 
 export function InteractionTimeline({
   interactions,
+  clientId,
   currentTeamMemberId,
   isAdmin = false,
   deletingId = null,
@@ -46,6 +49,7 @@ export function InteractionTimeline({
         <InteractionTimelineItem
           key={item.id}
           item={item}
+          clientId={clientId}
           canManage={canManageInteraction(item, currentTeamMemberId, isAdmin)}
           isDeleting={deletingId === item.id}
           onEdit={onEdit}
@@ -58,12 +62,14 @@ export function InteractionTimeline({
 
 function InteractionTimelineItem({
   item,
+  clientId,
   canManage,
   isDeleting,
   onEdit,
   onDelete,
 }: {
   item: InteractionRow;
+  clientId?: string;
   canManage: boolean;
   isDeleting: boolean;
   onEdit?: (item: InteractionRow) => void;
@@ -72,6 +78,7 @@ function InteractionTimelineItem({
   const [isExpanded, setIsExpanded] = useState(false);
   const hasBody = Boolean(item.body?.trim());
   const showActions = canManage && (onEdit || onDelete);
+  const hasPeople = item.contacts.length > 0 || item.attendees.length > 0;
 
   return (
     <li className="relative pb-8 last:pb-0">
@@ -85,12 +92,16 @@ function InteractionTimelineItem({
               {item.channel ? (
                 <Badge variant="secondary">{channelLabels[item.channel]}</Badge>
               ) : null}
-              {item.contact_name ? (
-                <Badge variant="outline">{item.contact_name}</Badge>
-              ) : null}
             </div>
 
             <p className="mt-2 font-semibold">{item.summary}</p>
+
+            {hasPeople ? (
+              <div className="mt-2">
+                <InteractionPeopleSummary item={item} clientId={clientId} />
+                <InteractionPeopleDetails item={item} clientId={clientId} />
+              </div>
+            ) : null}
 
             {hasBody ? (
               <div className="mt-2">

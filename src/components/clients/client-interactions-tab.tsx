@@ -88,6 +88,7 @@ export function ClientInteractionsTab({
       ) : (
         <InteractionTimeline
           interactions={interactions}
+          clientId={clientId}
           currentTeamMemberId={currentTeamMemberId}
           isAdmin={isAdmin}
           deletingId={deletingId}

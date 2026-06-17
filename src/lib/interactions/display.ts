@@ -65,3 +65,36 @@ export function formatInteractionDateTime(iso: string) {
     minute: "2-digit",
   });
 }
+
+export function formatAttendeeLabel(attendee: {
+  name: string;
+  company: string | null;
+}) {
+  if (attendee.company?.trim()) {
+    return `${attendee.name} (${attendee.company.trim()})`;
+  }
+  return attendee.name;
+}
+
+export function formatInteractionWithLine(
+  contacts: { name: string }[],
+  attendees: { name: string }[],
+) {
+  if (contacts.length === 0 && attendees.length === 0) return null;
+
+  const contactNames = contacts.map((contact) => contact.name).join(", ");
+
+  if (contacts.length > 0 && attendees.length > 0) {
+    const attendeeLabel =
+      attendees.length === 1 ? "1 attendee" : `${attendees.length} attendees`;
+    return `With: ${contactNames} + ${attendeeLabel}`;
+  }
+
+  if (contacts.length > 0) {
+    return `With: ${contactNames}`;
+  }
+
+  const attendeeLabel =
+    attendees.length === 1 ? "1 attendee" : `${attendees.length} attendees`;
+  return `With: ${attendeeLabel}`;
+}

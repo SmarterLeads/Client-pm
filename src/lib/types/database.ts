@@ -357,6 +357,7 @@ export type Database = {
           channel: Database["pm"]["Enums"]["interaction_channel"] | null
           client_id: string
           contact_id: string | null
+          contact_ids: string[]
           created_at: string
           id: string
           logged_by: string | null
@@ -369,6 +370,7 @@ export type Database = {
           channel?: Database["pm"]["Enums"]["interaction_channel"] | null
           client_id: string
           contact_id?: string | null
+          contact_ids?: string[]
           created_at?: string
           id?: string
           logged_by?: string | null
@@ -381,6 +383,7 @@ export type Database = {
           channel?: Database["pm"]["Enums"]["interaction_channel"] | null
           client_id?: string
           contact_id?: string | null
+          contact_ids?: string[]
           created_at?: string
           id?: string
           logged_by?: string | null
@@ -415,6 +418,41 @@ export type Database = {
             columns: ["logged_by"]
             isOneToOne: false
             referencedRelation: "v_team_workload"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interaction_attendees: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          interaction_id: string
+          name: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          interaction_id: string
+          name: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          interaction_id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interaction_attendees_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "interactions"
             referencedColumns: ["id"]
           },
         ]

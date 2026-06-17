@@ -12,10 +12,7 @@ import {
   type ClientActivityLogFilters,
   type ClientActivityLogPage,
 } from "@/lib/clients/activity-log";
-import {
-  contactNameFromMap,
-  loadContactNameMap,
-} from "@/lib/interactions/contact-names";
+import { mapInteractionDbRows } from "@/lib/interactions/attendees";
 import type { ChangeHistoryRow } from "@/lib/change-history/types";
 import type {
   ClientInteractionFilters,
@@ -534,6 +531,7 @@ export async function getClientInteractions(
       body,
       occurred_at,
       contact_id,
+      contact_ids,
       logged_by,
       logger:team_members(name)
     `,
@@ -561,23 +559,14 @@ export async function getClientInteractions(
   }
 
   const rows = data ?? [];
-  const contactMap = await loadContactNameMap(
-    supabase,
-    rows.map((row) => row.contact_id).filter((id): id is string => Boolean(id)),
-  );
 
-  return rows.map((row) => ({
-    id: row.id,
-    type: row.type,
-    channel: row.channel,
-    summary: row.summary,
-    body: row.body,
-    occurred_at: row.occurred_at,
-    logged_by: row.logged_by,
-    logged_by_name: row.logger?.name ?? null,
-    contact_id: row.contact_id,
-    contact_name: contactNameFromMap(row.contact_id, contactMap),
-  }));
+  return mapInteractionDbRows(
+    supabase,
+    rows.map((row) => ({
+      ...row,
+      client_id: clientId,
+    })),
+  );
 }
 
 export type { ChangeHistoryRow as ClientHistoryRow } from "@/lib/change-history/types";

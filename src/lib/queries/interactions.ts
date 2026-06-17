@@ -2,6 +2,7 @@
   contactNameFromMap,
   loadContactNameMap,
 } from "@/lib/interactions/contact-names";
+import { mapInteractionDbRows } from "@/lib/interactions/attendees";
 import type {
   ClientSelectOption,
   GlobalInteractionRow,
@@ -57,6 +58,7 @@ export async function getAllInteractions(
       occurred_at,
       client_id,
       contact_id,
+      contact_ids,
       logged_by,
       logger:team_members(name)
     `,
@@ -93,10 +95,7 @@ export async function getAllInteractions(
   );
 
   const clientIds = [...new Set(rows.map((row) => row.client_id))];
-  const contactMap = await loadContactNameMap(
-    supabase,
-    rows.map((row) => row.contact_id).filter((id): id is string => Boolean(id)),
-  );
+  const mapped = await mapInteractionDbRows(supabase, rows);
 
   const clientNameMap = new Map<string, string>();
   if (clientIds.length > 0) {
@@ -114,19 +113,10 @@ export async function getAllInteractions(
     }
   }
 
-  return rows.map((row) => ({
-    id: row.id,
-    type: row.type,
-    channel: row.channel,
-    summary: row.summary,
-    body: row.body,
-    occurred_at: row.occurred_at,
-    logged_by: row.logged_by,
-    logged_by_name: row.logger?.name ?? null,
-    contact_id: row.contact_id,
-    contact_name: contactNameFromMap(row.contact_id, contactMap),
-    client_id: row.client_id,
-    client_name: clientNameMap.get(row.client_id) ?? "—",
+  return mapped.map((row) => ({
+    ...row,
+    client_id: row.client_id!,
+    client_name: clientNameMap.get(row.client_id!) ?? "—",
   }));
 }
 
@@ -146,6 +136,7 @@ export async function getInteractionById(
       body,
       occurred_at,
       contact_id,
+      contact_ids,
       logged_by,
       logger:team_members(name)
     `,
@@ -156,21 +147,6 @@ export async function getInteractionById(
   if (error) throw new Error(error.message);
   if (!data) return null;
 
-  const contactMap = await loadContactNameMap(
-    supabase,
-    data.contact_id ? [data.contact_id] : [],
-  );
-
-  return {
-    id: data.id,
-    type: data.type,
-    channel: data.channel,
-    summary: data.summary,
-    body: data.body,
-    occurred_at: data.occurred_at,
-    logged_by: data.logged_by,
-    logged_by_name: data.logger?.name ?? null,
-    contact_id: data.contact_id,
-    contact_name: contactNameFromMap(data.contact_id, contactMap),
-  };
+  const [mapped] = await mapInteractionDbRows(supabase, [data]);
+  return mapped ?? null;
 }

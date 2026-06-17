@@ -136,6 +136,9 @@ export async function getPortalInteractions(
     logged_by_name: null,
     contact_id: null,
     contact_name: null,
+    contact_ids: [],
+    contacts: [],
+    attendees: [],
   }));
 }
 
@@ -172,6 +175,9 @@ export async function getPortalRecentInteractions(
     logged_by_name: null,
     contact_id: null,
     contact_name: null,
+    contact_ids: [],
+    contacts: [],
+    attendees: [],
   }));
 }
 

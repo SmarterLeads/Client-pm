@@ -11,6 +11,7 @@ import {
 import {
   channelLabels,
   formatInteractionDateTime,
+  formatInteractionWithLine,
   interactionTypeLabels,
 } from "@/lib/interactions/display";
 import type { GlobalInteractionRow } from "@/lib/interactions/types";
@@ -66,7 +67,9 @@ export function InteractionsTable({
                 </Link>
               </TableCell>
               <TableCell className="hidden text-muted-foreground md:table-cell">
-                {item.contact_name ?? "—"}
+                {formatInteractionWithLine(item.contacts, item.attendees) ??
+                  item.contact_name ??
+                  "—"}
               </TableCell>
               <TableCell className="hidden sm:table-cell">
                 {item.channel ? (
