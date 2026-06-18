@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getClientUser, getTeamMember } from "@/lib/auth/session";
-import { createNotification } from "@/lib/notifications";
+import { safeCreateNotification } from "@/lib/notifications/create";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
@@ -99,14 +99,14 @@ export async function approveMilestone(
 
     const ownerId = milestone.project?.owner_id;
     if (ownerId) {
-      await createNotification(
-        ownerId,
-        "milestone_approved",
-        "milestone",
-        milestoneId,
-        `Milestone approved: ${milestone.title}`,
-        `${clientUser.name ?? "A client contact"} approved "${milestone.title}" on ${milestone.project?.name ?? "a project"}.`,
-      );
+      await safeCreateNotification({
+        recipientId: ownerId,
+        type: "milestone_approved",
+        entityType: "milestone",
+        entityId: milestoneId,
+        title: `Milestone approved: ${milestone.title}`,
+        body: `${clientUser.name ?? "A client contact"} approved "${milestone.title}" on ${milestone.project?.name ?? "a project"}.`,
+      });
     }
 
     revalidatePath(`/portal/projects/${projectId}`);

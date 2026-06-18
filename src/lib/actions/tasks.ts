@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { getTeamMember } from "@/lib/auth/session";
 import { getTaskDetail } from "@/lib/queries/tasks";
 import {
+  notifyTaskAssigned,
+  notifyTaskComment,
+} from "@/lib/notifications/notify";
+import { pm } from "@/lib/supabase/pm";
+import { createServiceClient } from "@/lib/supabase/service";
+import {
   deleteTaskCommentWithTeamMemberContext,
   deleteTaskDependencyWithTeamMemberContext,
   deleteTaskWithTeamMemberContext,
@@ -123,6 +129,16 @@ export async function createTask(
           : null,
     });
 
+    if (data.assignee_id) {
+      await notifyTaskAssigned({
+        assigneeId: data.assignee_id,
+        actorId: teamMember.id,
+        actorName: teamMember.name,
+        taskId,
+        taskTitle: data.title,
+      });
+    }
+
     revalidateTaskPaths(data.project_id);
     return { success: true, taskId };
   } catch (err) {
@@ -150,11 +166,40 @@ export async function updateTask(
       return { error: "No fields to update." };
     }
 
+    const service = createServiceClient();
+    let existingTask: { assignee_id: string | null; title: string } | null =
+      null;
+
+    if ("assignee_id" in parsed.data) {
+      const { data } = await pm(service)
+        .from("tasks")
+        .select("assignee_id, title")
+        .eq("id", taskId)
+        .maybeSingle();
+      existingTask = data;
+    }
+
     await updateTaskWithTeamMemberContext(
       teamMember.id,
       taskId,
       parsed.data as Record<string, unknown>,
     );
+
+    if (
+      existingTask &&
+      "assignee_id" in parsed.data &&
+      parsed.data.assignee_id &&
+      parsed.data.assignee_id !== existingTask.assignee_id
+    ) {
+      await notifyTaskAssigned({
+        assigneeId: parsed.data.assignee_id,
+        actorId: teamMember.id,
+        actorName: teamMember.name,
+        taskId,
+        taskTitle: existingTask.title,
+      });
+    }
+
     revalidateTaskPaths(projectId);
     return {};
   } catch (err) {
@@ -211,10 +256,28 @@ export async function createComment(
       return { fieldErrors: zodFieldErrors(parsed.error) };
     }
 
+    const service = createServiceClient();
+    const { data: task } = await pm(service)
+      .from("tasks")
+      .select("title, assignee_id")
+      .eq("id", taskId)
+      .maybeSingle();
+
     await insertTaskCommentWithTeamMemberContext(teamMember.id, {
       task_id: taskId,
       body: parsed.data.body,
     });
+
+    if (task) {
+      await notifyTaskComment({
+        taskId,
+        taskTitle: task.title,
+        assigneeId: task.assignee_id,
+        actorId: teamMember.id,
+        actorName: teamMember.name,
+        commentBody: parsed.data.body,
+      });
+    }
 
     revalidateTaskPaths(projectId);
     return { success: true };

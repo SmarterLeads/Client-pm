@@ -5,6 +5,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getTeamMember } from "@/lib/auth/session";
 import {
+  notifyMilestoneCompleted,
+  notifyMilestoneCreated,
+} from "@/lib/notifications/notify";
+import { pm } from "@/lib/supabase/pm";
+import { createServiceClient } from "@/lib/supabase/service";
+import {
   deleteProjectMemberWithTeamMemberContext,
   insertMilestoneWithTeamMemberContext,
   insertProjectMemberWithTeamMemberContext,
@@ -201,6 +207,13 @@ export async function createMilestone(
       target_date: parsed.data.target_date ?? null,
     });
 
+    await notifyMilestoneCreated({
+      projectId,
+      milestoneTitle: parsed.data.title,
+      actorId: teamMember.id,
+      actorName: teamMember.name,
+    });
+
     revalidateProject(projectId);
     return { success: true };
   } catch (err) {
@@ -221,6 +234,26 @@ export async function toggleMilestoneComplete(
     await updateMilestoneWithTeamMemberContext(teamMember.id, milestoneId, {
       completed,
     });
+
+    if (completed) {
+      const service = createServiceClient();
+      const { data: milestone } = await pm(service)
+        .from("milestones")
+        .select("title")
+        .eq("id", milestoneId)
+        .maybeSingle();
+
+      if (milestone?.title) {
+        await notifyMilestoneCompleted({
+          projectId,
+          milestoneId,
+          milestoneTitle: milestone.title,
+          actorId: teamMember.id,
+          actorName: teamMember.name,
+        });
+      }
+    }
+
     revalidateProject(projectId);
     return {};
   } catch (err) {

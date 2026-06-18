@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { canManageTeam } from "@/lib/auth/roles";
 import { getTeamMember } from "@/lib/auth/session";
-import { createNotification } from "@/lib/notifications";
+import { notifyTaskAssigned } from "@/lib/notifications/notify";
 import { pm } from "@/lib/supabase/pm";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -99,14 +99,13 @@ export async function reassignTasks(
 
       projectIds.add(task.project_id);
 
-      await createNotification(
-        newAssigneeId,
-        "task_assigned",
-        "task",
-        task.id,
-        "Task reassigned to you",
-        `${actor.name} assigned "${task.title}" to you.`,
-      );
+      await notifyTaskAssigned({
+        assigneeId: newAssigneeId,
+        actorId: actor.id,
+        actorName: actor.name,
+        taskId: task.id,
+        taskTitle: task.title,
+      });
     }
 
     revalidateTeamPaths([...projectIds]);

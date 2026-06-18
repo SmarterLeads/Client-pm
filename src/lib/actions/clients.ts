@@ -32,6 +32,7 @@ import {
 } from "@/lib/validations/client";
 import type { ClientStatus } from "@/lib/pm/constants";
 import { buildStoredMarketingChannel } from "@/lib/updates/display";
+import { notifyClientInteractionLogged } from "@/lib/notifications/notify";
 import { pm } from "@/lib/supabase/pm";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -795,6 +796,14 @@ export async function createInteraction(
     });
 
     await insertInteractionAttendees(interactionId, parsed.data.attendees);
+
+    await notifyClientInteractionLogged({
+      clientId,
+      interactionId,
+      actorId: teamMember.id,
+      actorName: teamMember.name,
+      summary: parsed.data.summary,
+    });
 
     revalidateClient(clientId);
     return { success: true };

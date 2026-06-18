@@ -31,6 +31,8 @@ export function getNotificationHref(notification: Notification): string | null {
   switch (notification.entity_type) {
     case "project":
       return `/projects/${notification.entity_id}`;
+    case "client":
+      return `/clients/${notification.entity_id}?tab=interactions`;
     case "task":
       return null;
     case "milestone":
