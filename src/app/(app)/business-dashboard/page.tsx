@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BusinessDashboardAgencyCards } from "@/components/business-dashboard/business-dashboard-agency-cards";
 import { BusinessDashboardFinancialsTable } from "@/components/business-dashboard/business-dashboard-financials-table";
+import { BusinessDashboardYearlyHistoryTable } from "@/components/business-dashboard/business-dashboard-yearly-history-table";
 import { BusinessDashboardHourlyBillingTable } from "@/components/business-dashboard/business-dashboard-hourly-billing-table";
 import { BusinessDashboardKpiCards } from "@/components/business-dashboard/business-dashboard-kpi-cards";
 import { BusinessDashboardMonthlyTable } from "@/components/business-dashboard/business-dashboard-monthly-table";
@@ -143,19 +144,22 @@ export default async function BusinessDashboardPage() {
       ) : null}
 
       {showFinancials ? (
-        monthlyFinancials ? (
-          <BusinessDashboardFinancialsTable
-            initialYear={currentYear}
-            initialRows={monthlyFinancials}
-          />
-        ) : (
-          <section className="space-y-4">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Monthly Financials
-            </h2>
-            <BusinessDashboardSectionError section="monthly financials" />
-          </section>
-        )
+        <div className="space-y-8">
+          {monthlyFinancials ? (
+            <BusinessDashboardFinancialsTable
+              initialYear={currentYear}
+              initialRows={monthlyFinancials}
+            />
+          ) : (
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold tracking-tight">
+                Monthly Financials
+              </h2>
+              <BusinessDashboardSectionError section="monthly financials" />
+            </section>
+          )}
+          <BusinessDashboardYearlyHistoryTable />
+        </div>
       ) : null}
     </div>
   );
