@@ -8,7 +8,7 @@ import {
   getMonthlyFinancials,
 } from "@/lib/queries/business-dashboard";
 import { pm } from "@/lib/supabase/pm";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 async function requireMonthlyFinancialsAccess() {
   const teamMember = await getTeamMember();
@@ -16,7 +16,7 @@ async function requireMonthlyFinancialsAccess() {
     throw new Error("You don't have permission to manage monthly financials.");
   }
 
-  return { teamMember, supabase: await createClient() };
+  return teamMember;
 }
 
 export async function fetchMonthlyFinancials(year: number) {
@@ -34,22 +34,33 @@ export async function saveMonthlyFinancial(
   }
 
   try {
-    const { teamMember, supabase } = await requireMonthlyFinancialsAccess();
+    const teamMember = await requireMonthlyFinancialsAccess();
 
-    const { error } = await pm(supabase)
+    console.log("[saveMonthlyFinancial] called with:", year, month, data);
+    console.log("[saveMonthlyFinancial] team member:", {
+      id: teamMember.id,
+      email: teamMember.email,
+    });
+
+    const payload = {
+      year,
+      month,
+      cdn_sales: Number(data.cdnSales),
+      cdn_expenses: Number(data.cdnExpenses),
+      usd_sales: Number(data.usdSales),
+      usd_expenses: Number(data.usdExpenses),
+    };
+
+    console.log("[saveMonthlyFinancial] upsert payload:", payload);
+
+    const service = createServiceClient();
+    const { data: saved, error } = await pm(service)
       .from("monthly_financials")
-      .upsert(
-        {
-          year,
-          month,
-          cdn_sales: data.cdnSales,
-          cdn_expenses: data.cdnExpenses,
-          usd_sales: data.usdSales,
-          usd_expenses: data.usdExpenses,
-          updated_by: teamMember.id,
-        },
-        { onConflict: "year,month" },
-      );
+      .upsert(payload, { onConflict: "year,month" })
+      .select("id, year, month, cdn_sales, cdn_expenses, usd_sales, usd_expenses")
+      .single();
+
+    console.log("[saveMonthlyFinancial] result:", { saved, error: error?.message ?? null });
 
     if (error) {
       return { error: error.message };

@@ -35,6 +35,7 @@ import {
   type MonthlyFinancialEditableField,
 } from "@/lib/business-dashboard/financials";
 import type { MonthlyFinancialRow } from "@/lib/business-dashboard/types";
+import { toastError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const EDITABLE_FIELDS: MonthlyFinancialEditableField[] = [
@@ -85,6 +86,11 @@ function EditableMoneyCell({
   async function commitValue() {
     try {
       const nextValue = parseFinancialDollars(draft);
+      console.log("[FinancialsTable] parsed cell value:", {
+        draft,
+        parsed: nextValue,
+        typeofParsed: typeof nextValue,
+      });
       setEditing(false);
       if (nextValue === value) return;
 
@@ -184,6 +190,8 @@ export function BusinessDashboardFinancialsTable({
 
   const handleCommit = useCallback(
     async (month: number, field: MonthlyFinancialEditableField, dollars: number) => {
+      console.log("[FinancialsTable] saving:", { year, month, field, value: dollars });
+
       let payload:
         | {
             cdnSales: number;
@@ -211,6 +219,8 @@ export function BusinessDashboardFinancialsTable({
 
       const result = await saveMonthlyFinancial(year, month, payload);
       if (result.error) {
+        console.error("[FinancialsTable] save failed:", result.error);
+        toastError(result.error);
         const freshRows = await fetchMonthlyFinancials(year);
         setRows(freshRows);
         throw new Error(result.error);
