@@ -9,6 +9,7 @@ import {
 import { ClientMrrBreakdownSection } from "@/components/clients/client-mrr-breakdown-section";
 import { ClientContactsSection } from "@/components/clients/client-contacts-section";
 import { ClientOverviewMarketingConfigSection } from "@/components/clients/client-overview-marketing-config-section";
+import { GoogleDriveIcon } from "@/components/clients/google-drive-icon";
 import { EditAddressSheet } from "@/components/clients/edit-address-sheet";
 import { InlineDollarField } from "@/components/clients/inline-dollar-field";
 import { InlineHourlyRateField } from "@/components/clients/inline-hourly-rate-field";
@@ -122,6 +123,16 @@ export function ClientOverviewTab({
               type="url"
               onSave={(value) => saveField({ gmb_url: value })}
               aria-label="Google My Business"
+            />
+          </OverviewFieldRow>
+          <OverviewFieldRow editable label="Google Drive">
+            <InlineTextField
+              value={client.google_drive_url}
+              type="url"
+              placeholder="https://drive.google.com/drive/folders/..."
+              linkIcon={<GoogleDriveIcon />}
+              onSave={(value) => saveField({ google_drive_url: value })}
+              aria-label="Google Drive"
             />
           </OverviewFieldRow>
           <OverviewFieldRow editable label="Business phone">

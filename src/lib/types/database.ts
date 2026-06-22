@@ -2476,6 +2476,7 @@ export type Database = {
           ga4_id: string | null
           ghl_pipeline_config: Json | null
           gmb_url: string | null
+          google_drive_url: string | null
           hst_number: string | null
           hourly_rate: number
           id: string
@@ -2518,6 +2519,7 @@ export type Database = {
           ga4_id?: string | null
           ghl_pipeline_config?: Json | null
           gmb_url?: string | null
+          google_drive_url?: string | null
           hst_number?: string | null
           hourly_rate?: number
           id?: string
@@ -2560,6 +2562,7 @@ export type Database = {
           ga4_id?: string | null
           ghl_pipeline_config?: Json | null
           gmb_url?: string | null
+          google_drive_url?: string | null
           hst_number?: string | null
           hourly_rate?: number
           id?: string

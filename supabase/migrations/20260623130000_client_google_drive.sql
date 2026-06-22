@@ -1,0 +1,159 @@
+-- Google Drive folder URL on public.clients.
+
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS google_drive_url text;
+
+CREATE OR REPLACE FUNCTION public.update_client_with_team_member_context(
+  p_client_id uuid,
+  p_team_member_id uuid,
+  p_payload jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pm
+AS $$
+BEGIN
+  PERFORM set_config('app.current_team_member_id', p_team_member_id::text, true);
+
+  UPDATE public.clients
+  SET
+    name = COALESCE(p_payload->>'name', name),
+    status = COALESCE(p_payload->>'status', status),
+    rag_status = COALESCE((p_payload->>'rag_status')::pm.rag_status, rag_status),
+    account_manager_id = CASE
+      WHEN p_payload ? 'account_manager_id' THEN NULLIF(p_payload->>'account_manager_id', '')::uuid
+      ELSE account_manager_id
+    END,
+    pm_notes = COALESCE(
+      NULLIF(COALESCE(p_payload->>'pm_notes', p_payload->>'notes'), ''),
+      pm_notes
+    ),
+    legal_name = COALESCE(NULLIF(p_payload->>'legal_name', ''), legal_name),
+    address_street = COALESCE(NULLIF(p_payload->>'address_street', ''), address_street),
+    address_city = COALESCE(NULLIF(p_payload->>'address_city', ''), address_city),
+    address_province = COALESCE(NULLIF(p_payload->>'address_province', ''), address_province),
+    address_postal_code = COALESCE(
+      NULLIF(COALESCE(p_payload->>'address_postal_code', p_payload->>'address_postal'), ''),
+      address_postal_code
+    ),
+    address_country = COALESCE(NULLIF(p_payload->>'address_country', ''), address_country),
+    hst_number = COALESCE(NULLIF(p_payload->>'hst_number', ''), hst_number),
+    website_url = COALESCE(NULLIF(p_payload->>'website_url', ''), website_url),
+    gmb_url = COALESCE(NULLIF(p_payload->>'gmb_url', ''), gmb_url),
+    google_drive_url = COALESCE(NULLIF(p_payload->>'google_drive_url', ''), google_drive_url),
+    business_phone = COALESCE(NULLIF(p_payload->>'business_phone', ''), business_phone),
+    industry = COALESCE(NULLIF(p_payload->>'industry', ''), industry),
+    client_type = COALESCE(NULLIF(p_payload->>'client_type', ''), client_type),
+    marketing_channels = CASE
+      WHEN p_payload ? 'marketing_channels' THEN COALESCE(
+        (
+          SELECT array_agg(v)
+          FROM jsonb_array_elements_text(p_payload->'marketing_channels') AS t(v)
+        ),
+        '{}'::text[]
+      )
+      ELSE marketing_channels
+    END,
+    tracking_setup = COALESCE(NULLIF(p_payload->>'tracking_setup', ''), tracking_setup),
+    mrr_cents = CASE
+      WHEN p_payload ? 'mrr_cents' THEN NULLIF(p_payload->>'mrr_cents', '')::bigint
+      ELSE mrr_cents
+    END,
+    mrr_breakdown = CASE
+      WHEN p_payload ? 'mrr_breakdown' THEN COALESCE(p_payload->'mrr_breakdown', '{}'::jsonb)
+      ELSE mrr_breakdown
+    END,
+    currency = COALESCE(NULLIF(p_payload->>'currency', ''), currency),
+    ga4_id = COALESCE(NULLIF(p_payload->>'ga4_id', ''), ga4_id),
+    marketing_brief = COALESCE(NULLIF(p_payload->>'marketing_brief', ''), marketing_brief),
+    is_hourly = CASE
+      WHEN p_payload ? 'is_hourly' THEN COALESCE((p_payload->>'is_hourly')::boolean, false)
+      ELSE is_hourly
+    END,
+    hourly_rate = CASE
+      WHEN p_payload ? 'hourly_rate' THEN COALESCE(NULLIF(p_payload->>'hourly_rate', '')::numeric, 0)
+      ELSE hourly_rate
+    END,
+    updated_at = now()
+  WHERE id = p_client_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Client not found: %', p_client_id;
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.insert_client_with_team_member_context(
+  p_team_member_id uuid,
+  p_client jsonb,
+  p_contact jsonb DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pm
+AS $$
+DECLARE
+  v_client_id uuid;
+BEGIN
+  PERFORM set_config('app.current_team_member_id', p_team_member_id::text, true);
+
+  INSERT INTO public.clients (
+    name,
+    agency_id,
+    status,
+    rag_status,
+    account_manager_id,
+    pm_notes,
+    website_url,
+    gmb_url,
+    google_drive_url,
+    business_phone
+  )
+  VALUES (
+    p_client->>'name',
+    (p_client->>'agency_id')::uuid,
+    COALESCE(p_client->>'status', 'prospect'),
+    COALESCE((p_client->>'rag_status')::pm.rag_status, 'green'::pm.rag_status),
+    NULLIF(p_client->>'account_manager_id', '')::uuid,
+    NULLIF(COALESCE(p_client->>'pm_notes', p_client->>'notes'), ''),
+    NULLIF(p_client->>'website_url', ''),
+    NULLIF(p_client->>'gmb_url', ''),
+    NULLIF(p_client->>'google_drive_url', ''),
+    NULLIF(p_client->>'business_phone', '')
+  )
+  RETURNING id INTO v_client_id;
+
+  IF p_contact IS NOT NULL AND p_contact <> '{}'::jsonb THEN
+    INSERT INTO public.client_contacts (
+      client_id,
+      first_name,
+      last_name,
+      email,
+      phone,
+      job_title,
+      is_primary,
+      pm_notes
+    )
+    VALUES (
+      v_client_id,
+      p_contact->>'first_name',
+      NULLIF(p_contact->>'last_name', ''),
+      COALESCE(NULLIF(p_contact->>'email', ''), ''),
+      NULLIF(p_contact->>'phone', ''),
+      NULLIF(p_contact->>'job_title', ''),
+      COALESCE((p_contact->>'is_primary')::boolean, true),
+      NULLIF(COALESCE(p_contact->>'pm_notes', p_contact->>'notes'), '')
+    );
+  END IF;
+
+  RETURN v_client_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.update_client_with_team_member_context(uuid, uuid, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.update_client_with_team_member_context(uuid, uuid, jsonb) TO service_role;
+
+REVOKE ALL ON FUNCTION public.insert_client_with_team_member_context(uuid, jsonb, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.insert_client_with_team_member_context(uuid, jsonb, jsonb) TO service_role;

@@ -118,6 +118,7 @@ function parseCreateClientForm(formData: FormData) {
     notes: formData.get("notes"),
     website_url: formData.get("website_url"),
     gmb_url: formData.get("gmb_url"),
+    google_drive_url: formData.get("google_drive_url"),
     business_phone: formData.get("business_phone"),
     marketing_channels: formData.getAll("marketing_channels"),
     primary_contact: {
@@ -209,6 +210,7 @@ export async function createClient(
     pm_notes: parsed.data.notes ?? null,
     website_url: parsed.data.website_url ?? null,
     gmb_url: parsed.data.gmb_url ?? null,
+    google_drive_url: parsed.data.google_drive_url ?? null,
     business_phone: parsed.data.business_phone ?? null,
   };
 

@@ -152,6 +152,15 @@ export function ClientForm({
           <Field id="gmb_url" label="Google My Business" sheetMode error={state.fieldErrors?.gmb_url?.[0]}>
             <Input id="gmb_url" name="gmb_url" type="url" className={inputClass} />
           </Field>
+          <Field id="google_drive_url" label="Google Drive" sheetMode error={state.fieldErrors?.google_drive_url?.[0]}>
+            <Input
+              id="google_drive_url"
+              name="google_drive_url"
+              type="url"
+              placeholder="https://drive.google.com/drive/folders/..."
+              className={inputClass}
+            />
+          </Field>
           <Field id="business_phone" label="Business phone" sheetMode error={state.fieldErrors?.business_phone?.[0]}>
             <Input id="business_phone" name="business_phone" type="tel" className={inputClass} />
           </Field>
@@ -210,6 +219,14 @@ export function ClientForm({
               </Field>
               <Field id="gmb_url" label="Google My Business" className="sm:col-span-2" error={state.fieldErrors?.gmb_url?.[0]}>
                 <Input id="gmb_url" name="gmb_url" type="url" />
+              </Field>
+              <Field id="google_drive_url" label="Google Drive" className="sm:col-span-2" error={state.fieldErrors?.google_drive_url?.[0]}>
+                <Input
+                  id="google_drive_url"
+                  name="google_drive_url"
+                  type="url"
+                  placeholder="https://drive.google.com/drive/folders/..."
+                />
               </Field>
               <Field id="business_phone" label="Business phone" className="sm:col-span-2" error={state.fieldErrors?.business_phone?.[0]}>
                 <Input id="business_phone" name="business_phone" type="tel" />

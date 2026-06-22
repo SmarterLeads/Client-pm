@@ -18,6 +18,7 @@ type InlineTextFieldProps = {
   emptyLabel?: string;
   type?: "text" | "url";
   successMessage?: string;
+  linkIcon?: React.ReactNode;
 };
 
 function externalUrl(value: string) {
@@ -36,6 +37,7 @@ export function InlineTextField({
   emptyLabel = "—",
   type = "text",
   successMessage = "Client updated",
+  linkIcon,
 }: InlineTextFieldProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -132,14 +134,17 @@ export function InlineTextField({
         )}
       >
         {trimmed ? (
-          <a
-            href={externalUrl(trimmed)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="truncate text-sm font-medium text-primary underline decoration-primary/40 hover:decoration-primary"
-          >
-            {trimmed}
-          </a>
+          <>
+            {linkIcon}
+            <a
+              href={externalUrl(trimmed)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="truncate text-sm font-medium text-primary underline decoration-primary/40 hover:decoration-primary"
+            >
+              {trimmed}
+            </a>
+          </>
         ) : (
           <button
             type="button"
