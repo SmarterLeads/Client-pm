@@ -1,4 +1,5 @@
 ﻿import { redirect } from "next/navigation";
+import { DashboardUnmatchedEmails } from "@/components/dashboard/dashboard-unmatched-emails";
 import { DashboardBillableHoursChart } from "@/components/dashboard/dashboard-billable-hours-chart";
 import { DashboardClientHealthTable } from "@/components/dashboard/dashboard-client-health-table";
 import { DashboardKpiCards } from "@/components/dashboard/dashboard-kpi-cards";
@@ -13,6 +14,8 @@ import {
   getDashboardMyTasks,
   getDashboardTeamWorkload,
 } from "@/lib/queries/dashboard";
+import { getPendingEmailLogs } from "@/lib/queries/email-log";
+import { getClientsForSelect } from "@/lib/queries/projects";
 
 export default async function DashboardPage() {
   const teamMember = await getTeamMember();
@@ -20,13 +23,15 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [kpis, clients, teamWorkload, billableByClient, myTasks] =
+  const [kpis, clients, teamWorkload, billableByClient, myTasks, pendingEmails, clientOptions] =
     await Promise.all([
       getDashboardKpis(),
       getDashboardClientHealth(),
       getDashboardTeamWorkload(),
       getDashboardBillableHoursByClient(),
       getDashboardMyTasks(teamMember.id),
+      getPendingEmailLogs(),
+      getClientsForSelect(),
     ]);
 
   return (
@@ -39,6 +44,8 @@ export default async function DashboardPage() {
       </div>
 
       <DashboardKpiCards kpis={kpis} />
+
+      <DashboardUnmatchedEmails emails={pendingEmails} clients={clientOptions} />
 
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">

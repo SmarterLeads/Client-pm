@@ -50,14 +50,24 @@ function dueDateClassName(dueDate: string | null, today: string) {
   return "text-muted-foreground";
 }
 
+function formatCompletedDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function TaskRow({
   task,
   assignee,
   today,
+  completed = false,
 }: {
   task: MyTaskRow;
   assignee: { name: string; avatar_url: string | null };
   today: string;
+  completed?: boolean;
 }) {
   const { openTask } = useTaskDrawer();
 
@@ -65,13 +75,23 @@ function TaskRow({
     <button
       type="button"
       onClick={() => openTask(task.id)}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
+      className={cn(
+        "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50",
+        completed && "text-muted-foreground",
+      )}
     >
       <TaskPriorityDot priority={task.priority} />
-      <TaskStatusBadge status={task.status} />
+      {!completed ? <TaskStatusBadge status={task.status} /> : null}
 
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-        <span className="truncate font-medium">{task.title}</span>
+        <span
+          className={cn(
+            "truncate font-medium",
+            completed && "line-through opacity-70",
+          )}
+        >
+          {task.title}
+        </span>
         <span className="shrink-0 text-muted-foreground" aria-hidden>
           ·
         </span>
@@ -93,7 +113,11 @@ function TaskRow({
             aria-label="Recurring task"
           />
         ) : null}
-        {task.due_date ? (
+        {completed && task.updated_at ? (
+          <span className="text-sm tabular-nums text-muted-foreground">
+            {formatCompletedDate(task.updated_at)}
+          </span>
+        ) : task.due_date ? (
           <span
             className={cn(
               "text-sm tabular-nums",
@@ -174,21 +198,93 @@ function TaskGroupSection({
   );
 }
 
+function CompletedSection({
+  tasks,
+  totalCount,
+  assignee,
+  today,
+}: {
+  tasks: MyTaskRow[];
+  totalCount: number;
+  assignee: { name: string; avatar_url: string | null };
+  today: string;
+}) {
+  const [collapsed, setCollapsed] = useState(true);
+
+  if (totalCount === 0) return null;
+
+  return (
+    <section>
+      <button
+        type="button"
+        onClick={() => setCollapsed((value) => !value)}
+        className="mb-2 flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-muted/40"
+        aria-expanded={!collapsed}
+      >
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            collapsed && "-rotate-90",
+          )}
+          aria-hidden
+        />
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          Completed ({totalCount})
+        </h2>
+      </button>
+
+      {!collapsed && tasks.length > 0 ? (
+        <div className="overflow-hidden rounded-lg border border-border">
+          <ul className="divide-y divide-border">
+            {tasks.map((task) => (
+              <li key={task.id}>
+                <TaskRow
+                  task={task}
+                  assignee={assignee}
+                  today={today}
+                  completed
+                />
+              </li>
+            ))}
+          </ul>
+          {totalCount > tasks.length ? (
+            <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+              Showing {tasks.length} of {totalCount} completed tasks.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!collapsed && tasks.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          No completed tasks match your filters.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 export function MyTasksList({
   groups,
+  completedTasks,
+  completedCount,
+  showCompleted,
   hasActiveFilters = false,
   assignee,
   onClearFilters,
 }: {
   groups: GroupedMyTasks;
+  completedTasks: MyTaskRow[];
+  completedCount: number;
+  showCompleted: boolean;
   hasActiveFilters?: boolean;
   assignee: { name: string; avatar_url: string | null };
   onClearFilters?: () => void;
 }) {
   const today = todayIso();
-  const hasAny = Object.values(groups).some((group) => group.length > 0);
+  const hasAnyActive = Object.values(groups).some((group) => group.length > 0);
 
-  if (!hasAny) {
+  if (!hasAnyActive && !(showCompleted && completedCount > 0)) {
     if (hasActiveFilters) {
       return (
         <div className="rounded-lg border border-dashed border-border px-4 py-12 text-center">
@@ -228,6 +324,15 @@ export function MyTasksList({
           />
         ) : null,
       )}
+
+      {showCompleted ? (
+        <CompletedSection
+          tasks={completedTasks}
+          totalCount={completedCount}
+          assignee={assignee}
+          today={today}
+        />
+      ) : null}
     </div>
   );
 }

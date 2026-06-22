@@ -17,6 +17,7 @@ type TasksPageProps = {
     q?: string;
     client?: string;
     due?: string;
+    show_completed?: string;
   }>;
 };
 
@@ -31,15 +32,19 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     q: params.q,
     client: params.client,
     due: params.due || "all",
+    show_completed: params.show_completed,
   });
+
+  const showCompleted = parsed.success && parsed.data.show_completed === "true";
 
   const filters = parsed.success
     ? {
         search: parsed.data.q,
         clientId: parsed.data.client,
         dueDateFilter: parsed.data.due ?? "all",
+        showCompleted,
       }
-    : { dueDateFilter: "all" as const };
+    : { dueDateFilter: "all" as const, showCompleted: false };
 
   const hasActiveFilters = Boolean(
     filters.search?.trim() ||
@@ -47,13 +52,13 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
       (filters.dueDateFilter && filters.dueDateFilter !== "all"),
   );
 
-  const [tasks, clients] = await Promise.all([
+  const [taskResult, clients] = await Promise.all([
     getMyTasks(teamMember.id, filters),
     getMyTaskClientOptions(teamMember.id),
   ]);
 
-  const groups = groupMyTasks(tasks);
-  const total = tasks.length;
+  const groups = groupMyTasks(taskResult.active);
+  const total = taskResult.active.length;
 
   return (
     <div className="space-y-6">
@@ -68,11 +73,17 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
       </div>
 
       <Suspense fallback={<FiltersSkeleton />}>
-        <MyTasksFilters clients={clients} />
+        <MyTasksFilters
+          clients={clients}
+          completedCount={taskResult.completedCount}
+        />
       </Suspense>
 
       <MyTasksListShell
         groups={groups}
+        completedTasks={taskResult.completed}
+        completedCount={taskResult.completedCount}
+        showCompleted={showCompleted}
         hasActiveFilters={hasActiveFilters}
         assignee={{
           name: teamMember.name,

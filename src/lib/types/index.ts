@@ -38,6 +38,14 @@ export type ClientContact = PublicTables["client_contacts"]["Row"];
 export type ClientContactInsert = PublicTables["client_contacts"]["Insert"];
 export type ClientContactUpdate = PublicTables["client_contacts"]["Update"];
 
+export type EmailLog = PmTables["email_log"]["Row"];
+export type EmailLogInsert = PmTables["email_log"]["Insert"];
+export type EmailLogUpdate = PmTables["email_log"]["Update"];
+
+export type TeamMemberEmail = PmTables["team_member_emails"]["Row"];
+export type TeamMemberEmailInsert = PmTables["team_member_emails"]["Insert"];
+export type TeamMemberEmailUpdate = PmTables["team_member_emails"]["Update"];
+
 export type Interaction = PmTables["interactions"]["Row"];
 export type InteractionInsert = PmTables["interactions"]["Insert"];
 export type InteractionUpdate = PmTables["interactions"]["Update"];

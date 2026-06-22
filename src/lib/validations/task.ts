@@ -164,4 +164,5 @@ export const myTasksFiltersSchema = z.object({
   q: z.string().trim().max(200).optional(),
   client: z.string().uuid().optional(),
   due: z.enum(myTasksDueDateFilters).optional(),
+  show_completed: z.enum(["true"]).optional(),
 });

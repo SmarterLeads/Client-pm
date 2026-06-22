@@ -37,6 +37,8 @@ export function getNotificationHref(notification: Notification): string | null {
       return null;
     case "milestone":
       return `/projects?milestone=${notification.entity_id}`;
+    case "email_log":
+      return "/dashboard";
     default:
       return null;
   }

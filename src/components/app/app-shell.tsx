@@ -8,6 +8,7 @@ import type { Notification, TeamMember } from "@/lib/types";
 type AppShellProps = {
   teamMember: TeamMember;
   unreadCount: number;
+  pendingEmailCount: number;
   notifications: Notification[];
   reportClientGroups: AgencyReportClientGroup[];
   children: React.ReactNode;
@@ -17,6 +18,7 @@ type AppShellProps = {
 export function AppShell({
   teamMember,
   unreadCount,
+  pendingEmailCount,
   notifications,
   reportClientGroups,
   children,
@@ -37,6 +39,7 @@ export function AppShell({
         <AppTopBar
           teamMember={teamMember}
           unreadCount={unreadCount}
+          pendingEmailCount={pendingEmailCount}
           notifications={notifications}
           reportClientGroups={reportClientGroups}
           canViewBusinessDashboard={showBusinessDashboard}

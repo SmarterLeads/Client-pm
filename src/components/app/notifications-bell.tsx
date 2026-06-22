@@ -26,17 +26,20 @@ import { Bell } from "lucide-react";
 
 type NotificationsBellProps = {
   unreadCount: number;
+  pendingEmailCount?: number;
   notifications?: Notification[] | null;
 };
 
 export function NotificationsBell({
   unreadCount,
+  pendingEmailCount = 0,
   notifications: notificationsProp,
 }: NotificationsBellProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const notifications = notificationsProp ?? [];
   const safeUnreadCount = unreadCount ?? 0;
+  const safePendingEmailCount = pendingEmailCount ?? 0;
 
   function handleMarkAllRead(event: React.MouseEvent) {
     event.preventDefault();
@@ -76,9 +79,16 @@ export function NotificationsBell({
     <DropdownMenu>
       <DropdownMenuTrigger
         className="relative inline-flex size-9 items-center justify-center rounded-md hover:bg-muted"
-        aria-label={`Notifications${safeUnreadCount > 0 ? `, ${safeUnreadCount} unread` : ""}`}
+        aria-label={`Notifications${safeUnreadCount > 0 ? `, ${safeUnreadCount} unread` : ""}${safePendingEmailCount > 0 ? `, ${safePendingEmailCount} unmatched emails` : ""}`}
       >
         <Bell className="size-5" />
+        {safePendingEmailCount > 0 ? (
+          <Badge
+            className="absolute -bottom-0.5 -left-0.5 flex size-5 items-center justify-center rounded-full border-2 border-background bg-blue-600 p-0 text-[10px] text-white hover:bg-blue-600"
+          >
+            {safePendingEmailCount > 99 ? "99+" : safePendingEmailCount}
+          </Badge>
+        ) : null}
         {safeUnreadCount > 0 ? (
           <Badge
             variant="destructive"

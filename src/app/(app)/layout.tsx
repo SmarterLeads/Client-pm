@@ -8,6 +8,7 @@ import {
   getUnreadNotificationCount,
 } from "@/lib/auth/session";
 import { getMarketingReportClientGroups } from "@/lib/queries/marketing";
+import { getPendingEmailLogCount } from "@/lib/queries/email-log";
 import { getNotificationsForRecipient } from "@/lib/queries/notifications";
 import { getTeamMembersForSelect } from "@/lib/queries/projects";
 
@@ -26,10 +27,11 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const [unreadCount, notifications, teamMembers, reportClientGroups] =
+  const [unreadCount, notifications, pendingEmailCount, teamMembers, reportClientGroups] =
     await Promise.all([
       getUnreadNotificationCount(teamMember.id),
       getNotificationsForRecipient(teamMember.id),
+      getPendingEmailLogCount(),
       getTeamMembersForSelect(),
       getMarketingReportClientGroups().catch(() => []),
     ]);
@@ -39,6 +41,7 @@ export default async function AppLayout({
       <AppShell
         teamMember={teamMember}
         unreadCount={unreadCount}
+        pendingEmailCount={pendingEmailCount}
         notifications={notifications}
         reportClientGroups={reportClientGroups}
       >

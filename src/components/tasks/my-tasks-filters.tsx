@@ -19,9 +19,13 @@ const dueDateOptions: { value: MyTasksDueDateFilter; label: string }[] = [
 
 type MyTasksFiltersProps = {
   clients: MyTaskClientOption[];
+  completedCount: number;
 };
 
-export function MyTasksFilters({ clients }: MyTasksFiltersProps) {
+export function MyTasksFilters({
+  clients,
+  completedCount,
+}: MyTasksFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -29,6 +33,7 @@ export function MyTasksFilters({ clients }: MyTasksFiltersProps) {
   const q = searchParams.get("q") ?? "";
   const client = searchParams.get("client") ?? "";
   const due = (searchParams.get("due") ?? "all") as MyTasksDueDateFilter;
+  const showCompleted = searchParams.get("show_completed") === "true";
 
   const hasActiveFilters = Boolean(
     q.trim() || client || (due && due !== "all"),
@@ -52,8 +57,17 @@ export function MyTasksFilters({ clients }: MyTasksFiltersProps) {
 
   function clearFilters() {
     startTransition(() => {
-      router.replace("/tasks");
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("q");
+      params.delete("client");
+      params.delete("due");
+      const query = params.toString();
+      router.replace(query ? `/tasks?${query}` : "/tasks");
     });
+  }
+
+  function toggleShowCompleted() {
+    updateParams({ show_completed: showCompleted ? "" : "true" });
   }
 
   return (
@@ -100,6 +114,17 @@ export function MyTasksFilters({ clients }: MyTasksFiltersProps) {
           Clear filters
         </Button>
       ) : null}
+
+      <Button
+        type="button"
+        variant={showCompleted ? "secondary" : "outline"}
+        size="sm"
+        onClick={toggleShowCompleted}
+        className="shrink-0"
+      >
+        Show completed
+        {completedCount > 0 ? ` (${completedCount})` : ""}
+      </Button>
     </div>
   );
 }

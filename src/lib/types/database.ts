@@ -351,6 +351,76 @@ export type Database = {
           },
         ]
       }
+      email_log: {
+        Row: {
+          body_html: string | null
+          body_text: string | null
+          cc_email: string | null
+          created_at: string
+          from_email: string
+          id: string
+          interaction_id: string | null
+          matched_client_id: string | null
+          received_at: string
+          status: string
+          subject: string | null
+          team_member_id: string | null
+          to_email: string | null
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string | null
+          cc_email?: string | null
+          created_at?: string
+          from_email: string
+          id?: string
+          interaction_id?: string | null
+          matched_client_id?: string | null
+          received_at?: string
+          status?: string
+          subject?: string | null
+          team_member_id?: string | null
+          to_email?: string | null
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string | null
+          cc_email?: string | null
+          created_at?: string
+          from_email?: string
+          id?: string
+          interaction_id?: string | null
+          matched_client_id?: string | null
+          received_at?: string
+          status?: string
+          subject?: string | null
+          team_member_id?: string | null
+          to_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_log_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "interactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_log_matched_client_id_fkey"
+            columns: ["matched_client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_health"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_log_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interactions: {
         Row: {
           body: string | null
@@ -1745,6 +1815,35 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      team_member_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          team_member_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          team_member_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          team_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_emails_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       time_entries: {
         Row: {

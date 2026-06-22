@@ -12,6 +12,7 @@ import type { Notification, TeamMember } from "@/lib/types";
 type AppTopBarProps = {
   teamMember: TeamMember;
   unreadCount: number;
+  pendingEmailCount: number;
   notifications: Notification[];
   reportClientGroups: AgencyReportClientGroup[];
   canViewBusinessDashboard?: boolean;
@@ -29,6 +30,7 @@ function initials(name: string) {
 export function AppTopBar({
   teamMember,
   unreadCount,
+  pendingEmailCount,
   notifications,
   reportClientGroups,
   canViewBusinessDashboard = false,
@@ -61,6 +63,7 @@ export function AppTopBar({
         <QuickCreateButton />
         <NotificationsBell
           unreadCount={unreadCount}
+          pendingEmailCount={pendingEmailCount}
           notifications={notifications}
         />
         <div className="flex items-center gap-3">
