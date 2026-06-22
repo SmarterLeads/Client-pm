@@ -6,6 +6,7 @@ import { getTaskDetail } from "@/lib/queries/tasks";
 import {
   notifyTaskAssigned,
   notifyTaskComment,
+  notifyTaskReadyForReview,
 } from "@/lib/notifications/notify";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -169,6 +170,11 @@ export async function updateTask(
     const service = createServiceClient();
     let existingTask: { assignee_id: string | null; title: string } | null =
       null;
+    let taskBeforeStatusUpdate: {
+      status: string;
+      title: string;
+      assignee_id: string | null;
+    } | null = null;
 
     if ("assignee_id" in parsed.data) {
       const { data } = await pm(service)
@@ -179,11 +185,36 @@ export async function updateTask(
       existingTask = data;
     }
 
+    if ("status" in parsed.data) {
+      const { data } = await pm(service)
+        .from("tasks")
+        .select("status, title, assignee_id")
+        .eq("id", taskId)
+        .maybeSingle();
+      taskBeforeStatusUpdate = data;
+    }
+
     await updateTaskWithTeamMemberContext(
       teamMember.id,
       taskId,
       parsed.data as Record<string, unknown>,
     );
+
+    if (
+      "status" in parsed.data &&
+      parsed.data.status === "in_review" &&
+      taskBeforeStatusUpdate &&
+      taskBeforeStatusUpdate.status !== "in_review"
+    ) {
+      await notifyTaskReadyForReview({
+        taskId,
+        taskTitle: taskBeforeStatusUpdate.title,
+        projectId,
+        assigneeId: taskBeforeStatusUpdate.assignee_id,
+        actorId: teamMember.id,
+        actorName: teamMember.name,
+      });
+    }
 
     if (
       existingTask &&

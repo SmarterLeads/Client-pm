@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { resolveMentionedTeamMemberIds } from "@/lib/notifications/mentions";
 import { safeCreateNotification } from "@/lib/notifications/create";
+import { getProjectOwnerContext } from "@/lib/queries/projects";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -88,6 +89,57 @@ export async function notifyTaskComment(params: {
       entityId: params.taskId,
       title: `You were mentioned on "${params.taskTitle}"`,
       body: `${params.actorName} mentioned you in a comment.`,
+    });
+    sent = true;
+  }
+
+  if (sent) {
+    revalidateNotificationBell();
+  }
+}
+
+export async function notifyTaskReadyForReview(params: {
+  taskId: string;
+  taskTitle: string;
+  projectId: string;
+  assigneeId: string | null;
+  actorId: string;
+  actorName: string;
+}) {
+  const project = await getProjectOwnerContext(params.projectId);
+  if (!project) return;
+
+  const title = `Task ready for review: ${params.taskTitle}`;
+  const body = `${params.actorName} marked "${params.taskTitle}" as In Review in ${project.projectName}. Please review and mark as complete.`;
+
+  let sent = false;
+
+  if (project.ownerId && project.ownerId !== params.actorId) {
+    await safeCreateNotification({
+      recipientId: project.ownerId,
+      actorId: params.actorId,
+      type: "task_review",
+      entityType: "task",
+      entityId: params.taskId,
+      title,
+      body,
+    });
+    sent = true;
+  }
+
+  if (
+    params.assigneeId &&
+    params.assigneeId !== params.actorId &&
+    params.assigneeId !== project.ownerId
+  ) {
+    await safeCreateNotification({
+      recipientId: params.assigneeId,
+      actorId: params.actorId,
+      type: "task_review",
+      entityType: "task",
+      entityId: params.taskId,
+      title,
+      body,
     });
     sent = true;
   }

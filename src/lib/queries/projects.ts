@@ -5,6 +5,7 @@
 import { getProjectTemplateName } from "@/lib/queries/templates";
 import { pm } from "@/lib/supabase/pm";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import type {
   ChangeAction,
   Milestone,
@@ -495,4 +496,33 @@ export async function getProjectActivity(
     old_values: row.old_values,
     new_values: row.new_values,
   }));
+}
+
+export type ProjectOwnerContext = {
+  ownerId: string | null;
+  projectName: string;
+};
+
+/** Project owner + name for server-side notifications (service role). */
+export async function getProjectOwnerContext(
+  projectId: string,
+): Promise<ProjectOwnerContext | null> {
+  const service = createServiceClient();
+  const { data, error } = await pm(service)
+    .from("projects")
+    .select("name, owner_id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getProjectOwnerContext]", error.message);
+    return null;
+  }
+
+  if (!data) return null;
+
+  return {
+    ownerId: data.owner_id,
+    projectName: data.name?.trim() || "a project",
+  };
 }

@@ -43,6 +43,7 @@ export const PmEnumValues = {
     "task_due",
     "comment_mention",
     "task_complete",
+    "task_review",
     "milestone_due",
     "approval_needed",
     "milestone_approved",
