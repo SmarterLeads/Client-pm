@@ -13,7 +13,7 @@ export type CurrentUserState =
   | { status: "ready"; persona: "portal"; user: ClientUser };
 
 export function useCurrentUser(): CurrentUserState {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const [state, setState] = useState<CurrentUserState>({ status: "loading" });
 
   const load = useCallback(async () => {

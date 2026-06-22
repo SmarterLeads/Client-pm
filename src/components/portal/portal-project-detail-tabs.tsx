@@ -47,8 +47,8 @@ export function PortalProjectDetailTabs({
   attachments,
   canApprove,
 }: PortalProjectDetailTabsProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const activeTab = (searchParams.get("tab") as TabId) || "overview";
   const dueLabel = formatDate(project.due_date);
 

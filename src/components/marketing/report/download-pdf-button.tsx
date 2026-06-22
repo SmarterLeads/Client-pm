@@ -11,7 +11,7 @@ type Props = {
 };
 
 export function DownloadPdfButton({ clientSlug, primaryColor }: Props) {
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const [loading, setLoading] = useState(false);
 
   const onDownload = async () => {

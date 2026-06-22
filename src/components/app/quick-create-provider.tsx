@@ -42,7 +42,7 @@ export function QuickCreateProvider({
   teamMember,
   children,
 }: QuickCreateProviderProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
 
   const { active } = useSyncExternalStore(
     subscribeQuickCreate,

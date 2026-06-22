@@ -52,7 +52,7 @@ export function MarketingDashboard({
 }: MarketingDashboardProps) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const viewFromUrl = searchParams.get("view");
   const urlViewApplied = useRef(false);
 

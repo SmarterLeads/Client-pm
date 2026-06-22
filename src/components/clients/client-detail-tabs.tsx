@@ -86,8 +86,8 @@ export function ClientDetailTabs({
   isAdmin,
   currentTeamMemberId,
 }: ClientDetailTabsProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const activeTab = (searchParams.get("tab") as TabId) || "overview";
 
   return (

@@ -15,7 +15,7 @@ type ProjectsFiltersProps = {
 
 export function ProjectsFilters({ clients, owners }: ProjectsFiltersProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const q = searchParams.get("q") ?? "";

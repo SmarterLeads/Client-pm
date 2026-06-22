@@ -13,7 +13,7 @@ const links = [
 ] as const;
 
 export function SettingsNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
 
   return (
     <nav className="flex flex-col gap-1">

@@ -20,7 +20,7 @@ type ClientReportsNavProps = {
 };
 
 export function ClientReportsNav({ groups }: ClientReportsNavProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const active = pathname.startsWith("/marketing/") && pathname !== "/marketing";
 
   return (

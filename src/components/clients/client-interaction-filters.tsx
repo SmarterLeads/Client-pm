@@ -6,8 +6,8 @@ import { interactionTypeOptions } from "@/lib/interactions/display";
 
 export function ClientInteractionFilters() {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const type = searchParams.get("type") ?? "";

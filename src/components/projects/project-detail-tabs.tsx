@@ -58,8 +58,8 @@ export function ProjectDetailTabs({
   teamMembers,
   attachments,
 }: ProjectDetailTabsProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const activeTab = (searchParams.get("tab") as TabId) || "board";
 
   return (

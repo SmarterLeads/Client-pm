@@ -13,7 +13,7 @@ function isActive(pathname: string, href: string, matchPrefix?: boolean) {
 }
 
 export function PortalNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
 
   return (
     <nav className="flex items-center gap-1 overflow-x-auto pb-1 sm:gap-2">

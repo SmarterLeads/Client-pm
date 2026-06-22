@@ -15,8 +15,8 @@ export function ClientActivityFilters({
   teamMembers,
 }: ClientActivityFiltersProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const selectedTypes = useMemo(() => {

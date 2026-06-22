@@ -18,7 +18,7 @@ type MeetingsFiltersProps = {
 
 function MeetingsFiltersInner({ teamMembers }: MeetingsFiltersProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
 
   const type = searchParams.get("type") ?? "";
   const visibility = searchParams.get("visibility") ?? "";

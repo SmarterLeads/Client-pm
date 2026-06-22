@@ -13,7 +13,7 @@ export function HistoryFilters({
   teamMembers,
 }: HistoryFiltersProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const entityType = searchParams.get("entity_type") ?? "";

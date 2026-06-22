@@ -23,8 +23,8 @@ const PRESETS: Array<{ id: PresetId; label: string }> = [
 
 export function DateRangeDropdown({ primaryColor, initialRange, initialStart, initialEnd }: Props) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [months, setMonths] = useState(2);

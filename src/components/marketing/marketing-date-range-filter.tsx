@@ -16,8 +16,8 @@ export function MarketingDateRangeFilter({
   className,
 }: MarketingDateRangeFilterProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const current =
     (searchParams.get("range") as MarketingDateRange | null) ?? "this_month";
 

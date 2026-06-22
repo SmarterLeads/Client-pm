@@ -57,8 +57,8 @@ export function InternalProjectDetailTabs({
   teamMembers,
   attachments,
 }: InternalProjectDetailTabsProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const activeTab = (searchParams.get("tab") as TabId) || "board";
 
   return (

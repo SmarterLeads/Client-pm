@@ -6,7 +6,7 @@ import { interactionTypeOptions } from "@/lib/interactions/display";
 
 export function PortalInteractionFilters() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const type = searchParams.get("type") ?? "";

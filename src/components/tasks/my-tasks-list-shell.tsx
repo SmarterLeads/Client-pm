@@ -22,7 +22,7 @@ export function MyTasksListShell({
   assignee,
 }: MyTasksListShellProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
 
   function clearFilters() {
     const params = new URLSearchParams(searchParams.toString());

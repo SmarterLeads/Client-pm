@@ -13,8 +13,8 @@ const subTabs = [
 export type ClientMarketingSubTabId = (typeof subTabs)[number]["id"];
 
 export function ClientMarketingSubTabs() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const activeSub =
     (searchParams.get("marketingSub") as ClientMarketingSubTabId) || "internal";
 
