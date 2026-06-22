@@ -1,5 +1,8 @@
 ﻿import { CLIENT_STATUSES } from "@/lib/pm/constants";
-import { MARKETING_CHANNEL_VALUES } from "@/lib/clients/overview-fields";
+import {
+  CLIENT_SERVICE_FILTER_VALUES,
+  MARKETING_CHANNEL_VALUES,
+} from "@/lib/clients/overview-fields";
 import { INTERACTION_TYPES } from "@/lib/interactions/constants";
 import { PmEnumValues } from "@/lib/types/enums";
 import { z } from "zod";
@@ -348,6 +351,7 @@ export const clientListFiltersSchema = z
     rag: z.enum(ragStatuses).optional(),
     agency: z.string().uuid("Invalid agency").optional(),
     agency_id: z.string().uuid("Invalid agency").optional(),
+    service: z.enum(CLIENT_SERVICE_FILTER_VALUES).optional(),
     include_inactive: z.enum(["true", "false"]).optional(),
   })
   .transform(({ agency, agency_id, include_inactive, ...rest }) => ({

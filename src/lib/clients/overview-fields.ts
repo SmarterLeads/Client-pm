@@ -31,6 +31,44 @@ export const MARKETING_CHANNEL_VALUES = [
 
 export type MarketingChannel = (typeof MARKETING_CHANNEL_OPTIONS)[number]["value"];
 
+/** Service filter options for /clients (includes tracking CRM setups). */
+export const CLIENT_SERVICE_FILTER_OPTIONS = [
+  { value: "google_ads", label: "Google Ads" },
+  { value: "meta_ads", label: "Meta Ads" },
+  { value: "microsoft_ads", label: "Microsoft Ads" },
+  { value: "tiktok_ads", label: "TikTok Ads" },
+  { value: "seo", label: "SEO" },
+  { value: "linkedin_ads", label: "LinkedIn Ads" },
+  { value: "website_maintenance", label: "Website Maintenance" },
+  { value: "email_marketing", label: "Email Marketing" },
+  { value: "ga4", label: "GA4" },
+  { value: "ghl", label: "Go High Level" },
+  { value: "whatconverts", label: "WhatConverts" },
+] as const;
+
+export const CLIENT_SERVICE_FILTER_VALUES = [
+  "google_ads",
+  "meta_ads",
+  "microsoft_ads",
+  "tiktok_ads",
+  "seo",
+  "linkedin_ads",
+  "website_maintenance",
+  "email_marketing",
+  "ga4",
+  "ghl",
+  "whatconverts",
+] as const;
+
+export type ClientServiceFilterValue =
+  (typeof CLIENT_SERVICE_FILTER_VALUES)[number];
+
+export function isTrackingServiceFilter(
+  value: string,
+): value is "ghl" | "whatconverts" {
+  return value === "ghl" || value === "whatconverts";
+}
+
 export const TRACKING_SETUP_OPTIONS = [
   { value: "whatconverts", label: "WhatConverts" },
   { value: "ghl", label: "Go High Level" },

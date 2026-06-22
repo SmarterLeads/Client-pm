@@ -1,5 +1,10 @@
 ﻿import { formatContactName } from "@/lib/clients/contact-utils";
 import {
+  CLIENT_SERVICE_FILTER_VALUES,
+  type ClientServiceFilterValue,
+  isTrackingServiceFilter,
+} from "@/lib/clients/overview-fields";
+import {
   applyActivityLogFilters,
   DEFAULT_CLIENT_ACTIVITY_PAGE_SIZE,
   mapAttachmentActivityEvent,
@@ -75,8 +80,11 @@ export type ClientListFilters = {
   status?: ClientStatus;
   rag?: RagStatus;
   agency?: string;
+  service?: ClientServiceFilterValue;
   includeInactive?: boolean;
 };
+
+export type ClientServiceFilterCounts = Record<ClientServiceFilterValue, number>;
 
 export type ClientsListPage = {
   clients: ClientListRow[];
@@ -167,12 +175,80 @@ function mapClientListRows(
     }));
 }
 
+function emptyServiceFilterCounts(): ClientServiceFilterCounts {
+  return Object.fromEntries(
+    CLIENT_SERVICE_FILTER_VALUES.map((value) => [value, 0]),
+  ) as ClientServiceFilterCounts;
+}
+
+export async function getClientServiceFilterCounts(): Promise<ClientServiceFilterCounts> {
+  const counts = emptyServiceFilterCounts();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("clients")
+    .select("marketing_channels, tracking_setup")
+    .eq("status", "active");
+
+  if (error) {
+    console.error("[getClientServiceFilterCounts]", error.message);
+    return counts;
+  }
+
+  for (const client of data ?? []) {
+    for (const channel of client.marketing_channels ?? []) {
+      if (channel in counts) {
+        counts[channel as ClientServiceFilterValue] += 1;
+      }
+    }
+    if (client.tracking_setup === "ghl") {
+      counts.ghl += 1;
+    }
+    if (client.tracking_setup === "whatconverts") {
+      counts.whatconverts += 1;
+    }
+  }
+
+  return counts;
+}
+
+async function getClientIdsForServiceFilter(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  service: ClientServiceFilterValue,
+): Promise<string[]> {
+  let query = supabase.from("clients").select("id");
+
+  if (isTrackingServiceFilter(service)) {
+    query = query.eq("tracking_setup", service);
+  } else {
+    query = query.contains("marketing_channels", [service]);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((client) => client.id);
+}
+
+function intersectClientIds(
+  left: string[] | null,
+  right: string[] | null,
+): string[] | null {
+  if (left === null) return right;
+  if (right === null) return left;
+  const rightSet = new Set(right);
+  return left.filter((id) => rightSet.has(id));
+}
+
 export async function getClientsList(
   filters: ClientListFilters = {},
 ): Promise<ClientsListPage> {
   const supabase = await createClient();
 
-  let agencyClientIds: string[] | null = null;
+  let scopedClientIds: string[] | null = null;
 
   if (filters.agency) {
     const { data: scopedClients, error: scopeError } = await supabase
@@ -184,8 +260,19 @@ export async function getClientsList(
       throw new Error(scopeError.message);
     }
 
-    agencyClientIds = (scopedClients ?? []).map((client) => client.id);
-    if (agencyClientIds.length === 0) {
+    scopedClientIds = (scopedClients ?? []).map((client) => client.id);
+    if (scopedClientIds.length === 0) {
+      return { clients: [], totalCount: 0 };
+    }
+  }
+
+  if (filters.service) {
+    const serviceClientIds = await getClientIdsForServiceFilter(
+      supabase,
+      filters.service,
+    );
+    scopedClientIds = intersectClientIds(scopedClientIds, serviceClientIds);
+    if (scopedClientIds !== null && scopedClientIds.length === 0) {
       return { clients: [], totalCount: 0 };
     }
   }
@@ -199,8 +286,8 @@ export async function getClientsList(
   >(query: T): T {
     let next = query;
 
-    if (agencyClientIds) {
-      next = next.in("id", agencyClientIds);
+    if (scopedClientIds) {
+      next = next.in("id", scopedClientIds);
     }
 
     if (filters.status) {

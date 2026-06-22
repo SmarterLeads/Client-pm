@@ -5,7 +5,10 @@ import { ClientsList } from "@/components/clients/clients-list";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAgenciesList } from "@/lib/queries/agencies";
-import { getClientsList } from "@/lib/queries/clients";
+import {
+  getClientServiceFilterCounts,
+  getClientsList,
+} from "@/lib/queries/clients";
 import { clientListFiltersSchema } from "@/lib/validations/client";
 
 type ClientsPageProps = {
@@ -15,6 +18,7 @@ type ClientsPageProps = {
     rag?: string;
     agency?: string;
     agency_id?: string;
+    service?: string;
     include_inactive?: string;
   }>;
 };
@@ -27,13 +31,15 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     rag: params.rag || undefined,
     agency: params.agency || undefined,
     agency_id: params.agency_id || undefined,
+    service: params.service || undefined,
     include_inactive: params.include_inactive || undefined,
   });
 
   const filters = parsed.success ? parsed.data : { includeInactive: false };
-  const [clientsPage, agencies] = await Promise.all([
+  const [clientsPage, agencies, serviceCounts] = await Promise.all([
     getClientsList(filters),
     getAgenciesList(),
+    getClientServiceFilterCounts(),
   ]);
 
   return (
@@ -51,7 +57,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       </div>
 
       <Suspense fallback={<FiltersSkeleton />}>
-        <ClientsFilters agencies={agencies} />
+        <ClientsFilters agencies={agencies} serviceCounts={serviceCounts} />
       </Suspense>
 
       <ClientsList clients={clientsPage.clients} />
@@ -66,6 +72,7 @@ function FiltersSkeleton() {
       <Skeleton className="h-8 w-40" />
       <Skeleton className="h-8 w-40" />
       <Skeleton className="h-8 w-44" />
+      <Skeleton className="h-8 w-48" />
     </div>
   );
 }
