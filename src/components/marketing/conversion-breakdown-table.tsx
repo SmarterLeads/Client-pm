@@ -7,7 +7,9 @@ type Props = {
 };
 
 export function ConversionBreakdownTable({ groups }: Props) {
-  const flatRows = groups.flatMap((g) => g.rows);
+  const flatRows = groups
+    .flatMap((g) => g.rows)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
   if (flatRows.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-zinc-200 px-3 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">

@@ -3,7 +3,7 @@
 import type {
   GoogleAdsSearchTermsTableState,
   GoogleAdsSearchTermRow,
-} from "@/lib/report/google-ads-search-terms-report";
+} from "@/lib/marketing/report/google-ads-search-terms-report";
 
 function formatMoney(value: number, min = 2, max = 2): string {
   return value.toLocaleString("en-US", {

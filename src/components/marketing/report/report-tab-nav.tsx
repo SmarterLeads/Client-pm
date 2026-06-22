@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import type { ReportTabItem } from "@/lib/report/report-tab-platform";
+import type { ReportTabItem } from "@/lib/marketing/report/report-tab-platform";
 
 type Props = {
   clientSlug: string;
@@ -12,8 +12,9 @@ type Props = {
   platformTabs: ReportTabItem[];
   /** When false, the Overview tab is omitted (e.g. single-platform client — only platform tabs show). */
   showOverviewTab?: boolean;
-  /** When set, tab links use this path instead of `/marketing/[slug]`. */
+  /** Override link base (e.g. `/clients/[id]` when embedded on client detail). */
   navBasePath?: string;
+  /** Query params preserved on tab navigation (e.g. tab=marketing). */
   navPreservedQuery?: Record<string, string>;
 };
 
@@ -23,7 +24,6 @@ function hrefForTab(
   start: string | undefined,
   end: string | undefined,
   view: string,
-  /** When this matches `view`, omit `view` from the query (single-platform clients default correctly server-side). */
   omitViewSlug: string | null,
   navBasePath?: string,
   navPreservedQuery?: Record<string, string>,

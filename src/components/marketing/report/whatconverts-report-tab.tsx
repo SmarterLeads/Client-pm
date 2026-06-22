@@ -1,5 +1,5 @@
-import type { KpiStat } from "@/lib/report/client-report-metrics";
-import type { WhatConvertsReportDisplay } from "@/lib/report/whatconverts-config";
+import type { KpiStat } from "@/lib/marketing/report/client-report-metrics";
+import type { WhatConvertsReportDisplay } from "@/lib/marketing/report/whatconverts-config";
 import {
   formatWhatConvertsMetricValue,
   getVisibleWhatConvertsMetricColumns,
@@ -9,7 +9,7 @@ import {
   type WhatConvertsMetrics,
   type WhatConvertsReportData,
   type WhatConvertsYtdRow,
-} from "@/lib/report/whatconverts-report-metrics";
+} from "@/lib/marketing/report/whatconverts-report-metrics";
 
 type Props = {
   data: WhatConvertsReportData;

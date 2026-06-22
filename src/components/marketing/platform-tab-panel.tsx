@@ -19,7 +19,7 @@ import {
 import {
   buildInternalDashboardCampaignColumns,
   type InternalDashboardCampaignPlatform,
-} from "@/lib/report/channel-metric-config";
+} from "@/lib/marketing/report/channel-metric-config";
 import { createClient } from "@/lib/supabase/client";
 
 import { ConversionBreakdownTable } from "@/components/marketing/conversion-breakdown-table";

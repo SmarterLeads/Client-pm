@@ -6,8 +6,8 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import type {
   InternalCampaignColumnId,
   InternalCampaignVisibleColumn,
-} from "@/lib/report/channel-metric-config";
-import type { CampaignTableRow } from "@/lib/report/report-tab-platform";
+} from "@/lib/marketing/report/channel-metric-config";
+import type { CampaignTableRow } from "@/lib/marketing/report/report-tab-platform";
 
 type SortKey = "name" | InternalCampaignColumnId;
 

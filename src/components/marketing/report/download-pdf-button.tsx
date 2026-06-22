@@ -11,14 +11,14 @@ type Props = {
 };
 
 export function DownloadPdfButton({ clientSlug, primaryColor }: Props) {
-  const searchParams = useSearchParams() ?? new URLSearchParams();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
   const onDownload = async () => {
     if (loading) return;
     setLoading(true);
     try {
-      const q = new URLSearchParams(searchParams.toString());
+      const q = new URLSearchParams(searchParams?.toString() ?? "");
       const url = `/api/report/${clientSlug}/download-pdf${q.toString() ? `?${q.toString()}` : ""}`;
       const res = await fetch(url, { method: "GET" });
       if (!res.ok) throw new Error(`Failed to generate PDF (${res.status})`);

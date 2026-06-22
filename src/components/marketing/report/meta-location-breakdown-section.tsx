@@ -1,4 +1,4 @@
-import type { MetaLocationBreakdownState } from "@/lib/report/meta-location-breakdown";
+import type { MetaLocationBreakdownState } from "@/lib/marketing/report/meta-location-breakdown";
 
 import { LocationBreakdownSection } from "./location-breakdown-section";
 

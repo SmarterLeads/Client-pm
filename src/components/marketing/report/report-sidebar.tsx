@@ -24,6 +24,8 @@ type Props = {
   logoUrl: string | null;
   agencyName: string;
   primaryColor: string;
+  /** Base path for client links (default `/marketing`). */
+  linkBasePath?: string;
 };
 
 export function ReportSidebar({
@@ -32,6 +34,7 @@ export function ReportSidebar({
   logoUrl,
   agencyName,
   primaryColor,
+  linkBasePath = "/marketing",
 }: Props) {
   const [query, setQuery] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -51,7 +54,7 @@ export function ReportSidebar({
     <>
       <button
         type="button"
-        className="fixed left-4 top-16 z-40 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm font-medium shadow-sm md:hidden"
+        className="fixed left-4 top-4 z-40 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm font-medium shadow-sm md:hidden"
         onClick={() => setMobileOpen((o) => !o)}
       >
         {mobileOpen ? "Close" : "Clients"}
@@ -62,8 +65,8 @@ export function ReportSidebar({
       ) : null}
 
       <aside
-        className={`sticky top-0 z-30 h-[calc(100vh-3.5rem)] w-[240px] shrink-0 transform overflow-y-auto border-r border-zinc-200 bg-white transition-transform md:static md:translate-x-0 ${
-          mobileOpen ? "fixed inset-y-0 left-0 translate-x-0" : "-translate-x-full md:translate-x-0"
+        className={`fixed inset-y-0 left-0 z-40 w-[240px] transform border-r border-zinc-200 bg-white transition-transform md:static md:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="p-4">
@@ -101,7 +104,7 @@ export function ReportSidebar({
                     return (
                       <Link
                         key={client.id}
-                        href={`/marketing/${client.slug}`}
+                        href={`${linkBasePath}/${client.slug}`}
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center justify-between rounded-md px-2 py-2 text-sm ${
                           active ? "font-semibold text-zinc-900" : "text-zinc-700 hover:bg-zinc-50"

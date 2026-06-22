@@ -1,10 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
-  marketingDashboardStatuses,
-} from "@/lib/marketing/client-status";
-
-import {
   buildConversionPairIndex,
   compareConversionBreakdownOrder,
   configsForActiveDisplayNames,
@@ -33,7 +29,7 @@ import type {
   KpiDatum,
   PrimaryMetric,
 } from "@/lib/marketing/lead-gen-types";
-import { MAX_ROW_PRIMARY_SLOTS, mergeChannelMetricRows, type ChartModeValue, type ChannelMetricMap } from "@/lib/report/channel-metric-config";
+import { MAX_ROW_PRIMARY_SLOTS, mergeChannelMetricRows, type ChartModeValue, type ChannelMetricMap } from "@/lib/marketing/report/channel-metric-config";
 import {
   activeConversionPairKey,
   canonicalReportPlatformSlug,
@@ -41,7 +37,7 @@ import {
   fetchDistinctDailyPerformancePlatforms,
   resolveMetaPurchaseEventNames,
   type CampaignTableRow,
-} from "@/lib/report/report-tab-platform";
+} from "@/lib/marketing/report/report-tab-platform";
 import {
   effectiveAdsBudgetSumCents,
   effectiveBudgetCentsForPlatformKey,
@@ -49,6 +45,13 @@ import {
   type MonthlyBudgetYmRow,
 } from "@/lib/settings/client-budget-utils";
 import { normalizeConversionType } from "@/lib/marketing/lead-gen-types";
+import { marketingDashboardStatuses } from "@/lib/marketing/client-status";
+import {
+  MAXI_MIND_CLIENT_ID,
+  buildMaxiMindConversionBreakdown,
+  getMaxiMindRawNamesForQuery,
+} from "@/lib/marketing/report/maxi-mind-conversion-breakdown";
+import { metaInsightsActionAggregationKey } from "@/lib/sync/meta-conversion-extract";
 
 type SB = SupabaseClient<Database>;
 
@@ -238,7 +241,6 @@ function sumWindow(rows: DailyRow[], start: string, end: string) {
     );
 }
 
-/** PM team members see all agencies (shared Supabase project, internal staff). */
 export async function fetchAgencies(supabase: SB, _userId?: string) {
   const {
     data: { user },
@@ -1199,15 +1201,38 @@ export async function fetchDailyKpisForView(
   return fetchDailyKpis(supabase, clientId, platform, options);
 }
 
-type ComparisonWindows = ReturnType<typeof resolveComparisonWindows>;
-
-/** Fallback when no `client_conversions` rows exist — infer breakdown from `conversion_events`. */
-async function fetchConversionBreakdownFromEventsOnly(
+async function fetchMaxiMindConversionBreakdown(
   supabase: SB,
   clientId: string,
   platform: string,
-  win: ComparisonWindows,
+  win: ReturnType<typeof resolveComparisonWindows>,
 ): Promise<ConversionBreakdownGroup[]> {
+  const { data: activeConfigs, error: configErr } = await supabase
+    .from("client_conversions")
+    .select(
+      "id, raw_name, platform, display_name, mapped_name, conversion_type, sort_order, is_active",
+    )
+    .eq("client_id", clientId)
+    .ilike("platform", platform)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (configErr) throw configErr;
+
+  const rawNames = getMaxiMindRawNamesForQuery(activeConfigs ?? [], platform);
+  console.log("[MaxiMind] querying raw_names:", rawNames);
+
+  if (rawNames.length === 0) {
+    return buildMaxiMindConversionBreakdown({
+      platform,
+      configs: activeConfigs ?? [],
+      totalsCurrent: new Map(),
+      totalsPrior: new Map(),
+      spendCurrentCents: 0,
+      useMetaAggKeys: platform.toLowerCase() === "meta",
+    });
+  }
+
   const [{ data: events, error: eErr }, { data: perfRows, error: pErr }] =
     await Promise.all([
       supabase
@@ -1215,6 +1240,7 @@ async function fetchConversionBreakdownFromEventsOnly(
         .select("event_name, event_count, occurred_on")
         .eq("client_id", clientId)
         .ilike("platform", platform)
+        .in("event_name", rawNames)
         .gte("occurred_on", win.queryStart)
         .lt("occurred_on", win.queryEndExclusive),
       supabase
@@ -1229,39 +1255,96 @@ async function fetchConversionBreakdownFromEventsOnly(
   if (eErr) throw eErr;
   if (pErr) throw pErr;
 
+  console.log("[MaxiMind] events found:", events);
+
   const totalsCurrent = new Map<string, number>();
   const totalsPrior = new Map<string, number>();
   for (const ev of events ?? []) {
-    const name = (ev.event_name ?? "").trim();
-    if (!name) continue;
-    const n = ev.event_count ?? 0;
+    const k = ev.event_name;
+    if (!k) continue;
     if (isDateInRangeInclusive(ev.occurred_on, win.currentStart, win.currentEnd)) {
-      totalsCurrent.set(name, (totalsCurrent.get(name) ?? 0) + n);
+      totalsCurrent.set(k, (totalsCurrent.get(k) ?? 0) + (ev.event_count ?? 0));
     }
     if (isDateInRangeInclusive(ev.occurred_on, win.priorStart, win.priorEnd)) {
-      totalsPrior.set(name, (totalsPrior.get(name) ?? 0) + n);
+      totalsPrior.set(k, (totalsPrior.get(k) ?? 0) + (ev.event_count ?? 0));
     }
   }
-
-  const eventNames = Array.from(
-    new Set([...totalsCurrent.keys(), ...totalsPrior.keys()]),
-  ).filter(
-    (name) => (totalsCurrent.get(name) ?? 0) > 0 || (totalsPrior.get(name) ?? 0) > 0,
-  );
-
-  if (eventNames.length === 0) return [];
 
   const spendCurrentCents = (perfRows ?? [])
     .filter((r) => isDateInRangeInclusive(r.report_date, win.currentStart, win.currentEnd))
     .reduce((sum, r) => sum + (r.spend_cents ?? 0), 0);
 
-  const rows = eventNames
-    .map((displayName, index) => {
-      const totalCount = totalsCurrent.get(displayName) ?? 0;
-      const priorCount = totalsPrior.get(displayName) ?? 0;
+  return buildMaxiMindConversionBreakdown({
+    platform,
+    configs: activeConfigs ?? [],
+    totalsCurrent,
+    totalsPrior,
+    spendCurrentCents,
+    useMetaAggKeys: platform.toLowerCase() === "meta",
+  });
+}
+
+/** When there are no `client_conversions` rows, build breakdown from `conversion_events` directly. */
+async function fetchConversionBreakdownFromEventsOnlyInternal(
+  supabase: SB,
+  clientId: string,
+  platform: string,
+  win: ReturnType<typeof resolveComparisonWindows>,
+): Promise<ConversionBreakdownGroup[]> {
+  const [{ data: events, error: eErr }, { data: perfRows, error: pErr }] = await Promise.all([
+    supabase
+      .from("conversion_events")
+      .select("event_name, event_count, occurred_on")
+      .eq("client_id", clientId)
+      .ilike("platform", platform)
+      .gte("occurred_on", win.queryStart)
+      .lt("occurred_on", win.queryEndExclusive),
+    supabase
+      .from("daily_performance")
+      .select("report_date, spend_cents")
+      .eq("client_id", clientId)
+      .ilike("platform", platform)
+      .gte("report_date", win.queryStart)
+      .lt("report_date", win.queryEndExclusive),
+  ]);
+
+  if (eErr) throw eErr;
+  if (pErr) throw pErr;
+
+  const totalsCurrent = new Map<string, number>();
+  const totalsPrior = new Map<string, number>();
+  for (const ev of events ?? []) {
+    const eventName = (ev.event_name ?? "").trim();
+    if (!eventName) continue;
+    if (isDateInRangeInclusive(ev.occurred_on, win.currentStart, win.currentEnd)) {
+      totalsCurrent.set(
+        eventName,
+        (totalsCurrent.get(eventName) ?? 0) + (ev.event_count ?? 0),
+      );
+    }
+    if (isDateInRangeInclusive(ev.occurred_on, win.priorStart, win.priorEnd)) {
+      totalsPrior.set(
+        eventName,
+        (totalsPrior.get(eventName) ?? 0) + (ev.event_count ?? 0),
+      );
+    }
+  }
+
+  const spendCurrentCents = (perfRows ?? [])
+    .filter((r) => isDateInRangeInclusive(r.report_date, win.currentStart, win.currentEnd))
+    .reduce((sum, r) => sum + (r.spend_cents ?? 0), 0);
+
+  const eventNames = new Set([
+    ...Array.from(totalsCurrent.keys()),
+    ...Array.from(totalsPrior.keys()),
+  ]);
+  const rows = Array.from(eventNames)
+    .map((eventName, index) => {
+      const totalCount = totalsCurrent.get(eventName) ?? 0;
+      const priorCount = totalsPrior.get(eventName) ?? 0;
       return {
-        id: `event:${platform}:${displayName}`,
-        displayName,
+        id: `event:${eventName}`,
+        displayName: eventName,
         type: normalizeConversionType("other"),
         sortOrder: index,
         totalCount,
@@ -1271,7 +1354,21 @@ async function fetchConversionBreakdownFromEventsOnly(
           totalCount > 0 ? round2(spendCurrentCents / 100 / totalCount) : 0,
       };
     })
+    .filter((row) => row.totalCount > 0 || row.priorCount > 0)
     .sort((a, b) => b.totalCount + b.priorCount - (a.totalCount + a.priorCount));
+
+  if (rows.length === 0 && clientId !== MAXI_MIND_CLIENT_ID) return [];
+
+  if (clientId === MAXI_MIND_CLIENT_ID) {
+    return buildMaxiMindConversionBreakdown({
+      platform,
+      configs: [],
+      totalsCurrent,
+      totalsPrior,
+      spendCurrentCents,
+      useMetaAggKeys: platform.toLowerCase() === "meta",
+    });
+  }
 
   return [{ groupName: "Conversions", groupOrder: 0, rows }];
 }
@@ -1296,19 +1393,25 @@ export async function fetchConversionBreakdown(
         )
         .eq("client_id", clientId)
         .ilike("platform", configPlatform)
+        .eq("is_active", true)
         .order("sort_order", { ascending: true }),
       supabase.from("clients").select("client_type").eq("id", clientId).maybeSingle(),
     ]);
 
   if (cErr) throw cErr;
   if (clientTypeErr) throw clientTypeErr;
+
+  if (clientId === MAXI_MIND_CLIENT_ID) {
+    return fetchMaxiMindConversionBreakdown(supabase, clientId, platform, win);
+  }
+
   const isEcommerceClient = (clientRow?.client_type ?? "").trim().toLowerCase() === "ecommerce";
-  const eligible = configsForActiveDisplayNames(allConfigs ?? []);
+  const eligible = allConfigs ?? [];
   if (eligible.length === 0) {
-    return fetchConversionBreakdownFromEventsOnly(
+    return fetchConversionBreakdownFromEventsOnlyInternal(
       supabase,
       clientId,
-      eventsPlatform,
+      platform,
       win,
     );
   }
@@ -1317,10 +1420,10 @@ export async function fetchConversionBreakdown(
     new Set(eligible.map((c) => c.raw_name?.trim()).filter((n): n is string => Boolean(n))),
   );
   if (rawNames.length === 0) {
-    return fetchConversionBreakdownFromEventsOnly(
+    return fetchConversionBreakdownFromEventsOnlyInternal(
       supabase,
       clientId,
-      eventsPlatform,
+      platform,
       win,
     );
   }
@@ -1366,7 +1469,6 @@ export async function fetchConversionBreakdown(
     displayName: string;
     type: ReturnType<typeof normalizeConversionType>;
     sortOrder: number;
-    groupName: string;
     rawNames: string[];
   };
 
@@ -1383,7 +1485,6 @@ export async function fetchConversionBreakdown(
         displayName: conversionDisplayLabel(c),
         type: normalizeConversionType(c.conversion_type),
         sortOrder: c.sort_order ?? 0,
-        groupName: (c.group_name?.trim() || "General") as string,
         rawNames: [raw],
       });
       continue;
@@ -1391,35 +1492,55 @@ export async function fetchConversionBreakdown(
 
     if (!existing.rawNames.includes(raw)) existing.rawNames.push(raw);
     const sortOrder = c.sort_order ?? 0;
-    if (c.is_active && sortOrder <= existing.sortOrder) {
+    if (sortOrder <= existing.sortOrder) {
       existing.id = c.id;
       existing.displayName = conversionDisplayLabel(c);
       existing.type = normalizeConversionType(c.conversion_type);
       existing.sortOrder = sortOrder;
-      existing.groupName = (c.group_name?.trim() || existing.groupName) as string;
     } else {
       existing.sortOrder = Math.min(existing.sortOrder, sortOrder);
     }
   }
 
-  const sumRawNames = (raws: string[], totals: Map<string, number>) =>
-    raws.reduce((sum, rawName) => sum + (totals.get(rawName) ?? 0), 0);
+  const sumRawNames = (
+    raws: string[],
+    totals: Map<string, number>,
+    useMetaAggKeys: boolean,
+  ) =>
+    raws.reduce((sum, rawName) => {
+      let count = totals.get(rawName) ?? 0;
+      if (count <= 0 && useMetaAggKeys) {
+        count = totals.get(metaInsightsActionAggregationKey(rawName)) ?? 0;
+      }
+      return sum + count;
+    }, 0);
 
   const enriched = Array.from(byDisplayName.values()).map((g) => {
-    const totalCount = sumRawNames(g.rawNames, totalsCurrent);
-    const priorCount = sumRawNames(g.rawNames, totalsPrior);
+    const useMetaAggKeys = eventsPlatform.toLowerCase() === "meta";
+    const totalCount = sumRawNames(g.rawNames, totalsCurrent, useMetaAggKeys);
+    const priorCount = sumRawNames(g.rawNames, totalsPrior, useMetaAggKeys);
     return {
       id: g.id,
       displayName: g.displayName,
       type: g.type,
       sortOrder: g.sortOrder,
-      groupName: g.groupName,
       totalCount,
       priorCount,
       wowPct: wowPct(totalCount, priorCount),
       costPerConv:
         totalCount > 0 ? round2(spendCurrentCents / 100 / totalCount) : 0,
     };
+  });
+
+  const toBreakdownRow = (r: (typeof enriched)[number]) => ({
+    id: r.id,
+    displayName: r.displayName,
+    type: r.type,
+    sortOrder: r.sortOrder,
+    totalCount: r.totalCount,
+    priorCount: r.priorCount,
+    wowPct: r.wowPct,
+    costPerConv: r.costPerConv,
   });
 
   if (isEcommerceClient) {
@@ -1440,50 +1561,19 @@ export async function fetchConversionBreakdown(
           { ecommerceFunnel: true },
         ),
       )
-      .map((r) => ({
-        id: r.id,
-        displayName: r.displayName,
-        type: r.type,
-        sortOrder: r.sortOrder,
-        totalCount: r.totalCount,
-        priorCount: r.priorCount,
-        wowPct: r.wowPct,
-        costPerConv: r.costPerConv,
-      }));
+      .map(toBreakdownRow);
 
     if (rows.length === 0) return [];
     return [{ groupName: "Conversions", groupOrder: 0, rows }];
   }
 
-  const byGroup = new Map<string, typeof enriched>();
-  for (const row of enriched) {
-    const g = row.groupName;
-    if (!byGroup.has(g)) byGroup.set(g, []);
-    byGroup.get(g)!.push(row);
-  }
+  const rows = enriched
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(toBreakdownRow);
 
-  const groups: ConversionBreakdownGroup[] = Array.from(byGroup.entries()).map(
-    ([groupName, groupRows]) => ({
-      groupName,
-      groupOrder: Math.min(...groupRows.map((r) => r.sortOrder)),
-      rows: groupRows
-        .slice()
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((r) => ({
-          id: r.id,
-          displayName: r.displayName,
-          type: r.type,
-          sortOrder: r.sortOrder,
-          totalCount: r.totalCount,
-          priorCount: r.priorCount,
-          wowPct: r.wowPct,
-          costPerConv: r.costPerConv,
-        })),
-    }),
-  );
-
-  groups.sort((a, b) => a.groupOrder - b.groupOrder);
-  return groups;
+  if (rows.length === 0) return [];
+  return [{ groupName: "Conversions", groupOrder: 0, rows }];
 }
 
 export type GhlMetricGroupCard = {

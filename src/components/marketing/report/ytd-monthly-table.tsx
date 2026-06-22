@@ -1,4 +1,4 @@
-import type { YtdMonthTableRow } from "@/lib/report/report-tab-platform";
+import type { YtdMonthTableRow } from "@/lib/marketing/report/report-tab-platform";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("en-US", {

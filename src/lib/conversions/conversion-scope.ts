@@ -1,7 +1,7 @@
 import {
   activeConversionPairKey,
   type ActiveConversionPairIndex,
-} from "@/lib/report/report-tab-platform";
+} from "@/lib/marketing/report/report-tab-platform";
 
 export type ClientConversionScopeRow = {
   raw_name: string;

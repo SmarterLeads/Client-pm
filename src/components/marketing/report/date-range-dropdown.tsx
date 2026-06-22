@@ -53,12 +53,12 @@ export function DateRangeDropdown({ primaryColor, initialRange, initialStart, in
   }, []);
 
   const currentParams = useMemo(
-    () => new URLSearchParams(searchParams.toString()),
+    () => new URLSearchParams(searchParams?.toString() ?? ""),
     [searchParams],
   );
-  const selectedRange = (searchParams.get("range") ?? initialRange ?? "last_30").toLowerCase();
-  const selectedStart = searchParams.get("start") ?? initialStart;
-  const selectedEnd = searchParams.get("end") ?? initialEnd;
+  const selectedRange = (searchParams?.get("range") ?? initialRange ?? "last_30").toLowerCase();
+  const selectedStart = searchParams?.get("start") ?? initialStart;
+  const selectedEnd = searchParams?.get("end") ?? initialEnd;
   const buttonLabel = getButtonLabel(selectedRange, selectedStart, selectedEnd);
   const selectedPreset = PRESETS.find((p) => p.id === selectedRange);
   const customActive = selectedRange === "custom";
@@ -69,7 +69,7 @@ export function DateRangeDropdown({ primaryColor, initialRange, initialStart, in
 
   const goWithParams = (params: URLSearchParams) => {
     const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
+    router.push(qs ? `${pathname ?? ""}?${qs}` : pathname ?? "/");
     setOpen(false);
   };
 

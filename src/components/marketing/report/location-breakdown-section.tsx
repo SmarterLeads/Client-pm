@@ -3,7 +3,7 @@ import type {
   LocationBreakdownTable,
   LocationComparePair,
   LocationMonthRow,
-} from "@/lib/report/hudson-location-breakdown";
+} from "@/lib/marketing/report/hudson-location-breakdown";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("en-US", {

@@ -2777,9 +2777,13 @@ export type Database = {
       }
       ghl_contacts: {
         Row: {
+          appointment_booked_date: string | null
           client_id: string | null
+          consultation_attended_date: string | null
           contact_id: string
           created_at: string | null
+          custom_fields: Json
+          customer_won_date: string | null
           date_added: string | null
           first_name: string | null
           id: string
@@ -2787,11 +2791,17 @@ export type Database = {
           location_id: string | null
           source: string | null
           tags: string[] | null
+          utm_medium: string | null
+          utm_source: string | null
         }
         Insert: {
+          appointment_booked_date?: string | null
           client_id?: string | null
+          consultation_attended_date?: string | null
           contact_id: string
           created_at?: string | null
+          custom_fields?: Json
+          customer_won_date?: string | null
           date_added?: string | null
           first_name?: string | null
           id?: string
@@ -2799,11 +2809,17 @@ export type Database = {
           location_id?: string | null
           source?: string | null
           tags?: string[] | null
+          utm_medium?: string | null
+          utm_source?: string | null
         }
         Update: {
+          appointment_booked_date?: string | null
           client_id?: string | null
+          consultation_attended_date?: string | null
           contact_id?: string
           created_at?: string | null
+          custom_fields?: Json
+          customer_won_date?: string | null
           date_added?: string | null
           first_name?: string | null
           id?: string
@@ -2811,6 +2827,8 @@ export type Database = {
           location_id?: string | null
           source?: string | null
           tags?: string[] | null
+          utm_medium?: string | null
+          utm_source?: string | null
         }
         Relationships: [
           {
@@ -2906,9 +2924,13 @@ export type Database = {
       }
       ghl_opportunities: {
         Row: {
+          appointment_booked_date: string | null
           client_id: string | null
+          consultation_attended_date: string | null
           contact_id: string | null
           created_at_ghl: string | null
+          custom_fields: Json
+          customer_won_date: string | null
           id: string
           monetary_value: number | null
           opportunity_id: string
@@ -2920,11 +2942,17 @@ export type Database = {
           status: string | null
           synced_at: string | null
           updated_at_ghl: string | null
+          utm_medium: string | null
+          utm_source: string | null
         }
         Insert: {
+          appointment_booked_date?: string | null
           client_id?: string | null
+          consultation_attended_date?: string | null
           contact_id?: string | null
           created_at_ghl?: string | null
+          custom_fields?: Json
+          customer_won_date?: string | null
           id?: string
           monetary_value?: number | null
           opportunity_id: string
@@ -2936,11 +2964,17 @@ export type Database = {
           status?: string | null
           synced_at?: string | null
           updated_at_ghl?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
         }
         Update: {
+          appointment_booked_date?: string | null
           client_id?: string | null
+          consultation_attended_date?: string | null
           contact_id?: string | null
           created_at_ghl?: string | null
+          custom_fields?: Json
+          customer_won_date?: string | null
           id?: string
           monetary_value?: number | null
           opportunity_id?: string
@@ -2952,6 +2986,8 @@ export type Database = {
           status?: string | null
           synced_at?: string | null
           updated_at_ghl?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
         }
         Relationships: [
           {

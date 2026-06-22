@@ -8,7 +8,7 @@ import type {
   GoogleAdsCampaignTableState,
   GoogleCampaignPerfRow,
   ReportCampaignTablePlatform,
-} from "@/lib/report/google-ads-campaign-report";
+} from "@/lib/marketing/report/google-ads-campaign-report";
 
 function formatMoney(value: number, min = 2, max = 2): string {
   return value.toLocaleString("en-US", {

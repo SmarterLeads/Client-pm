@@ -68,8 +68,9 @@ export type ClientListItem = {
 type Props = {
   client: ClientListItem;
   clientType: DashboardClientType;
-  /** When true, renders expanded dashboard content only (no collapse header). */
+  /** When true, hides settings shortcut (client detail embed). */
   embedded?: boolean;
+  /** Start with platform panels expanded. */
   defaultOpen?: boolean;
 };
 
@@ -86,7 +87,7 @@ export function ClientRow({
     () => ({ preset, customStart, customEnd, comparison }),
     [preset, customStart, customEnd, comparison],
   );
-  const [open, setOpen] = useState(defaultOpen || embedded);
+  const [open, setOpen] = useState(defaultOpen);
   const [heroMode, setHeroMode] = useState<HeroChartMode>("conversions");
 
   const platformsQuery = useQuery({
@@ -170,7 +171,6 @@ export function ClientRow({
 
   return (
     <div className="rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      {!embedded ? (
       <div className="flex items-stretch">
       <button
         type="button"
@@ -270,26 +270,21 @@ export function ClientRow({
           </div>
         </div>
       </button>
+        {!embedded ? (
         <Link
-          href={`/clients/${client.id}?tab=marketing`}
+          href={`/settings/clients/${client.id}/conversions`}
           onClick={(e) => e.stopPropagation()}
           className="flex w-11 shrink-0 items-center justify-center border-l border-zinc-200 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-          aria-label="Client marketing"
-          title="Client marketing"
+          aria-label="Conversion settings"
+          title="Conversion settings"
         >
           <Settings className="h-5 w-5" strokeWidth={1.75} aria-hidden />
         </Link>
+        ) : null}
       </div>
-      ) : null}
 
-      {embedded || open ? (
-        <div
-          className={
-            embedded
-              ? "px-3 py-4 sm:px-4"
-              : "border-t border-zinc-200 bg-zinc-50/80 px-3 py-4 dark:border-zinc-800 dark:bg-zinc-950/50 sm:px-4"
-          }
-        >
+      {open ? (
+        <div className="border-t border-zinc-200 bg-zinc-50/80 px-3 py-4 dark:border-zinc-800 dark:bg-zinc-950/50 sm:px-4">
           {platforms.length === 0 ? (
             <p className="text-sm text-zinc-500">
               Connect a platform or ingest performance data to see tabs.

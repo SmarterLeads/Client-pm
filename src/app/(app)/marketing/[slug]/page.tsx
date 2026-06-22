@@ -5,7 +5,7 @@ import { ReportSidebar } from "@/components/marketing/report/report-sidebar";
 import { isMarketingChurnedClient } from "@/lib/marketing/client-status";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchPmReportSidebarGroups } from "@/lib/marketing/client-report-sidebar";
-import { normalizeAgencyLogoUrl } from "@/lib/report/normalize-agency-logo-url";
+import { normalizeAgencyLogoUrl } from "@/lib/marketing/report/normalize-agency-logo-url";
 
 export default async function MarketingClientReportPage({
   params,

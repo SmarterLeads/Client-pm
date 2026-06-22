@@ -21,7 +21,7 @@ import { LocationBreakdownSection } from "@/components/marketing/report/location
 import { MetaLocationBreakdownSection } from "@/components/marketing/report/meta-location-breakdown-section";
 import { YtdYearComparison } from "@/components/marketing/report/ytd-year-comparison";
 import { YtdMonthlyTable } from "@/components/marketing/report/ytd-monthly-table";
-import { normalizeAgencyLogoUrl } from "@/lib/report/normalize-agency-logo-url";
+import { normalizeAgencyLogoUrl } from "@/lib/marketing/report/normalize-agency-logo-url";
 import { isMarketingChurnedClient } from "@/lib/marketing/client-status";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchPmReportSidebarGroups } from "@/lib/marketing/client-report-sidebar";
@@ -36,6 +36,7 @@ import {
   fetchLittleCanadianHeroPurchaseTotals,
   isLittleCanadianClient,
   backClinicsUsesSlimYtdColumns,
+  isBackClinicsClient,
   type LittleCanadianHeroPurchaseScope,
   fetchConversionBreakdownCards,
   fetchDailyPerformance,
@@ -46,7 +47,7 @@ import {
   buildReportHeroKpis,
   flattenReportHeroKpis,
   type ReportHeroKpisSplit,
-} from "@/lib/report/client-report-metrics";
+} from "@/lib/marketing/report/client-report-metrics";
 import {
   buildGoogleCampaignColumnVisibility,
   buildMetaCampaignColumnVisibility,
@@ -56,27 +57,27 @@ import {
   hasChannelMetricKeys,
   isChannelPlatformSlug,
   mergeChannelMetricRows,
-} from "@/lib/report/channel-metric-config";
+} from "@/lib/marketing/report/channel-metric-config";
 import {
   aggregateDailyPerf,
   emptyGoogleQualityRollup,
   emptyMetaRollup,
   normalizeClientType,
   resolveMetricVisibility,
-} from "@/lib/report/client-metric-config";
+} from "@/lib/marketing/report/client-metric-config";
 import {
   fetchGoogleLocationBreakdown,
   GOOGLE_SHOW_LOCATION_BREAKDOWN_KEY,
-} from "@/lib/report/google-location-breakdown";
-import type { LocationBreakdownState } from "@/lib/report/hudson-location-breakdown";
+} from "@/lib/marketing/report/google-location-breakdown";
+import type { LocationBreakdownState } from "@/lib/marketing/report/hudson-location-breakdown";
 import {
   fetchMetaLocationBreakdown,
   META_SHOW_LOCATION_BREAKDOWN_KEY,
   type MetaLocationBreakdownState,
-} from "@/lib/report/meta-location-breakdown";
+} from "@/lib/marketing/report/meta-location-breakdown";
 import {
   fetchMetaCampaignRowsForReport,
-} from "@/lib/report/meta-campaign-report";
+} from "@/lib/marketing/report/meta-campaign-report";
 import {
   buildChartDataForRows,
   canonicalReportPlatformSlug,
@@ -93,17 +94,21 @@ import {
   fetchMetaEcommercePurchasesByMonth,
   fetchGoogleEcommercePurchasesByMonth,
   fetchHudsonOverviewPurchasesByMonth,
-} from "@/lib/report/report-tab-platform";
-import { GhlReportTab } from "@/components/marketing/report/ghl-report-tab";
+} from "@/lib/marketing/report/report-tab-platform";
+import {
+  BackClinicsSourceTable,
+  GhlReportTab,
+  GhlHeroCards,
+} from "@/components/marketing/report/ghl-report-tab";
 import { WhatConvertsReportTab } from "@/components/marketing/report/whatconverts-report-tab";
-import { parseGhlPipelineConfig } from "@/lib/report/ghl-pipeline-config";
-import { parseWhatConvertsConfig } from "@/lib/report/whatconverts-config";
-import { fetchGhlReportData } from "@/lib/report/ghl-report-metrics";
-import { fetchWhatConvertsReportData } from "@/lib/report/whatconverts-report-metrics";
+import { parseGhlPipelineConfig } from "@/lib/marketing/report/ghl-pipeline-config";
+import { parseWhatConvertsConfig } from "@/lib/marketing/report/whatconverts-config";
+import { fetchGhlReportData } from "@/lib/marketing/report/ghl-report-metrics";
+import { fetchWhatConvertsReportData } from "@/lib/marketing/report/whatconverts-report-metrics";
 import {
   fetchAdsCampaignTableState,
   type GoogleAdsCampaignTableState,
-} from "@/lib/report/google-ads-campaign-report";
+} from "@/lib/marketing/report/google-ads-campaign-report";
 
 type DateRangePreset = "last_7" | "last_30" | "mtd" | "last_month";
 
@@ -569,6 +574,7 @@ export async function ClientMarketingReportView({
   let microsoftAdsCampaignTable: GoogleAdsCampaignTableState | null = null;
   let sidebarGroups: SidebarGroup[];
   let ghlReportData: Awaited<ReturnType<typeof fetchGhlReportData>> | null = null;
+  let backClinicsGhlOverview: Awaited<ReturnType<typeof fetchGhlReportData>> | null = null;
   let whatConvertsReportData: Awaited<ReturnType<typeof fetchWhatConvertsReportData>> | null =
     null;
 
@@ -591,6 +597,7 @@ export async function ClientMarketingReportView({
         supabase,
         report.id,
         report.ghlPipelineConfig,
+        { windows },
       );
     }
   } else if (activeView === "whatconverts") {
@@ -609,8 +616,13 @@ export async function ClientMarketingReportView({
     }
   } else if (activeView === "overview") {
     const purchaseTotalsPromise = fetchHeroPurchaseTotals("overview");
+    const showBackClinicsGhlOverview =
+      isBackClinicsClient(report.id, slug) && report.ghlPipelineConfig != null;
+    const backClinicsGhlOverviewPromise = showBackClinicsGhlOverview
+      ? fetchGhlReportData(supabase, report.id, report.ghlPipelineConfig!, { windows })
+      : Promise.resolve(null);
 
-    const [conversionTotals, purchaseTotals, breakdown, channelConversionsByPlatform, side] =
+    const [conversionTotals, purchaseTotals, breakdown, channelConversionsByPlatform, side, ghlOverview] =
       await Promise.all([
       fetchConfiguredConversionTotals(supabase, report.id, windows, activeConvPairs),
       purchaseTotalsPromise,
@@ -630,7 +642,9 @@ export async function ClientMarketingReportView({
         activeConvPairs,
       ),
       sidebarGroupsPromise,
+      backClinicsGhlOverviewPromise,
     ]);
+    backClinicsGhlOverview = ghlOverview;
     heroGated = buildHeroForView(
       activeView,
       currentPerf,
@@ -905,6 +919,21 @@ export async function ClientMarketingReportView({
         )
       ) : (
         <>
+      {activeView === "overview" && backClinicsGhlOverview ? (
+        <div className="mb-8 space-y-8">
+          <GhlHeroCards
+            heroKpis={backClinicsGhlOverview.heroKpis}
+            accentColor={report.agencyPrimaryColor}
+            useBackClinicsCustomFields={backClinicsGhlOverview.useBackClinicsCustomFields}
+          />
+          {backClinicsGhlOverview.backClinicsSourceBreakdown ? (
+            <BackClinicsSourceTable
+              rows={backClinicsGhlOverview.backClinicsSourceBreakdown}
+              accentColor={report.agencyPrimaryColor}
+            />
+          ) : null}
+        </div>
+      ) : null}
       {useSplitHeroLayout ? (
         <>
           {heroGated.primary.length > 0 ? (

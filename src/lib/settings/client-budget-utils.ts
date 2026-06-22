@@ -1,4 +1,4 @@
-import { canonicalReportPlatformSlug } from "@/lib/report/report-tab-platform";
+import { canonicalReportPlatformSlug } from "@/lib/marketing/report/report-tab-platform";
 
 export type BudgetPlatformSlug = "google" | "meta" | "microsoft" | "tiktok";
 

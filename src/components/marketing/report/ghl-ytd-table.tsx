@@ -1,21 +1,21 @@
 import {
   formatGhlMetricValue,
+  ghlMetricColumns,
   type GhlFourMetrics,
   type GhlYtdMonthRow,
-} from "@/lib/report/ghl-report-metrics";
-
-const YTD_METRIC_COLUMNS: { key: keyof GhlFourMetrics; label: string }[] = [
-  { key: "opportunitiesCreated", label: "Leads" },
-  { key: "bookedAppointments", label: "Appt. Booked" },
-  { key: "patientsClosed", label: "Customers" },
-  { key: "value", label: "Sales Value" },
-];
+} from "@/lib/marketing/report/ghl-report-metrics";
 
 const TABLE_CELL = "px-4 py-2";
 const TABLE_FIRST_COL = `${TABLE_CELL} text-left`;
 const TABLE_METRIC_COL = `${TABLE_CELL} w-20 text-center`;
 
-function YtdMetricHeader({ metricKey }: { metricKey: keyof GhlFourMetrics }) {
+function YtdMetricHeader({
+  metricKey,
+  label,
+}: {
+  metricKey: keyof GhlFourMetrics;
+  label: string;
+}) {
   if (metricKey === "bookedAppointments") {
     return (
       <span className="inline-flex flex-col leading-tight normal-case">
@@ -24,22 +24,35 @@ function YtdMetricHeader({ metricKey }: { metricKey: keyof GhlFourMetrics }) {
       </span>
     );
   }
-  if (metricKey === "value") {
+  if (metricKey === "consultationAttended") {
     return (
       <span className="inline-flex flex-col leading-tight normal-case">
-        <span>Sales</span>
-        <span>Value</span>
+        <span>Consult</span>
+        <span>Attended</span>
       </span>
     );
   }
-  const col = YTD_METRIC_COLUMNS.find((c) => c.key === metricKey);
-  return col?.label ?? metricKey;
+  if (metricKey === "value") {
+    return (
+      <span className="inline-flex flex-col leading-tight normal-case">
+        <span>{label === "Revenue" ? "Revenue" : "Sales"}</span>
+        {label !== "Revenue" ? <span>Value</span> : null}
+      </span>
+    );
+  }
+  return label;
 }
 
-function YtdMetricsCells({ metrics }: { metrics: GhlFourMetrics }) {
+function YtdMetricsCells({
+  metrics,
+  columns,
+}: {
+  metrics: GhlFourMetrics;
+  columns: ReturnType<typeof ghlMetricColumns>;
+}) {
   return (
     <>
-      {YTD_METRIC_COLUMNS.map((col) => (
+      {columns.map((col) => (
         <td key={col.key} className={`${TABLE_METRIC_COL} text-sm text-zinc-800`}>
           {formatGhlMetricValue(col.key, metrics[col.key])}
         </td>
@@ -51,9 +64,12 @@ function YtdMetricsCells({ metrics }: { metrics: GhlFourMetrics }) {
 type Props = {
   title: string;
   rows: GhlYtdMonthRow[];
+  useBackClinicsCustomFields?: boolean;
 };
 
-export function GhlYtdTable({ title, rows }: Props) {
+export function GhlYtdTable({ title, rows, useBackClinicsCustomFields }: Props) {
+  const columns = ghlMetricColumns(useBackClinicsCustomFields);
+
   return (
     <div className="min-w-0 flex-1">
       <h3 className="mb-3 text-center text-sm font-semibold text-zinc-800">{title}</h3>
@@ -61,9 +77,9 @@ export function GhlYtdTable({ title, rows }: Props) {
         <thead>
           <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
             <th className={`${TABLE_FIRST_COL} font-semibold`}>Month</th>
-            {YTD_METRIC_COLUMNS.map((col) => (
+            {columns.map((col) => (
               <th key={col.key} className={`${TABLE_METRIC_COL} font-semibold`}>
-                <YtdMetricHeader metricKey={col.key} />
+                <YtdMetricHeader metricKey={col.key} label={col.label} />
               </th>
             ))}
           </tr>
@@ -75,13 +91,13 @@ export function GhlYtdTable({ title, rows }: Props) {
                 {row.monthLabel}
               </td>
               {row.isFutureMonth ? (
-                YTD_METRIC_COLUMNS.map((col) => (
+                columns.map((col) => (
                   <td key={col.key} className={`${TABLE_METRIC_COL} text-sm text-zinc-400`}>
                     —
                   </td>
                 ))
               ) : (
-                <YtdMetricsCells metrics={row.metrics} />
+                <YtdMetricsCells metrics={row.metrics} columns={columns} />
               )}
             </tr>
           ))}
