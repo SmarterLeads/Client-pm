@@ -1,4 +1,8 @@
 export type DashboardClientType = "lead_gen" | "ecommerce";
+export type DashboardClientTypeFilter = DashboardClientType | "all";
+export type DashboardAgencyFilter = "all" | string;
+export const ALL_AGENCIES_FILTER = "all" as const;
+export const ALL_CLIENT_TYPES_FILTER = "all" as const;
 export type DashboardComparisonMode = "prior_period" | "prior_year";
 export type DashboardDateRangePreset =
   | "last_7"
@@ -29,10 +33,25 @@ export const leadGenKeys = {
   allAgencies: () => [...leadGenKeys.all, "agencies", "all"] as const,
   agencies: (clientType: DashboardClientType) =>
     [...leadGenKeys.all, "agencies", clientType] as const,
-  agencyClientTypes: (agencyId: string, includePaused: boolean) =>
-    [...leadGenKeys.all, "agency-client-types", agencyId, includePaused ? "paused" : "active"] as const,
-  clients: (agencyId: string, clientType: DashboardClientType, includePaused: boolean) =>
-    [...leadGenKeys.all, "clients", agencyId, clientType, includePaused ? "paused" : "active"] as const,
+  agencyClientTypes: (agencyId: DashboardAgencyFilter, includePaused = false) =>
+    [
+      ...leadGenKeys.all,
+      "agency-client-types",
+      agencyId,
+      includePaused ? "paused" : "active",
+    ] as const,
+  clients: (
+    agencyId: DashboardAgencyFilter,
+    clientType: DashboardClientTypeFilter,
+    includePaused = false,
+  ) =>
+    [
+      ...leadGenKeys.all,
+      "clients",
+      agencyId,
+      clientType,
+      includePaused ? "paused" : "active",
+    ] as const,
   clientPlatforms: (clientId: string) =>
     [...leadGenKeys.all, "platforms", clientId] as const,
   primaryMetrics: (

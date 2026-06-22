@@ -1,15 +1,19 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useMemo } from "react";
 
 import {
   fetchAgencyClientTypeAvailability,
-  fetchClientsForAgency,
+  fetchDashboardClients,
 } from "@/lib/queries/lead-gen-queries";
 import {
+  ALL_AGENCIES_FILTER,
+  ALL_CLIENT_TYPES_FILTER,
+  type DashboardAgencyFilter,
   type DashboardClientType,
+  type DashboardClientTypeFilter,
   leadGenKeys,
 } from "@/lib/queries/lead-gen-query-keys";
 import { createClient } from "@/lib/supabase/client";
@@ -36,6 +40,43 @@ function queryErrorMessage(err: unknown, fallback: string) {
   return fallback;
 }
 
+function sortAgencyTabs(agencies: MarketingDashboardAgency[]) {
+  return [...agencies]
+    .sort((a, b) => {
+      const aIsSmarter = a.name.trim().toLowerCase() === "smarter leads";
+      const bIsSmarter = b.name.trim().toLowerCase() === "smarter leads";
+      if (aIsSmarter && !bIsSmarter) return -1;
+      if (!aIsSmarter && bIsSmarter) return 1;
+      return a.name.localeCompare(b.name);
+    })
+    .slice(0, 4);
+}
+
+function parseAgencyFilter(
+  raw: string | null,
+  agencyTabs: MarketingDashboardAgency[],
+  allAgencyIds: string[],
+): DashboardAgencyFilter {
+  if (!raw || raw === ALL_AGENCIES_FILTER) return ALL_AGENCIES_FILTER;
+  if (allAgencyIds.includes(raw)) return raw;
+  if (agencyTabs.some((a) => a.id === raw)) return raw;
+  return ALL_AGENCIES_FILTER;
+}
+
+function parseClientTypeFilter(
+  typeRaw: string | null,
+  viewRaw: string | null,
+): DashboardClientTypeFilter {
+  const raw = typeRaw ?? viewRaw;
+  if (!raw || raw === ALL_CLIENT_TYPES_FILTER) return ALL_CLIENT_TYPES_FILTER;
+  if (raw === "lead_gen" || raw === "ecommerce") return raw;
+  return ALL_CLIENT_TYPES_FILTER;
+}
+
+function rowClientType(clientType: string): DashboardClientType {
+  return clientType === "ecommerce" ? "ecommerce" : "lead_gen";
+}
+
 export type MarketingDashboardAgency = { id: string; name: string };
 
 type MarketingDashboardProps = {
@@ -52,109 +93,108 @@ export function MarketingDashboard({
 }: MarketingDashboardProps) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const pathname = usePathname() ?? "/marketing";
   const searchParams = useSearchParams() ?? new URLSearchParams();
-  const viewFromUrl = searchParams.get("view");
-  const urlViewApplied = useRef(false);
+  const searchParamsString = searchParams.toString();
 
-  const [agencyId, setAgencyId] = useState<string | null>(null);
-  const [clientType, setClientType] = useState<DashboardClientType>("lead_gen");
+  const agencyTabs = useMemo(() => sortAgencyTabs(agenciesFromServer), [agenciesFromServer]);
+  const allAgencyIds = useMemo(
+    () => agenciesFromServer.map((a) => a.id),
+    [agenciesFromServer],
+  );
+  const agencyNameById = useMemo(
+    () => new Map(agenciesFromServer.map((a) => [a.id, a.name])),
+    [agenciesFromServer],
+  );
 
-  const agencies = useMemo(() => {
-    const sorted = [...agenciesFromServer].sort((a, b) => {
-      const aIsSmarter = a.name.trim().toLowerCase() === "smarter leads";
-      const bIsSmarter = b.name.trim().toLowerCase() === "smarter leads";
-      if (aIsSmarter && !bIsSmarter) return -1;
-      if (!aIsSmarter && bIsSmarter) return 1;
-      return a.name.localeCompare(b.name);
+  const selectedAgency = parseAgencyFilter(
+    new URLSearchParams(searchParamsString).get("agency"),
+    agencyTabs,
+    allAgencyIds,
+  );
+  const clientTypeFilter = parseClientTypeFilter(
+    new URLSearchParams(searchParamsString).get("type"),
+    new URLSearchParams(searchParamsString).get("view"),
+  );
+
+  const replaceSearchParams = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const params = new URLSearchParams(searchParamsString);
+      mutate(params);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    },
+    [pathname, router, searchParamsString],
+  );
+
+  const selectAgency = useCallback(
+    (agencyId: DashboardAgencyFilter) => {
+      replaceSearchParams((params) => {
+        if (agencyId === ALL_AGENCIES_FILTER) {
+          params.delete("agency");
+        } else {
+          params.set("agency", agencyId);
+        }
+      });
+    },
+    [replaceSearchParams],
+  );
+
+  const selectClientType = useCallback(
+    (clientType: DashboardClientTypeFilter) => {
+      replaceSearchParams((params) => {
+        if (clientType === ALL_CLIENT_TYPES_FILTER) {
+          params.delete("type");
+          params.delete("view");
+        } else {
+          params.set("type", clientType);
+          params.delete("view");
+        }
+      });
+    },
+    [replaceSearchParams],
+  );
+
+  function toggleIncludePaused(checked: boolean) {
+    replaceSearchParams((params) => {
+      if (checked) {
+        params.set("show_paused", "true");
+      } else {
+        params.delete("show_paused");
+      }
     });
-    return sorted.slice(0, 4);
-  }, [agenciesFromServer]);
-
-  useEffect(() => {
-    if (agencies.length > 0 && (!agencyId || !agencies.some((a) => a.id === agencyId))) {
-      setAgencyId(agencies[0]!.id);
-    }
-  }, [agencies, agencyId]);
+  }
 
   const availabilityQuery = useQuery({
-    queryKey: leadGenKeys.agencyClientTypes(agencyId ?? "", includePaused),
+    queryKey: leadGenKeys.agencyClientTypes(selectedAgency, includePaused),
     queryFn: () =>
-      fetchAgencyClientTypeAvailability(supabase, agencyId!, includePaused),
-    enabled: Boolean(agencyId),
+      fetchAgencyClientTypeAvailability(
+        supabase,
+        selectedAgency,
+        includePaused,
+        allAgencyIds,
+      ),
+    enabled: allAgencyIds.length > 0,
   });
 
   const availability = availabilityQuery.data;
 
-  const effectiveClientType = useMemo((): DashboardClientType | null => {
-    if (!availability) return null;
-    const { hasLeadGen: L, hasEcommerce: E } = availability;
-    if (L && E) return clientType;
-    if (L) return "lead_gen";
-    if (E) return "ecommerce";
-    return null;
-  }, [availability, clientType]);
-
-  useEffect(() => {
-    if (!availability) return;
-    const { hasLeadGen: L, hasEcommerce: E } = availability;
-    if (L && E) {
-      setClientType((prev) => {
-        if (prev === "ecommerce" && E) return "ecommerce";
-        if (prev === "lead_gen" && L) return "lead_gen";
-        return "lead_gen";
-      });
-    } else if (E && !L) {
-      setClientType("ecommerce");
-    } else if (L && !E) {
-      setClientType("lead_gen");
-    }
-  }, [availability, agencyId]);
-
-  useEffect(() => {
-    urlViewApplied.current = false;
-  }, [agencyId]);
-
-  useEffect(() => {
-    if (urlViewApplied.current) return;
-    if (!viewFromUrl || !availability) return;
-    if (viewFromUrl === "ecommerce" && availability.hasEcommerce) {
-      setClientType("ecommerce");
-      urlViewApplied.current = true;
-    } else if (viewFromUrl === "lead_gen" && availability.hasLeadGen) {
-      setClientType("lead_gen");
-      urlViewApplied.current = true;
-    }
-  }, [viewFromUrl, availability]);
-
-  const showSecondaryTabs = Boolean(availability?.hasLeadGen && availability.hasEcommerce);
-
   const clientsQuery = useQuery({
-    queryKey: leadGenKeys.clients(
-      agencyId ?? "",
-      effectiveClientType ?? "lead_gen",
-      includePaused,
-    ),
+    queryKey: leadGenKeys.clients(selectedAgency, clientTypeFilter, includePaused),
     queryFn: () =>
-      fetchClientsForAgency(
-        supabase,
-        agencyId!,
-        effectiveClientType!,
+      fetchDashboardClients(supabase, {
+        agencyId: selectedAgency,
+        agencyIds: allAgencyIds,
+        clientType: clientTypeFilter,
         includePaused,
-      ),
-    enabled: Boolean(agencyId) && effectiveClientType != null,
+      }),
+    enabled: allAgencyIds.length > 0,
   });
 
-  function toggleIncludePaused(checked: boolean) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (checked) {
-      params.set("show_paused", "true");
-    } else {
-      params.delete("show_paused");
-    }
-    router.replace(`/marketing?${params.toString()}`);
-  }
+  const showTypeTabs = Boolean(availability?.hasLeadGen || availability?.hasEcommerce);
+  const showAgencyBadges = selectedAgency === ALL_AGENCIES_FILTER;
 
-  if (agencies.length === 0) {
+  if (agenciesFromServer.length === 0) {
     return <p className="text-sm text-zinc-500">No agencies linked to your account yet.</p>;
   }
 
@@ -165,15 +205,26 @@ export function MarketingDashboard({
           Agency
         </p>
         <div className="flex min-w-0 gap-1 pb-px" role="tablist" aria-label="Agencies">
-          {agencies.map((a) => (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={selectedAgency === ALL_AGENCIES_FILTER}
+            onClick={() => selectAgency(ALL_AGENCIES_FILTER)}
+            className={`shrink-0 whitespace-nowrap rounded-t-lg border border-b-0 px-4 py-2.5 text-sm font-semibold transition ${
+              selectedAgency === ALL_AGENCIES_FILTER ? tabActiveClass : tabIdleClass
+            }`}
+          >
+            All Agencies
+          </button>
+          {agencyTabs.map((a) => (
             <button
               key={a.id}
               type="button"
               role="tab"
-              aria-selected={a.id === agencyId}
-              onClick={() => setAgencyId(a.id)}
+              aria-selected={a.id === selectedAgency}
+              onClick={() => selectAgency(a.id)}
               className={`shrink-0 whitespace-nowrap rounded-t-lg border border-b-0 px-4 py-2.5 text-sm font-semibold transition ${
-                a.id === agencyId ? tabActiveClass : tabIdleClass
+                a.id === selectedAgency ? tabActiveClass : tabIdleClass
               }`}
             >
               {a.name}
@@ -182,7 +233,7 @@ export function MarketingDashboard({
         </div>
       </div>
 
-      {showSecondaryTabs ? (
+      {showTypeTabs ? (
         <div className="overflow-x-auto border-b border-zinc-200 dark:border-zinc-800">
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Client type
@@ -191,30 +242,45 @@ export function MarketingDashboard({
             <button
               type="button"
               role="tab"
-              aria-selected={clientType === "lead_gen"}
-              onClick={() => setClientType("lead_gen")}
+              aria-selected={clientTypeFilter === ALL_CLIENT_TYPES_FILTER}
+              onClick={() => selectClientType(ALL_CLIENT_TYPES_FILTER)}
               className={`shrink-0 whitespace-nowrap rounded-t-lg border border-b-0 px-4 py-2.5 text-sm font-semibold transition ${
-                clientType === "lead_gen" ? tabActiveClass : tabIdleClass
+                clientTypeFilter === ALL_CLIENT_TYPES_FILTER ? tabActiveClass : tabIdleClass
               }`}
             >
-              Lead Gen
+              All Types
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={clientType === "ecommerce"}
-              onClick={() => setClientType("ecommerce")}
-              className={`shrink-0 whitespace-nowrap rounded-t-lg border border-b-0 px-4 py-2.5 text-sm font-semibold transition ${
-                clientType === "ecommerce" ? tabActiveClass : tabIdleClass
-              }`}
-            >
-              Ecommerce
-            </button>
+            {availability?.hasLeadGen ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={clientTypeFilter === "lead_gen"}
+                onClick={() => selectClientType("lead_gen")}
+                className={`shrink-0 whitespace-nowrap rounded-t-lg border border-b-0 px-4 py-2.5 text-sm font-semibold transition ${
+                  clientTypeFilter === "lead_gen" ? tabActiveClass : tabIdleClass
+                }`}
+              >
+                Lead Gen
+              </button>
+            ) : null}
+            {availability?.hasEcommerce ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={clientTypeFilter === "ecommerce"}
+                onClick={() => selectClientType("ecommerce")}
+                className={`shrink-0 whitespace-nowrap rounded-t-lg border border-b-0 px-4 py-2.5 text-sm font-semibold transition ${
+                  clientTypeFilter === "ecommerce" ? tabActiveClass : tabIdleClass
+                }`}
+              >
+                Ecommerce
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}
 
-      {availabilityQuery.isLoading && agencyId ? (
+      {availabilityQuery.isLoading ? (
         <div className="space-y-2">
           <ClientRowSkeleton />
           <ClientRowSkeleton />
@@ -226,9 +292,9 @@ export function MarketingDashboard({
         </p>
       ) : availability && !availability.hasLeadGen && !availability.hasEcommerce ? (
         <p className="text-sm text-zinc-500">
-          No {includePaused ? "active or paused" : "active"} clients in this agency.
+          No {includePaused ? "active or paused" : "active"} clients match the current filters.
         </p>
-      ) : clientsQuery.isLoading || effectiveClientType == null ? (
+      ) : clientsQuery.isLoading ? (
         <div className="space-y-2">
           <ClientRowSkeleton />
           <ClientRowSkeleton />
@@ -254,11 +320,14 @@ export function MarketingDashboard({
             <ClientRow
               key={c.id}
               client={{ id: c.id, name: c.name, leadQualityScore: c.lead_quality_score ?? null }}
-              clientType={effectiveClientType}
+              clientType={rowClientType(c.client_type)}
+              agencyName={
+                showAgencyBadges ? agencyNameById.get(c.agency_id) ?? "Unknown agency" : undefined
+              }
             />
           ))}
-          {(clientsQuery.data ?? []).length === 0 && effectiveClientType ? (
-            <p className="text-sm text-zinc-500">No clients of this type in this agency.</p>
+          {(clientsQuery.data ?? []).length === 0 ? (
+            <p className="text-sm text-zinc-500">No clients match the current filters.</p>
           ) : null}
         </div>
       )}

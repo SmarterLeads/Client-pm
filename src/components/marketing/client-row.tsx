@@ -68,6 +68,8 @@ export type ClientListItem = {
 type Props = {
   client: ClientListItem;
   clientType: DashboardClientType;
+  /** Shown in All Agencies view to identify the client's agency. */
+  agencyName?: string;
   /** When true, hides settings shortcut (client detail embed). */
   embedded?: boolean;
   /** Start with platform panels expanded. */
@@ -77,6 +79,7 @@ type Props = {
 export function ClientRow({
   client,
   clientType,
+  agencyName,
   embedded = false,
   defaultOpen = false,
 }: Props) {
@@ -178,18 +181,25 @@ export function ClientRow({
         className="flex min-w-0 flex-1 flex-col gap-3 p-3 text-left transition hover:bg-zinc-50 sm:flex-row sm:items-center sm:gap-4 sm:p-3.5 dark:hover:bg-zinc-800/60"
         aria-expanded={open}
       >
-        <div className="flex min-w-0 items-center gap-2 sm:w-44 sm:shrink-0">
-          <span
-            className={`flex h-6 w-6 shrink-0 items-center justify-center text-zinc-500 transition dark:text-zinc-400 ${
-              open ? "rotate-90" : ""
-            }`}
-            aria-hidden
-          >
-            <ChevronIcon />
-          </span>
-          <span className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-            {client.name}
-          </span>
+        <div className="flex min-w-0 flex-col gap-1 sm:w-52 sm:shrink-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center text-zinc-500 transition dark:text-zinc-400 ${
+                open ? "rotate-90" : ""
+              }`}
+              aria-hidden
+            >
+              <ChevronIcon />
+            </span>
+            <span className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              {client.name}
+            </span>
+          </div>
+          {agencyName ? (
+            <span className="ml-8 truncate text-[10px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              {agencyName}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-6">

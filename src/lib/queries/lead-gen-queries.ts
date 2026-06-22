@@ -21,6 +21,7 @@ import {
 } from "@/lib/lead-gen/search-lost-is";
 import type {
   DashboardClientType,
+  DashboardClientTypeFilter,
   DashboardDateRangeState,
 } from "@/lib/queries/lead-gen-query-keys";
 import type { Database, Json } from "@/lib/types/database";
@@ -302,15 +303,23 @@ export async function fetchAgenciesForClientType(
 
 export async function fetchAgencyClientTypeAvailability(
   supabase: SB,
-  agencyId: string,
+  agencyId: string | "all",
   includePaused = false,
+  agencyIds: string[] = [],
 ): Promise<{ hasLeadGen: boolean; hasEcommerce: boolean }> {
+  if (agencyId === "all" && agencyIds.length === 0) {
+    return { hasLeadGen: false, hasEcommerce: false };
+  }
+
   const statuses = marketingDashboardStatuses(includePaused);
-  const { data, error } = await supabase
-    .from("clients")
-    .select("client_type")
-    .eq("agency_id", agencyId)
-    .in("status", statuses);
+  let query = supabase.from("clients").select("client_type").in("status", statuses);
+  if (agencyId === "all") {
+    query = query.in("agency_id", agencyIds);
+  } else {
+    query = query.eq("agency_id", agencyId);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   const types = new Set((data ?? []).map((r) => r.client_type));
   return {
@@ -346,30 +355,51 @@ function withLeadQualityScoreDefault<
   }));
 }
 
-export async function fetchClientsForAgency(
+export async function fetchDashboardClients(
   supabase: SB,
-  agencyId: string,
-  clientType: DashboardClientType,
-  includePaused = false,
+  options: {
+    agencyId: string | "all";
+    agencyIds: string[];
+    clientType: DashboardClientTypeFilter;
+    includePaused?: boolean;
+  },
 ) {
+  const { agencyId, agencyIds, clientType, includePaused = false } = options;
+  if (agencyId === "all" && agencyIds.length === 0) return [];
+
   const statuses = marketingDashboardStatuses(includePaused);
-  const runFull = () =>
-    supabase
+  const types =
+    clientType === "all" ? (["lead_gen", "ecommerce"] as const) : [clientType];
+
+  const runFull = () => {
+    let query = supabase
       .from("clients")
       .select("id, name, agency_id, client_type, lead_quality_score, status")
-      .eq("agency_id", agencyId)
-      .eq("client_type", clientType)
+      .in("client_type", [...types])
       .in("status", statuses)
       .order("name");
+    if (agencyId === "all") {
+      query = query.in("agency_id", agencyIds);
+    } else {
+      query = query.eq("agency_id", agencyId);
+    }
+    return query;
+  };
 
-  const runWithoutScore = () =>
-    supabase
+  const runWithoutScore = () => {
+    let query = supabase
       .from("clients")
       .select("id, name, agency_id, client_type, status")
-      .eq("agency_id", agencyId)
-      .eq("client_type", clientType)
+      .in("client_type", [...types])
       .in("status", statuses)
       .order("name");
+    if (agencyId === "all") {
+      query = query.in("agency_id", agencyIds);
+    } else {
+      query = query.eq("agency_id", agencyId);
+    }
+    return query;
+  };
 
   const { data, error } = await runFull();
 
@@ -381,6 +411,20 @@ export async function fetchClientsForAgency(
 
   if (error) throw error;
   return withLeadQualityScoreDefault(data ?? []);
+}
+
+export async function fetchClientsForAgency(
+  supabase: SB,
+  agencyId: string,
+  clientType: DashboardClientType,
+  includePaused = false,
+) {
+  return fetchDashboardClients(supabase, {
+    agencyId,
+    agencyIds: [agencyId],
+    clientType,
+    includePaused,
+  });
 }
 
 function internalDashboardTabSlug(raw: string | null | undefined): PlatformTab | null {
