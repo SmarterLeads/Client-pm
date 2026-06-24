@@ -28,7 +28,7 @@ const META_CLIENT_TOKEN_GROUPS: ReadonlyArray<{
       "73c88145", // Felix Swim School
       "ce42155a", // Little Canadian
       "4a37f4e3", // Maxi Mind Learning
-      // Menopause the Musical — add prefix when known
+      "43ac582a", // Menopause the Musical
       "625fb1ff", // The Pet Pharmacist
     ],
   },

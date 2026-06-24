@@ -377,6 +377,7 @@ export async function fetchDashboardClients(
       .select("id, name, agency_id, client_type, lead_quality_score, status")
       .in("client_type", [...types])
       .in("status", statuses)
+      .eq("show_in_dashboard", true)
       .order("name");
     if (agencyId === "all") {
       query = query.in("agency_id", agencyIds);
@@ -392,6 +393,7 @@ export async function fetchDashboardClients(
       .select("id, name, agency_id, client_type, status")
       .in("client_type", [...types])
       .in("status", statuses)
+      .eq("show_in_dashboard", true)
       .order("name");
     if (agencyId === "all") {
       query = query.in("agency_id", agencyIds);

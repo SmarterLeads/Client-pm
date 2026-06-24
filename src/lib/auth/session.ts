@@ -16,6 +16,19 @@ export function canViewClientMrr(
   return teamMember.can_view_mrr || isAdmin(teamMember.role);
 }
 
+const TEAM_ACTIVITY_REPORT_EMAILS = new Set([
+  "max@smarterleads.ca",
+  "alex@smarterleads.ca",
+]);
+
+/** Team Activity Report on /team — Max and Alex only. */
+export function canViewTeamActivityReport(
+  teamMember: Pick<TeamMember, "email"> | null | undefined,
+): boolean {
+  if (!teamMember?.email) return false;
+  return TEAM_ACTIVITY_REPORT_EMAILS.has(teamMember.email.toLowerCase());
+}
+
 export async function getSessionUser() {
   const supabase = await createClient();
   const {

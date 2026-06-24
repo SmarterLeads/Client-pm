@@ -2495,6 +2495,7 @@ export type Database = {
           rag_status: Database["pm"]["Enums"]["rag_status"]
           report_slug: string | null
           show_ecommerce_hero_row: boolean | null
+          show_in_dashboard: boolean
           show_prior_year_ytd: boolean | null
           status: string
           tracking_setup: string | null
@@ -2538,6 +2539,7 @@ export type Database = {
           rag_status?: Database["pm"]["Enums"]["rag_status"]
           report_slug?: string | null
           show_ecommerce_hero_row?: boolean | null
+          show_in_dashboard?: boolean
           show_prior_year_ytd?: boolean | null
           status?: string
           tracking_setup?: string | null
@@ -2581,6 +2583,7 @@ export type Database = {
           rag_status?: Database["pm"]["Enums"]["rag_status"]
           report_slug?: string | null
           show_ecommerce_hero_row?: boolean | null
+          show_in_dashboard?: boolean
           show_prior_year_ytd?: boolean | null
           status?: string
           tracking_setup?: string | null
