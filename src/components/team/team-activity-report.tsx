@@ -81,7 +81,7 @@ export function TeamActivityReport({ report }: TeamActivityReportProps) {
             <h3 className="text-lg font-semibold">{memberReport.memberName}</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <SummaryStat
-                label="Tasks changed"
+                label="Task status changes"
                 value={memberReport.summary.tasksChanged}
               />
               <SummaryStat
@@ -97,7 +97,7 @@ export function TeamActivityReport({ report }: TeamActivityReportProps) {
 
           <details className="group rounded-lg border border-border">
             <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
-              Task activity ({memberReport.taskActivity.length})
+              Task status changes ({memberReport.taskActivity.length})
             </summary>
             <div className="border-t border-border p-3">
               <ActivityTable
@@ -105,10 +105,10 @@ export function TeamActivityReport({ report }: TeamActivityReportProps) {
                   "Task",
                   "Project",
                   "Client",
-                  "Status change",
+                  "Old status → New status",
                   "Date/time",
                 ]}
-                emptyMessage="No task changes in this period."
+                emptyMessage="No task status changes in this period."
                 rows={memberReport.taskActivity.map((row) => [
                   row.taskName,
                   row.projectName,

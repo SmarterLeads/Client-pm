@@ -69,15 +69,41 @@ function formatTaskStatus(value: unknown): string {
   return TASK_STATUS_LABELS[key] ?? key.replace(/_/g, " ");
 }
 
-function readStatusFromValues(values: Json | null): string {
-  if (!values || typeof values !== "object" || Array.isArray(values)) return "—";
-  return formatTaskStatus((values as Record<string, unknown>).status);
+function readJsonTextField(values: Json | null, key: string): string | null {
+  if (!values || typeof values !== "object" || Array.isArray(values)) return null;
+  const value = (values as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function readTitleFromValues(values: Json | null): string | null {
-  if (!values || typeof values !== "object" || Array.isArray(values)) return null;
-  const title = (values as Record<string, unknown>).title;
-  return typeof title === "string" && title.trim() ? title.trim() : null;
+function readRawStatus(values: Json | null): string | null {
+  return readJsonTextField(values, "status");
+}
+
+function formatStoredStatus(value: string | null): string {
+  return value ? formatTaskStatus(value) : "—";
+}
+
+/** Mirrors SQL: (old_values->>'status') IS DISTINCT FROM (new_values->>'status') */
+function hasDistinctStatusChange(
+  oldValues: Json | null,
+  newValues: Json | null,
+): boolean {
+  const oldStatus = readRawStatus(oldValues);
+  const newStatus = readRawStatus(newValues);
+  if (oldStatus === null && newStatus === null) return false;
+  return oldStatus !== newStatus;
+}
+
+function isTaskStatusChangeRow(row: {
+  action: string;
+  entity_type: string;
+  old_values: Json | null;
+  new_values: Json | null;
+}): boolean {
+  if (row.action !== "update") return false;
+  const normalizedType = row.entity_type.replace(/^(public|pm)\./, "");
+  if (normalizedType !== "tasks") return false;
+  return hasDistinctStatusChange(row.old_values, row.new_values);
 }
 
 async function fetchTaskActivityForMember(
@@ -89,8 +115,11 @@ async function fetchTaskActivityForMember(
 
   const { data, error } = await pm(supabase)
     .from("change_history")
-    .select("id, entity_id, changed_at, old_values, new_values, action")
-    .in("entity_type", ["tasks", "pm.tasks"])
+    .select(
+      "id, entity_id, entity_type, changed_at, old_values, new_values, action",
+    )
+    .or("entity_type.eq.pm.tasks,entity_type.eq.tasks")
+    .eq("action", "update")
     .eq("changed_by", memberId)
     .gte("changed_at", startIso)
     .lte("changed_at", endIso)
@@ -98,12 +127,12 @@ async function fetchTaskActivityForMember(
 
   if (error) throw new Error(error.message);
 
-  const rows = data ?? [];
+  const rows = (data ?? []).filter(isTaskStatusChangeRow);
   const taskIds = [...new Set(rows.map((row) => row.entity_id))];
 
   const taskMeta = new Map<
     string,
-    { title: string; projectName: string; clientName: string }
+    { projectName: string; clientName: string }
   >();
 
   if (taskIds.length > 0) {
@@ -112,7 +141,6 @@ async function fetchTaskActivityForMember(
       .select(
         `
         id,
-        title,
         project:projects(
           name,
           client_id
@@ -130,7 +158,6 @@ async function fetchTaskActivityForMember(
 
     for (const task of tasks ?? []) {
       taskMeta.set(task.id, {
-        title: task.title ?? "Untitled task",
         projectName: task.project?.name ?? "—",
         clientName: clientNameFromMap(task.project?.client_id, clientNames),
       });
@@ -139,29 +166,14 @@ async function fetchTaskActivityForMember(
 
   return rows.map((row) => {
     const meta = taskMeta.get(row.entity_id);
-    const fallbackTitle =
-      readTitleFromValues(row.new_values) ??
-      readTitleFromValues(row.old_values) ??
-      "Task";
-
-    let oldStatus = "—";
-    let newStatus = "—";
-    if (row.action === "insert") {
-      newStatus = readStatusFromValues(row.new_values);
-    } else if (row.action === "delete") {
-      oldStatus = readStatusFromValues(row.old_values);
-    } else {
-      oldStatus = readStatusFromValues(row.old_values);
-      newStatus = readStatusFromValues(row.new_values);
-    }
 
     return {
       id: row.id,
-      taskName: meta?.title ?? fallbackTitle,
+      taskName: readJsonTextField(row.new_values, "title") ?? "Untitled task",
       projectName: meta?.projectName ?? "—",
       clientName: meta?.clientName ?? "—",
-      oldStatus,
-      newStatus,
+      oldStatus: formatStoredStatus(readRawStatus(row.old_values)),
+      newStatus: formatStoredStatus(readRawStatus(row.new_values)),
       changedAt: row.changed_at,
       changedAtLabel: formatAbsoluteTime(row.changed_at),
     };
