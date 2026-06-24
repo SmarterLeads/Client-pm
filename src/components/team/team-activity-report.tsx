@@ -1,9 +1,48 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import type { TeamActivityReportResult } from "@/lib/queries/team-activity";
+import { useTaskDrawer } from "@/components/tasks/task-drawer-provider";
+import type {
+  TeamActivityClientUpdateRow,
+  TeamActivityInteractionRow,
+  TeamActivityReportResult,
+  TeamActivityTaskRow,
+} from "@/lib/queries/team-activity";
+import { cn } from "@/lib/utils";
 
 type TeamActivityReportProps = {
   report: TeamActivityReportResult;
 };
+
+type ActivityTableRow = {
+  key: string;
+  cells: ReactNode[];
+  onClick?: () => void;
+};
+
+function ClientNameLink({
+  clientId,
+  name,
+}: {
+  clientId: string | null;
+  name: string;
+}) {
+  if (!clientId || name === "—") {
+    return <span>{name}</span>;
+  }
+
+  return (
+    <Link
+      href={`/clients/${clientId}`}
+      className="font-medium hover:underline"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {name}
+    </Link>
+  );
+}
 
 function ActivityTable({
   headers,
@@ -11,7 +50,7 @@ function ActivityTable({
   emptyMessage,
 }: {
   headers: string[];
-  rows: ReactNode[][];
+  rows: ActivityTableRow[];
   emptyMessage: string;
 }) {
   if (rows.length === 0) {
@@ -31,9 +70,16 @@ function ActivityTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((cells, index) => (
-            <tr key={index} className="border-b border-border last:border-0">
-              {cells.map((cell, cellIndex) => (
+          {rows.map((row) => (
+            <tr
+              key={row.key}
+              onClick={row.onClick}
+              className={cn(
+                "border-b border-border last:border-0",
+                row.onClick && "cursor-pointer hover:bg-gray-50",
+              )}
+            >
+              {row.cells.map((cell, cellIndex) => (
                 <td key={cellIndex} className="px-3 py-2 align-top">
                   {cell}
                 </td>
@@ -52,6 +98,100 @@ function SummaryStat({ label, value }: { label: string; value: number }) {
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-lg font-semibold tabular-nums">{value}</p>
     </div>
+  );
+}
+
+function TaskActivityTable({ rows }: { rows: TeamActivityTaskRow[] }) {
+  const { openTask } = useTaskDrawer();
+
+  return (
+    <ActivityTable
+      headers={[
+        "Task",
+        "Project",
+        "Client",
+        "Old status → New status",
+        "Date/time",
+      ]}
+      emptyMessage="No task status changes in this period."
+      rows={rows.map((row) => ({
+        key: row.id,
+        onClick: () => openTask(row.taskId),
+        cells: [
+          row.taskName,
+          row.projectName,
+          <ClientNameLink
+            key={`${row.id}-client`}
+            clientId={row.clientId}
+            name={row.clientName}
+          />,
+          `${row.oldStatus} → ${row.newStatus}`,
+          row.changedAtLabel,
+        ],
+      }))}
+    />
+  );
+}
+
+function InteractionsActivityTable({
+  rows,
+}: {
+  rows: TeamActivityInteractionRow[];
+}) {
+  const router = useRouter();
+
+  return (
+    <ActivityTable
+      headers={["Type", "Client", "Summary", "Date/time"]}
+      emptyMessage="No interactions logged in this period."
+      rows={rows.map((row) => ({
+        key: row.id,
+        onClick: row.clientId
+          ? () => router.push(`/clients/${row.clientId}?tab=interactions`)
+          : undefined,
+        cells: [
+          row.typeLabel,
+          <ClientNameLink
+            key={`${row.id}-client`}
+            clientId={row.clientId}
+            name={row.clientName}
+          />,
+          row.summary,
+          row.occurredAtLabel,
+        ],
+      }))}
+    />
+  );
+}
+
+function ClientUpdatesActivityTable({
+  rows,
+}: {
+  rows: TeamActivityClientUpdateRow[];
+}) {
+  const router = useRouter();
+
+  return (
+    <ActivityTable
+      headers={["Channel", "Client", "Summary", "Date/time"]}
+      emptyMessage="No client updates logged in this period."
+      rows={rows.map((row) => ({
+        key: row.id,
+        onClick: row.clientId
+          ? () => router.push(`/clients/${row.clientId}?tab=updates`)
+          : undefined,
+        cells: [
+          row.channelLabel,
+          <ClientNameLink
+            key={`${row.id}-client`}
+            clientId={row.clientId}
+            name={row.clientName}
+          />,
+          row.summary,
+          row.occurredAtLabel,
+        ],
+      }))}
+    />
   );
 }
 
@@ -100,23 +240,7 @@ export function TeamActivityReport({ report }: TeamActivityReportProps) {
               Task status changes ({memberReport.taskActivity.length})
             </summary>
             <div className="border-t border-border p-3">
-              <ActivityTable
-                headers={[
-                  "Task",
-                  "Project",
-                  "Client",
-                  "Old status → New status",
-                  "Date/time",
-                ]}
-                emptyMessage="No task status changes in this period."
-                rows={memberReport.taskActivity.map((row) => [
-                  row.taskName,
-                  row.projectName,
-                  row.clientName,
-                  `${row.oldStatus} → ${row.newStatus}`,
-                  row.changedAtLabel,
-                ])}
-              />
+              <TaskActivityTable rows={memberReport.taskActivity} />
             </div>
           </details>
 
@@ -125,16 +249,7 @@ export function TeamActivityReport({ report }: TeamActivityReportProps) {
               Interactions logged ({memberReport.interactions.length})
             </summary>
             <div className="border-t border-border p-3">
-              <ActivityTable
-                headers={["Type", "Client", "Summary", "Date/time"]}
-                emptyMessage="No interactions logged in this period."
-                rows={memberReport.interactions.map((row) => [
-                  row.typeLabel,
-                  row.clientName,
-                  row.summary,
-                  row.occurredAtLabel,
-                ])}
-              />
+              <InteractionsActivityTable rows={memberReport.interactions} />
             </div>
           </details>
 
@@ -143,16 +258,7 @@ export function TeamActivityReport({ report }: TeamActivityReportProps) {
               Client updates logged ({memberReport.clientUpdates.length})
             </summary>
             <div className="border-t border-border p-3">
-              <ActivityTable
-                headers={["Channel", "Client", "Summary", "Date/time"]}
-                emptyMessage="No client updates logged in this period."
-                rows={memberReport.clientUpdates.map((row) => [
-                  row.channelLabel,
-                  row.clientName,
-                  row.summary,
-                  row.occurredAtLabel,
-                ])}
-              />
+              <ClientUpdatesActivityTable rows={memberReport.clientUpdates} />
             </div>
           </details>
         </section>

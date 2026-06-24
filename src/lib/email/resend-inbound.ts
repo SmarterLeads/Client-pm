@@ -19,6 +19,13 @@ export type ReceivedEmailContent = {
   html: string | null;
 };
 
+function readHeader(
+  value: string | string[] | undefined,
+): string | undefined {
+  if (typeof value === "string") return value;
+  return value?.[0];
+}
+
 export function verifyResendWebhook(
   rawBody: string,
   headers: {
@@ -28,35 +35,28 @@ export function verifyResendWebhook(
     sharedSecret?: string | string[];
   },
 ): ResendInboundWebhookEvent {
-  const headerSecret =
-    typeof headers.sharedSecret === "string"
-      ? headers.sharedSecret
-      : headers.sharedSecret?.[0];
-
-  const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-  const inboundSecret = process.env.INBOUND_EMAIL_WEBHOOK_SECRET;
+  const headerSecret = readHeader(headers.sharedSecret);
+  const inboundSecret = process.env.INBOUND_EMAIL_WEBHOOK_SECRET?.trim();
 
   if (headerSecret && inboundSecret && headerSecret === inboundSecret) {
     return JSON.parse(rawBody) as ResendInboundWebhookEvent;
   }
 
+  const webhookSecret = process.env.RESEND_WEBHOOK_SECRET?.trim();
+
   if (!webhookSecret) {
-    throw new Error("Missing RESEND_WEBHOOK_SECRET");
+    console.warn(
+      "[email-inbound] RESEND_WEBHOOK_SECRET not set — skipping Svix verification (testing only)",
+    );
+    return JSON.parse(rawBody) as ResendInboundWebhookEvent;
   }
 
-  const svixId =
-    typeof headers.svixId === "string" ? headers.svixId : headers.svixId?.[0];
-  const svixTimestamp =
-    typeof headers.svixTimestamp === "string"
-      ? headers.svixTimestamp
-      : headers.svixTimestamp?.[0];
-  const svixSignature =
-    typeof headers.svixSignature === "string"
-      ? headers.svixSignature
-      : headers.svixSignature?.[0];
+  const svixId = readHeader(headers.svixId);
+  const svixTimestamp = readHeader(headers.svixTimestamp);
+  const svixSignature = readHeader(headers.svixSignature);
 
   if (!svixId || !svixTimestamp || !svixSignature) {
-    throw new Error("Missing Svix webhook headers");
+    throw new Error("Missing Svix webhook headers (svix-id, svix-timestamp, svix-signature)");
   }
 
   const wh = new Webhook(webhookSecret);

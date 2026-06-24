@@ -33,6 +33,19 @@ export default async function handler(
     return res.status(200).json({ ok: true });
   }
 
+  console.log(
+    "[email-inbound] RESEND_WEBHOOK_SECRET set:",
+    !!process.env.RESEND_WEBHOOK_SECRET,
+  );
+  console.log(
+    "[email-inbound] headers:",
+    JSON.stringify({
+      "svix-id": req.headers["svix-id"],
+      "svix-timestamp": req.headers["svix-timestamp"],
+      "svix-signature": req.headers["svix-signature"],
+    }),
+  );
+
   let event;
   try {
     event = verifyResendWebhook(rawBody, {

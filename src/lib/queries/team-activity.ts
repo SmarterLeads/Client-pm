@@ -18,6 +18,9 @@ import type { Json, TaskStatus } from "@/lib/types";
 
 export type TeamActivityTaskRow = {
   id: string;
+  taskId: string;
+  projectId: string | null;
+  clientId: string | null;
   taskName: string;
   projectName: string;
   clientName: string;
@@ -29,6 +32,7 @@ export type TeamActivityTaskRow = {
 
 export type TeamActivityInteractionRow = {
   id: string;
+  clientId: string | null;
   typeLabel: string;
   clientName: string;
   summary: string;
@@ -38,6 +42,7 @@ export type TeamActivityInteractionRow = {
 
 export type TeamActivityClientUpdateRow = {
   id: string;
+  clientId: string | null;
   channelLabel: string;
   clientName: string;
   summary: string;
@@ -132,7 +137,12 @@ async function fetchTaskActivityForMember(
 
   const taskMeta = new Map<
     string,
-    { projectName: string; clientName: string }
+    {
+      projectId: string;
+      projectName: string;
+      clientId: string | null;
+      clientName: string;
+    }
   >();
 
   if (taskIds.length > 0) {
@@ -141,6 +151,7 @@ async function fetchTaskActivityForMember(
       .select(
         `
         id,
+        project_id,
         project:projects(
           name,
           client_id
@@ -158,7 +169,9 @@ async function fetchTaskActivityForMember(
 
     for (const task of tasks ?? []) {
       taskMeta.set(task.id, {
+        projectId: task.project_id,
         projectName: task.project?.name ?? "—",
+        clientId: task.project?.client_id ?? null,
         clientName: clientNameFromMap(task.project?.client_id, clientNames),
       });
     }
@@ -169,6 +182,9 @@ async function fetchTaskActivityForMember(
 
     return {
       id: row.id,
+      taskId: row.entity_id,
+      projectId: meta?.projectId ?? null,
+      clientId: meta?.clientId ?? null,
       taskName: readJsonTextField(row.new_values, "title") ?? "Untitled task",
       projectName: meta?.projectName ?? "—",
       clientName: meta?.clientName ?? "—",
@@ -205,6 +221,7 @@ async function fetchInteractionsForMember(
 
   return rows.map((row) => ({
     id: row.id,
+    clientId: row.client_id,
     typeLabel: interactionTypeLabel(row.type as InteractionType),
     clientName: clientNameFromMap(row.client_id, clientNames),
     summary: row.summary,
@@ -238,6 +255,7 @@ async function fetchClientUpdatesForMember(
 
   return rows.map((row) => ({
     id: row.id,
+    clientId: row.client_id,
     channelLabel: formatStoredUpdateChannel(row.marketing_channel).label,
     clientName: clientNameFromMap(row.client_id, clientNames),
     summary: row.summary,
