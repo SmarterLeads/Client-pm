@@ -2003,6 +2003,7 @@ export type Database = {
         | "comment_mention"
         | "task_complete"
         | "task_review"
+        | "task_comment"
         | "milestone_due"
         | "approval_needed"
         | "milestone_approved"
@@ -3889,6 +3890,7 @@ export const Constants = {
         "comment_mention",
         "task_complete",
         "task_review",
+        "task_comment",
         "milestone_due",
         "approval_needed",
         "milestone_approved",

@@ -290,7 +290,7 @@ export async function createComment(
     const service = createServiceClient();
     const { data: task } = await pm(service)
       .from("tasks")
-      .select("title, assignee_id")
+      .select("title")
       .eq("id", taskId)
       .maybeSingle();
 
@@ -302,8 +302,8 @@ export async function createComment(
     if (task) {
       await notifyTaskComment({
         taskId,
+        projectId,
         taskTitle: task.title,
-        assigneeId: task.assignee_id,
         actorId: teamMember.id,
         actorName: teamMember.name,
         commentBody: parsed.data.body,

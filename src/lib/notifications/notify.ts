@@ -1,12 +1,26 @@
 import { revalidatePath } from "next/cache";
-import { resolveMentionedTeamMemberIds } from "@/lib/notifications/mentions";
+import {
+  resolveMentionedTeamMemberIds,
+  stripHtmlForMentions,
+} from "@/lib/notifications/mentions";
 import { safeCreateNotification } from "@/lib/notifications/create";
 import { getProjectOwnerContext } from "@/lib/queries/projects";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
+import type { NotificationType } from "@/lib/types";
 
 function revalidateNotificationBell() {
   revalidatePath("/", "layout");
+}
+
+function uniqueIds(ids: Array<string | null | undefined>): string[] {
+  return [...new Set(ids.filter((id): id is string => Boolean(id)))];
+}
+
+function truncateCommentPreview(body: string, maxLength = 100): string {
+  const plain = stripHtmlForMentions(body);
+  if (plain.length <= maxLength) return plain;
+  return `${plain.slice(0, maxLength).trim()}...`;
 }
 
 async function loadActiveTeamMembers() {
@@ -22,6 +36,68 @@ async function loadActiveTeamMembers() {
   }
 
   return data ?? [];
+}
+
+async function loadProjectMemberIds(projectId: string): Promise<string[]> {
+  const service = createServiceClient();
+  const { data, error } = await pm(service)
+    .from("project_members")
+    .select("team_member_id")
+    .eq("project_id", projectId);
+
+  if (error) {
+    console.error("[loadProjectMemberIds]", error.message);
+    return [];
+  }
+
+  return uniqueIds((data ?? []).map((row) => row.team_member_id));
+}
+
+async function loadPriorTaskCommentAuthorIds(taskId: string): Promise<string[]> {
+  const service = createServiceClient();
+  const { data, error } = await pm(service)
+    .from("task_comments")
+    .select("author_id")
+    .eq("task_id", taskId)
+    .not("author_id", "is", null);
+
+  if (error) {
+    console.error("[loadPriorTaskCommentAuthorIds]", error.message);
+    return [];
+  }
+
+  return uniqueIds((data ?? []).map((row) => row.author_id));
+}
+
+async function notifyUniqueRecipients(params: {
+  recipientIds: string[];
+  actorId: string;
+  type: NotificationType;
+  entityType: string;
+  entityId: string;
+  title: string;
+  body: string;
+}): Promise<boolean> {
+  const recipients = uniqueIds(params.recipientIds).filter(
+    (recipientId) => recipientId !== params.actorId,
+  );
+  if (recipients.length === 0) return false;
+
+  await Promise.all(
+    recipients.map((recipientId) =>
+      safeCreateNotification({
+        recipientId,
+        actorId: params.actorId,
+        type: params.type,
+        entityType: params.entityType,
+        entityId: params.entityId,
+        title: params.title,
+        body: params.body,
+      }),
+    ),
+  );
+
+  return true;
 }
 
 export async function notifyTaskAssigned(params: {
@@ -45,53 +121,57 @@ export async function notifyTaskAssigned(params: {
 
 export async function notifyTaskComment(params: {
   taskId: string;
+  projectId: string;
   taskTitle: string;
-  assigneeId: string | null;
   actorId: string;
   actorName: string;
   commentBody: string;
 }) {
-  const teamMembers = await loadActiveTeamMembers();
-  const mentionedIds = new Set(
-    resolveMentionedTeamMemberIds(params.commentBody, teamMembers),
+  const service = createServiceClient();
+
+  const [{ data: task, error: taskError }, project, memberIds, priorAuthors, teamMembers] =
+    await Promise.all([
+      pm(service)
+        .from("tasks")
+        .select("assignee_id")
+        .eq("id", params.taskId)
+        .maybeSingle(),
+      getProjectOwnerContext(params.projectId),
+      loadProjectMemberIds(params.projectId),
+      loadPriorTaskCommentAuthorIds(params.taskId),
+      loadActiveTeamMembers(),
+    ]);
+
+  if (taskError) {
+    console.error("[notifyTaskComment]", taskError.message);
+  }
+
+  const mentionedIds = resolveMentionedTeamMemberIds(
+    params.commentBody,
+    teamMembers,
   );
 
-  let sent = false;
+  const recipientIds = uniqueIds([
+    task?.assignee_id,
+    project?.ownerId,
+    ...memberIds,
+    ...priorAuthors,
+    ...mentionedIds,
+  ]);
 
-  if (
-    params.assigneeId &&
-    params.assigneeId !== params.actorId &&
-    !mentionedIds.has(params.assigneeId)
-  ) {
-    await safeCreateNotification({
-      recipientId: params.assigneeId,
-      actorId: params.actorId,
-      type: "comment_mention",
-      entityType: "task",
-      entityId: params.taskId,
-      title: `New comment on "${params.taskTitle}"`,
-      body: `${params.actorName} commented on your task.`,
-    });
-    sent = true;
-  }
+  const preview = truncateCommentPreview(params.commentBody);
+  const title = `New comment on: ${params.taskTitle}`;
+  const body = `${params.actorName} commented on '${params.taskTitle}': ${preview}`;
 
-  mentionedIds.delete(params.actorId);
-  if (params.assigneeId) {
-    mentionedIds.delete(params.assigneeId);
-  }
-
-  for (const recipientId of mentionedIds) {
-    await safeCreateNotification({
-      recipientId,
-      actorId: params.actorId,
-      type: "comment_mention",
-      entityType: "task",
-      entityId: params.taskId,
-      title: `You were mentioned on "${params.taskTitle}"`,
-      body: `${params.actorName} mentioned you in a comment.`,
-    });
-    sent = true;
-  }
+  const sent = await notifyUniqueRecipients({
+    recipientIds,
+    actorId: params.actorId,
+    type: "task_comment",
+    entityType: "task",
+    entityId: params.taskId,
+    title,
+    body,
+  });
 
   if (sent) {
     revalidateNotificationBell();
@@ -106,43 +186,31 @@ export async function notifyTaskReadyForReview(params: {
   actorId: string;
   actorName: string;
 }) {
-  const project = await getProjectOwnerContext(params.projectId);
+  const [project, memberIds] = await Promise.all([
+    getProjectOwnerContext(params.projectId),
+    loadProjectMemberIds(params.projectId),
+  ]);
+
   if (!project) return;
 
   const title = `Task ready for review: ${params.taskTitle}`;
   const body = `${params.actorName} marked "${params.taskTitle}" as In Review in ${project.projectName}. Please review and mark as complete.`;
 
-  let sent = false;
+  const recipientIds = uniqueIds([
+    project.ownerId,
+    params.assigneeId,
+    ...memberIds,
+  ]);
 
-  if (project.ownerId && project.ownerId !== params.actorId) {
-    await safeCreateNotification({
-      recipientId: project.ownerId,
-      actorId: params.actorId,
-      type: "task_review",
-      entityType: "task",
-      entityId: params.taskId,
-      title,
-      body,
-    });
-    sent = true;
-  }
-
-  if (
-    params.assigneeId &&
-    params.assigneeId !== params.actorId &&
-    params.assigneeId !== project.ownerId
-  ) {
-    await safeCreateNotification({
-      recipientId: params.assigneeId,
-      actorId: params.actorId,
-      type: "task_review",
-      entityType: "task",
-      entityId: params.taskId,
-      title,
-      body,
-    });
-    sent = true;
-  }
+  const sent = await notifyUniqueRecipients({
+    recipientIds,
+    actorId: params.actorId,
+    type: "task_review",
+    entityType: "task",
+    entityId: params.taskId,
+    title,
+    body,
+  });
 
   if (sent) {
     revalidateNotificationBell();

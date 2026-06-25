@@ -14,6 +14,7 @@ const iconByType: Record<NotificationType, LucideIcon> = {
   task_assigned: UserPlus,
   task_due: CalendarClock,
   comment_mention: MessageSquareQuote,
+  task_comment: MessageSquareQuote,
   task_complete: CheckCircle2,
   task_review: ClipboardCheck,
   milestone_due: CalendarClock,
