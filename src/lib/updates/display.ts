@@ -106,3 +106,22 @@ export function formatUpdateDateTime(iso: string): string {
     minute: "2-digit",
   });
 }
+
+export function formatUpdateDateCompact(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function plainTextUpdateSummary(summary: string): string {
+  return summary
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
