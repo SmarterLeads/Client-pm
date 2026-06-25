@@ -62,6 +62,8 @@ export default async function handler(
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  console.log("[email-inbound] payload:", JSON.stringify(event.data));
+
   try {
     await processInboundEmailEvent(event);
   } catch (err) {

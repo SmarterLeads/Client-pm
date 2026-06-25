@@ -11,6 +11,9 @@ export type ResendInboundWebhookEvent = {
     cc?: string[];
     bcc?: string[];
     subject?: string;
+    /** Not included on webhooks — fetch via Receiving API. Optional fallback. */
+    text?: string | null;
+    html?: string | null;
   };
 };
 
@@ -70,34 +73,72 @@ export function verifyResendWebhook(
 export async function fetchReceivedEmailContent(
   emailId: string,
 ): Promise<ReceivedEmailContent> {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
+    console.warn("[fetchReceivedEmailContent] RESEND_API_KEY not set");
     return { text: null, html: null };
   }
 
-  const response = await fetch(
-    `https://api.resend.com/emails/receiving/${emailId}`,
-    {
+  const url = `https://api.resend.com/emails/receiving/${emailId}`;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
       },
-    },
-  );
+    });
 
-  if (!response.ok) {
+    if (response.ok) {
+      const json = (await response.json()) as {
+        text?: string | null;
+        html?: string | null;
+        data?: {
+          text?: string | null;
+          html?: string | null;
+        };
+      };
+
+      const payload = json.data ?? json;
+      const text = payload.text ?? null;
+      const html = payload.html ?? null;
+
+      console.log("[fetchReceivedEmailContent]", emailId, {
+        attempt: attempt + 1,
+        hasText: Boolean(text?.trim()),
+        hasHtml: Boolean(html?.trim()),
+      });
+
+      return { text, html };
+    }
+
+    const errorBody = await response.text();
+
+    if (response.status === 404 && attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+      continue;
+    }
+
     console.error(
       "[fetchReceivedEmailContent]",
       emailId,
       response.status,
-      await response.text(),
+      errorBody,
     );
     return { text: null, html: null };
   }
 
-  const data = (await response.json()) as {
-    text?: string | null;
-    html?: string | null;
-  };
+  return { text: null, html: null };
+}
+
+export async function resolveInboundEmailContent(
+  data: NonNullable<ResendInboundWebhookEvent["data"]>,
+): Promise<ReceivedEmailContent> {
+  if (data.email_id) {
+    const fetched = await fetchReceivedEmailContent(data.email_id);
+    if (fetched.text?.trim() || fetched.html?.trim()) {
+      return fetched;
+    }
+  }
 
   return {
     text: data.text ?? null,

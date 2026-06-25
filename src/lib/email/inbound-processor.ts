@@ -1,6 +1,11 @@
+import {
+  extractEmailsFromForwardedBody,
+  htmlToPlainText,
+  isForwardedSubject,
+} from "@/lib/email/parse-forwarded";
 import { extractEmailAddresses, normalizeEmail } from "@/lib/email/parse-address";
 import {
-  fetchReceivedEmailContent,
+  resolveInboundEmailContent,
   type ResendInboundWebhookEvent,
 } from "@/lib/email/resend-inbound";
 import { safeCreateNotification } from "@/lib/notifications/create";
@@ -40,33 +45,107 @@ async function lookupTeamMemberByEmails(
   return (data as TeamMemberEmailRow[] | null)?.[0]?.team_member_id ?? null;
 }
 
-async function lookupClientByContactEmails(
-  emails: string[],
+async function lookupClientByContactEmail(
+  email: string,
 ): Promise<ClientContactMatch | null> {
-  if (emails.length === 0) return null;
+  const normalized = normalizeEmail(email);
+  if (!normalized.includes("@")) return null;
 
-  const normalized = emails.map((email) => normalizeEmail(email));
   const service = createServiceClient();
-
   const { data, error } = await service
     .from("client_contacts")
     .select("client_id, email")
-    .in("email", normalized)
+    .eq("email", normalized)
     .eq("is_active", true)
-    .limit(1);
+    .limit(1)
+    .maybeSingle();
 
   if (error) {
-    console.error("[lookupClientByContactEmails]", error.message);
+    console.error("[lookupClientByContactEmail]", error.message);
     return null;
   }
 
-  const row = data?.[0];
-  if (!row?.client_id) return null;
+  if (!data?.client_id) return null;
 
   return {
-    client_id: row.client_id,
-    email: row.email,
+    client_id: data.client_id,
+    email: data.email,
   };
+}
+
+async function lookupClientByContactEmails(
+  emails: string[],
+): Promise<ClientContactMatch | null> {
+  const seen = new Set<string>();
+
+  for (const email of emails) {
+    const normalized = normalizeEmail(email);
+    if (!normalized.includes("@") || seen.has(normalized)) continue;
+    seen.add(normalized);
+
+    const match = await lookupClientByContactEmail(normalized);
+    if (match) return match;
+  }
+
+  return null;
+}
+
+function resolvePlainTextBody(content: {
+  text: string | null;
+  html: string | null;
+}): string | null {
+  if (content.text?.trim()) return content.text.trim();
+  return htmlToPlainText(content.html);
+}
+
+async function resolveClientMatch(params: {
+  toEmails: string[];
+  ccEmails: string[];
+  bccEmails: string[];
+  subject: string | null;
+  bodyText: string | null;
+}): Promise<ClientContactMatch | null> {
+  const headerEmails = [
+    ...params.toEmails,
+    ...params.ccEmails,
+    ...params.bccEmails,
+  ];
+
+  const headerMatch = await lookupClientByContactEmails(headerEmails);
+  if (headerMatch) {
+    console.log("[processInboundEmailEvent] matched client via headers", {
+      email: headerMatch.email,
+      clientId: headerMatch.client_id,
+    });
+    return headerMatch;
+  }
+
+  const forwardedSubject = isForwardedSubject(params.subject);
+  const bodyEmails = extractEmailsFromForwardedBody(params.bodyText);
+
+  if (bodyEmails.length > 0) {
+    const bodyMatch = await lookupClientByContactEmails(bodyEmails);
+    if (bodyMatch) {
+      console.log("[processInboundEmailEvent] matched client via forwarded body", {
+        email: bodyMatch.email,
+        clientId: bodyMatch.client_id,
+        forwardedSubject,
+      });
+      return bodyMatch;
+    }
+  }
+
+  if (forwardedSubject) {
+    console.log(
+      "[processInboundEmailEvent] forwarded subject but no client match",
+      {
+        subject: params.subject,
+        bodyEmailCount: bodyEmails.length,
+      },
+    );
+  }
+
+  return null;
 }
 
 async function createInteractionFromEmail(params: {
@@ -112,12 +191,18 @@ export async function processInboundEmailEvent(
   const fromEmail = normalizeEmail(event.data.from ?? "");
   const toEmails = extractEmailAddresses(event.data.to);
   const ccEmails = extractEmailAddresses(event.data.cc);
+  const bccEmails = extractEmailAddresses(event.data.bcc);
   const subject = event.data.subject ?? null;
   const receivedAt = event.data.created_at ?? new Date().toISOString();
 
-  const content = event.data.email_id
-    ? await fetchReceivedEmailContent(event.data.email_id)
-    : { text: null, html: null };
+  const content = await resolveInboundEmailContent(event.data);
+  const bodyText = resolvePlainTextBody(content);
+
+  console.log("[processInboundEmailEvent] resolved content", {
+    emailId: event.data.email_id,
+    hasBodyText: Boolean(bodyText?.trim()),
+    hasHtml: Boolean(content.html?.trim()),
+  });
 
   const teamMemberId = fromEmail
     ? await lookupTeamMemberByEmails([fromEmail])
@@ -125,12 +210,16 @@ export async function processInboundEmailEvent(
   const recipientTeamMemberId = await lookupTeamMemberByEmails([
     ...toEmails,
     ...ccEmails,
+    ...bccEmails,
   ]);
 
-  const clientMatch = await lookupClientByContactEmails([
-    ...toEmails,
-    ...ccEmails,
-  ]);
+  const clientMatch = await resolveClientMatch({
+    toEmails,
+    ccEmails,
+    bccEmails,
+    subject,
+    bodyText,
+  });
 
   const service = createServiceClient();
 
@@ -139,7 +228,7 @@ export async function processInboundEmailEvent(
       clientId: clientMatch.client_id,
       teamMemberId,
       subject,
-      bodyText: content.text,
+      bodyText,
       occurredAt: receivedAt,
     });
 
@@ -148,7 +237,7 @@ export async function processInboundEmailEvent(
       to_email: toEmails.join(", ") || null,
       cc_email: ccEmails.join(", ") || null,
       subject,
-      body_text: content.text,
+      body_text: bodyText,
       body_html: content.html,
       received_at: receivedAt,
       team_member_id: teamMemberId,
@@ -171,7 +260,7 @@ export async function processInboundEmailEvent(
       to_email: toEmails.join(", ") || null,
       cc_email: ccEmails.join(", ") || null,
       subject,
-      body_text: content.text,
+      body_text: bodyText,
       body_html: content.html,
       received_at: receivedAt,
       team_member_id: teamMemberId,

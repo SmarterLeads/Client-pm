@@ -75,7 +75,9 @@ function InteractionTimelineItem({
   onEdit?: (item: InteractionRow) => void;
   onDelete?: (item: InteractionRow) => void;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(
+    Boolean(item.body?.trim()) && item.type === "check_in",
+  );
   const hasBody = Boolean(item.body?.trim());
   const showActions = canManage && (onEdit || onDelete);
   const hasPeople = item.contacts.length > 0 || item.attendees.length > 0;
@@ -105,18 +107,20 @@ function InteractionTimelineItem({
 
             {hasBody ? (
               <div className="mt-2">
-                <div className={cn(!isExpanded && "line-clamp-2")}>
+                <div className={cn(!isExpanded && item.type !== "check_in" && "line-clamp-2")}>
                   <RichTextDisplay className="text-muted-foreground">
                     {item.body!}
                   </RichTextDisplay>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsExpanded((v) => !v)}
-                  className="mt-1 text-xs font-medium text-primary hover:underline"
-                >
-                  {isExpanded ? "Show less" : "Show more"}
-                </button>
+                {hasBody && item.type !== "check_in" ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsExpanded((v) => !v)}
+                    className="mt-1 text-xs font-medium text-primary hover:underline"
+                  >
+                    {isExpanded ? "Show less" : "Show more"}
+                  </button>
+                ) : null}
               </div>
             ) : null}
 
