@@ -48,13 +48,16 @@ function ClientUpdateTimelineItem({ item }: { item: ClientUpdateRow }) {
             if (canExpand) setExpanded((current) => !current);
           }}
           className={cn(
-            "flex w-full items-center gap-3 py-2 text-left text-sm",
+            "flex flex-wrap items-center gap-2 py-2 text-left text-sm",
             canExpand && "cursor-pointer rounded-md hover:bg-muted/40",
           )}
         >
           <UpdateChannelBadge channel={item.marketing_channel} className="shrink-0" />
 
-          <span ref={summaryRef} className="min-w-0 flex-1 truncate">
+          <span
+            ref={summaryRef}
+            className="max-w-xl truncate text-foreground"
+          >
             {plainSummary}
           </span>
 
