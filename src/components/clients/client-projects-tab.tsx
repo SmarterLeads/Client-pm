@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { ProjectStatusBadge } from "@/components/clients/project-status-badge";
 import { RagDot } from "@/components/clients/rag-dot";
@@ -11,14 +11,6 @@ import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import { useTaskDrawer } from "@/components/tasks/task-drawer-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type {
   ClientProjectOpenTaskRow,
   ClientProjectRow,
@@ -156,7 +148,7 @@ function ProjectOpenTasksPanel({
   const sections = groupTasksBySection(tasks);
 
   return (
-    <div className="border-t border-border bg-muted/20">
+    <div className="border-t border-gray-200 bg-muted/20">
       {sections.map(([sectionKey, sectionTasks]) => (
         <div key={sectionKey}>
           <p className="px-4 py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -170,6 +162,85 @@ function ProjectOpenTasksPanel({
         </div>
       ))}
     </div>
+  );
+}
+
+function ProjectCard({
+  project,
+  openCount,
+  expanded,
+  openTasks,
+  onToggle,
+}: {
+  project: ClientProjectRow;
+  openCount: number;
+  expanded: boolean;
+  openTasks: ClientProjectOpenTaskRow[];
+  onToggle: () => void;
+}) {
+  return (
+    <article className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div
+        className="grid cursor-pointer gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] sm:items-center sm:gap-x-4"
+        onClick={onToggle}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onToggle();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+      >
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <Link
+              href={`/projects/${project.id}`}
+              className="font-medium hover:underline"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {project.name}
+            </Link>
+            {openCount > 0 ? (
+              <span className="text-xs text-muted-foreground">
+                ({openCount} open)
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:contents">
+          <ProjectStatusBadge status={project.status} />
+          <RagDot status={project.rag_status} />
+        </div>
+
+        <p className="hidden text-sm text-muted-foreground md:block">
+          {project.owner_name ?? "—"}
+        </p>
+
+        <p className="hidden text-sm text-muted-foreground sm:block">
+          {formatDate(project.due_date)}
+        </p>
+
+        <div className="min-w-[7rem]">
+          <TaskProgressBar
+            done={project.done_tasks}
+            total={project.total_tasks}
+          />
+        </div>
+
+        <div className="flex justify-end text-muted-foreground sm:justify-center">
+          {expanded ? (
+            <ChevronUp className="size-4" aria-hidden />
+          ) : (
+            <ChevronDown className="size-4" aria-hidden />
+          )}
+        </div>
+      </div>
+
+      {expanded ? <ProjectOpenTasksPanel tasks={openTasks} /> : null}
+    </article>
   );
 }
 
@@ -219,87 +290,23 @@ export function ClientProjectsTab({
           No projects for this client yet.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>RAG</TableHead>
-                <TableHead className="hidden md:table-cell">Owner</TableHead>
-                <TableHead className="hidden sm:table-cell">Due date</TableHead>
-                <TableHead>Progress</TableHead>
-                <TableHead className="w-10">
-                  <span className="sr-only">Expand</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {projects.map((project) => {
-                const openCount = openCounts[project.id] ?? 0;
-                const expanded = expandedIds.has(project.id);
-                const openTasks = openTasksByProject[project.id] ?? [];
+        <div className="space-y-4">
+          {projects.map((project) => {
+            const openCount = openCounts[project.id] ?? 0;
+            const expanded = expandedIds.has(project.id);
+            const openTasks = openTasksByProject[project.id] ?? [];
 
-                return (
-                  <Fragment key={project.id}>
-                    <TableRow
-                      className="cursor-pointer"
-                      onClick={() => toggleExpanded(project.id)}
-                    >
-                      <TableCell>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                          <Link
-                            href={`/projects/${project.id}`}
-                            className="font-medium hover:underline"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            {project.name}
-                          </Link>
-                          {openCount > 0 ? (
-                            <span className="text-xs text-muted-foreground">
-                              ({openCount} open)
-                            </span>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <ProjectStatusBadge status={project.status} />
-                      </TableCell>
-                      <TableCell>
-                        <RagDot status={project.rag_status} />
-                      </TableCell>
-                      <TableCell className="hidden text-muted-foreground md:table-cell">
-                        {project.owner_name ?? "—"}
-                      </TableCell>
-                      <TableCell className="hidden text-muted-foreground sm:table-cell">
-                        {formatDate(project.due_date)}
-                      </TableCell>
-                      <TableCell>
-                        <TaskProgressBar
-                          done={project.done_tasks}
-                          total={project.total_tasks}
-                        />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {expanded ? (
-                          <ChevronUp className="size-4" aria-hidden />
-                        ) : (
-                          <ChevronDown className="size-4" aria-hidden />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                    {expanded ? (
-                      <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={7} className="p-0">
-                          <ProjectOpenTasksPanel tasks={openTasks} />
-                        </TableCell>
-                      </TableRow>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
+            return (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                openCount={openCount}
+                expanded={expanded}
+                openTasks={openTasks}
+                onToggle={() => toggleExpanded(project.id)}
+              />
+            );
+          })}
         </div>
       )}
     </div>
