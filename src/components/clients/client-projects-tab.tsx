@@ -141,7 +141,9 @@ function ProjectOpenTasksPanel({
 }) {
   if (tasks.length === 0) {
     return (
-      <p className="px-4 py-3 text-sm text-muted-foreground">No open tasks</p>
+      <p className="border-t border-gray-200 px-4 py-2 text-sm text-muted-foreground">
+        No open tasks
+      </p>
     );
   }
 
@@ -181,7 +183,7 @@ function ProjectCard({
   return (
     <article className="overflow-hidden rounded-lg border border-gray-200 bg-white">
       <div
-        className="grid cursor-pointer gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] sm:items-center sm:gap-x-4"
+        className="flex cursor-pointer items-center gap-4 p-4 sm:gap-6"
         onClick={onToggle}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -193,44 +195,39 @@ function ProjectCard({
         tabIndex={0}
         aria-expanded={expanded}
       >
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <Link
-              href={`/projects/${project.id}`}
-              className="font-medium hover:underline"
-              onClick={(event) => event.stopPropagation()}
-            >
-              {project.name}
-            </Link>
-            {openCount > 0 ? (
-              <span className="text-xs text-muted-foreground">
-                ({openCount} open)
-              </span>
-            ) : null}
+        <div className="flex min-w-0 items-baseline gap-2 sm:max-w-[14rem]">
+          <Link
+            href={`/projects/${project.id}`}
+            className="truncate text-base font-semibold hover:underline"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {project.name}
+          </Link>
+          {openCount > 0 ? (
+            <span className="shrink-0 text-xs text-muted-foreground">
+              ({openCount} open)
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-4 sm:gap-6">
+          <ProjectStatusBadge status={project.status} />
+          <RagDot status={project.rag_status} />
+          <span className="hidden shrink-0 text-sm text-muted-foreground md:inline">
+            {project.owner_name ?? "—"}
+          </span>
+          <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">
+            {formatDate(project.due_date)}
+          </span>
+          <div className="w-24 shrink-0">
+            <TaskProgressBar
+              done={project.done_tasks}
+              total={project.total_tasks}
+            />
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:contents">
-          <ProjectStatusBadge status={project.status} />
-          <RagDot status={project.rag_status} />
-        </div>
-
-        <p className="hidden text-sm text-muted-foreground md:block">
-          {project.owner_name ?? "—"}
-        </p>
-
-        <p className="hidden text-sm text-muted-foreground sm:block">
-          {formatDate(project.due_date)}
-        </p>
-
-        <div className="min-w-[7rem]">
-          <TaskProgressBar
-            done={project.done_tasks}
-            total={project.total_tasks}
-          />
-        </div>
-
-        <div className="flex justify-end text-muted-foreground sm:justify-center">
+        <div className="ml-auto shrink-0 text-muted-foreground">
           {expanded ? (
             <ChevronUp className="size-4" aria-hidden />
           ) : (
