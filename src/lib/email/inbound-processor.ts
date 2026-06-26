@@ -11,6 +11,7 @@ import {
 import { safeCreateNotification } from "@/lib/notifications/create";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
+import { insertInteractionWithTeamMemberContext } from "@/lib/supabase/with-team-member-context";
 
 type TeamMemberEmailRow = {
   team_member_id: string;
@@ -113,7 +114,7 @@ async function resolveClientMatch(params: {
 
   const headerMatch = await lookupClientByContactEmails(headerEmails);
   if (headerMatch) {
-    console.log("[processInboundEmailEvent] matched client via headers", {
+    console.log("[email] matched client via headers", {
       email: headerMatch.email,
       clientId: headerMatch.client_id,
     });
@@ -126,7 +127,7 @@ async function resolveClientMatch(params: {
   if (bodyEmails.length > 0) {
     const bodyMatch = await lookupClientByContactEmails(bodyEmails);
     if (bodyMatch) {
-      console.log("[processInboundEmailEvent] matched client via forwarded body", {
+      console.log("[email] matched client via forwarded body", {
         email: bodyMatch.email,
         clientId: bodyMatch.client_id,
         forwardedSubject,
@@ -136,13 +137,10 @@ async function resolveClientMatch(params: {
   }
 
   if (forwardedSubject) {
-    console.log(
-      "[processInboundEmailEvent] forwarded subject but no client match",
-      {
-        subject: params.subject,
-        bodyEmailCount: bodyEmails.length,
-      },
-    );
+    console.log("[email] forwarded subject but no client match", {
+      subject: params.subject,
+      bodyEmailCount: bodyEmails.length,
+    });
   }
 
   return null;
@@ -151,19 +149,45 @@ async function resolveClientMatch(params: {
 async function createInteractionFromEmail(params: {
   clientId: string;
   teamMemberId: string | null;
+  fallbackTeamMemberId: string | null;
   subject: string | null;
   bodyText: string | null;
   occurredAt: string;
-}) {
-  const service = createServiceClient();
+}): Promise<string> {
+  console.log("[email] creating interaction for client:", params.clientId);
 
+  const summary = params.subject?.trim() || "Inbound email";
+  const payload = {
+    client_id: params.clientId,
+    type: "check_in",
+    summary,
+    body: params.bodyText,
+    occurred_at: params.occurredAt,
+  };
+
+  const loggedById = params.teamMemberId ?? params.fallbackTeamMemberId;
+
+  if (loggedById) {
+    const interactionId = await insertInteractionWithTeamMemberContext(
+      loggedById,
+      payload,
+    );
+    console.log("[email] interaction result:", {
+      interactionId,
+      clientId: params.clientId,
+      loggedById,
+    });
+    return interactionId;
+  }
+
+  const service = createServiceClient();
   const { data, error } = await pm(service)
     .from("interactions")
     .insert({
       client_id: params.clientId,
       type: "check_in",
-      logged_by: params.teamMemberId,
-      summary: params.subject?.trim() || "Inbound email",
+      logged_by: null,
+      summary,
       body: params.bodyText,
       occurred_at: params.occurredAt,
     })
@@ -171,12 +195,19 @@ async function createInteractionFromEmail(params: {
     .single();
 
   if (error) {
+    console.error("[email] interaction creation failed:", error.message);
     throw new Error(error.message);
   }
 
   if (!data?.id) {
     throw new Error("Failed to create interaction from inbound email.");
   }
+
+  console.log("[email] interaction result:", {
+    interactionId: data.id,
+    clientId: params.clientId,
+    loggedById: null,
+  });
 
   return data.id;
 }
@@ -198,10 +229,11 @@ export async function processInboundEmailEvent(
   const content = await resolveInboundEmailContent(event.data);
   const bodyText = resolvePlainTextBody(content);
 
-  console.log("[processInboundEmailEvent] resolved content", {
+  console.log("[email] resolved content", {
     emailId: event.data.email_id,
     hasBodyText: Boolean(bodyText?.trim()),
     hasHtml: Boolean(content.html?.trim()),
+    resendApiKeySet: Boolean(process.env.RESEND_API_KEY?.trim()),
   });
 
   const teamMemberId = fromEmail
@@ -224,30 +256,59 @@ export async function processInboundEmailEvent(
   const service = createServiceClient();
 
   if (clientMatch) {
-    const interactionId = await createInteractionFromEmail({
-      clientId: clientMatch.client_id,
-      teamMemberId,
-      subject,
-      bodyText,
-      occurredAt: receivedAt,
-    });
+    let interactionId: string | null = null;
 
-    const { error } = await pm(service).from("email_log").insert({
-      from_email: fromEmail || event.data.from || "unknown",
-      to_email: toEmails.join(", ") || null,
-      cc_email: ccEmails.join(", ") || null,
-      subject,
-      body_text: bodyText,
-      body_html: content.html,
-      received_at: receivedAt,
-      team_member_id: teamMemberId,
-      matched_client_id: clientMatch.client_id,
-      interaction_id: interactionId,
-      status: "matched",
-    });
+    try {
+      interactionId = await createInteractionFromEmail({
+        clientId: clientMatch.client_id,
+        teamMemberId,
+        fallbackTeamMemberId: recipientTeamMemberId,
+        subject,
+        bodyText,
+        occurredAt: receivedAt,
+      });
+    } catch (err) {
+      console.error(
+        "[email] interaction creation failed — saving email as pending",
+        err instanceof Error ? err.message : err,
+      );
+    }
+
+    const { data: emailLogRow, error } = await pm(service)
+      .from("email_log")
+      .insert({
+        from_email: fromEmail || event.data.from || "unknown",
+        to_email: toEmails.join(", ") || null,
+        cc_email: ccEmails.join(", ") || null,
+        subject,
+        body_text: bodyText,
+        body_html: content.html,
+        received_at: receivedAt,
+        team_member_id: teamMemberId ?? recipientTeamMemberId,
+        matched_client_id: interactionId ? clientMatch.client_id : null,
+        interaction_id: interactionId,
+        status: interactionId ? "matched" : "pending",
+      })
+      .select("id")
+      .single();
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    if (!interactionId) {
+      const notifyRecipientId = recipientTeamMemberId ?? teamMemberId;
+      if (notifyRecipientId) {
+        const subjectLabel = subject?.trim() || "No subject";
+        await safeCreateNotification({
+          recipientId: notifyRecipientId,
+          type: "comment_mention",
+          entityType: "email_log",
+          entityId: emailLogRow?.id ?? null,
+          title: `Matched email needs review: ${subjectLabel}`,
+          body: "Client matched but interaction could not be created automatically.",
+        });
+      }
     }
 
     return;

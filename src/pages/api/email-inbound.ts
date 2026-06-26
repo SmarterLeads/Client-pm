@@ -38,6 +38,10 @@ export default async function handler(
     !!process.env.RESEND_WEBHOOK_SECRET,
   );
   console.log(
+    "[email-inbound] RESEND_API_KEY set:",
+    !!process.env.RESEND_API_KEY,
+  );
+  console.log(
     "[email-inbound] headers:",
     JSON.stringify({
       "svix-id": req.headers["svix-id"],
