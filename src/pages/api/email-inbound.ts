@@ -67,6 +67,8 @@ export default async function handler(
   }
 
   console.log("[email-inbound] payload:", JSON.stringify(event.data));
+  console.log("[email] email_id:", event.data?.email_id);
+  console.log("[email] RESEND_API_KEY set:", !!process.env.RESEND_API_KEY);
 
   try {
     await processInboundEmailEvent(event);

@@ -226,6 +226,9 @@ export async function processInboundEmailEvent(
   const subject = event.data.subject ?? null;
   const receivedAt = event.data.created_at ?? new Date().toISOString();
 
+  console.log("[email] email_id:", event.data.email_id);
+  console.log("[email] RESEND_API_KEY set:", !!process.env.RESEND_API_KEY);
+
   const content = await resolveInboundEmailContent(event.data);
   const bodyText = resolvePlainTextBody(content);
 

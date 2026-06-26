@@ -85,13 +85,38 @@ function extractEmailContent(json: ResendEmailPayload): ReceivedEmailContent {
   const payload = json.data ?? json;
   const text = payload.text ?? payload.body ?? null;
   const html = payload.html ?? null;
+
+  console.log("[email] extracted content fields:", {
+    hasText: Boolean(text?.trim()),
+    hasHtml: Boolean(html?.trim()),
+    keys: Object.keys(payload),
+  });
+
   return { text, html };
+}
+
+export function resolveInboundEmailId(
+  data: NonNullable<ResendInboundWebhookEvent["data"]>,
+): string | null {
+  const emailId = data.email_id?.trim();
+  if (emailId) return emailId;
+
+  const legacyId = (data as { id?: string }).id?.trim();
+  if (legacyId) {
+    console.warn("[email] using data.id fallback for email_id:", legacyId);
+    return legacyId;
+  }
+
+  return null;
 }
 
 async function fetchEmailContentFromUrl(
   url: string,
   apiKey: string,
-): Promise<{ ok: true; content: ReceivedEmailContent } | { ok: false; status: number; errorBody: string }> {
+): Promise<
+  | { ok: true; content: ReceivedEmailContent; raw: ResendEmailPayload }
+  | { ok: false; status: number; errorBody: string }
+> {
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -107,33 +132,42 @@ async function fetchEmailContentFromUrl(
   }
 
   const json = (await response.json()) as ResendEmailPayload;
-  return { ok: true, content: extractEmailContent(json) };
+  console.log("[email] body response:", JSON.stringify(json));
+
+  return { ok: true, content: extractEmailContent(json), raw: json };
 }
 
 export async function fetchReceivedEmailContent(
   emailId: string,
 ): Promise<ReceivedEmailContent> {
+  console.log("[email] email_id:", emailId);
+  console.log("[email] RESEND_API_KEY set:", !!process.env.RESEND_API_KEY);
+
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
     console.warn("[email] RESEND_API_KEY not set — cannot fetch email body");
     return { text: null, html: null };
   }
 
-  console.log("[email] fetching body for email_id:", emailId);
-
   const urls = [
     `https://api.resend.com/emails/receiving/${emailId}`,
     `https://api.resend.com/emails/${emailId}`,
   ];
 
-  let lastError: { status: number; errorBody: string; url: string } | null = null;
+  let lastSuccessfulContent: ReceivedEmailContent | null = null;
+  let lastError: { status: number; errorBody: string; url: string } | null =
+    null;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     for (const url of urls) {
+      console.log("[email] fetching body from:", url, `(attempt ${attempt + 1})`);
+
       const result = await fetchEmailContentFromUrl(url, apiKey);
 
       if (result.ok) {
+        lastSuccessfulContent = result.content;
         const { text, html } = result.content;
+
         console.log("[email] body fetch result:", {
           emailId,
           url,
@@ -146,7 +180,7 @@ export async function fetchReceivedEmailContent(
           return result.content;
         }
 
-        console.log("[email] body fetch returned empty content", {
+        console.log("[email] body fetch returned empty text/html", {
           emailId,
           url,
           attempt: attempt + 1,
@@ -167,10 +201,6 @@ export async function fetchReceivedEmailContent(
         status: result.status,
         error: result.errorBody,
       });
-
-      if (result.status !== 404) {
-        break;
-      }
     }
 
     if (attempt < 2) {
@@ -185,17 +215,24 @@ export async function fetchReceivedEmailContent(
     });
   }
 
-  return { text: null, html: null };
+  return lastSuccessfulContent ?? { text: null, html: null };
 }
 
 export async function resolveInboundEmailContent(
   data: NonNullable<ResendInboundWebhookEvent["data"]>,
 ): Promise<ReceivedEmailContent> {
-  if (data.email_id) {
-    const fetched = await fetchReceivedEmailContent(data.email_id);
+  const emailId = resolveInboundEmailId(data);
+
+  console.log("[email] resolveInboundEmailContent email_id:", emailId);
+  console.log("[email] RESEND_API_KEY set:", !!process.env.RESEND_API_KEY);
+
+  if (emailId) {
+    const fetched = await fetchReceivedEmailContent(emailId);
     if (fetched.text?.trim() || fetched.html?.trim()) {
       return fetched;
     }
+  } else {
+    console.warn("[email] no email_id on webhook payload — cannot fetch body");
   }
 
   return {
