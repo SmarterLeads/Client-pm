@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { UserPersona } from "@/lib/auth/types";
 import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 import { isAdmin } from "@/lib/auth/roles";
-import type { ClientUser, TeamMember } from "@/lib/types";
+import type { ClientUser, PublicClientUser, TeamMember } from "@/lib/types";
 
 export type { UserPersona } from "@/lib/auth/types";
 export type { TeamMemberRole } from "@/lib/auth/roles";
@@ -41,9 +41,35 @@ export async function getSessionUser() {
   return user;
 }
 
+/** `public.client_users` row — external client, not an internal team member. */
+export async function getPublicClientUser(
+  userId?: string,
+): Promise<PublicClientUser | null> {
+  const user = userId ? { id: userId } : await getSessionUser();
+  if (!user?.id) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("client_users")
+    .select("client_id, created_at, role, user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data;
+}
+
+export async function isPublicClientUserSession(): Promise<boolean> {
+  const record = await getPublicClientUser();
+  return record != null;
+}
+
 export async function getTeamMember(): Promise<TeamMember | null> {
   const user = await getSessionUser();
   if (!user) return null;
+
+  const publicClientUser = await getPublicClientUser(user.id);
+  if (publicClientUser) return null;
 
   const supabase = await createClient();
 

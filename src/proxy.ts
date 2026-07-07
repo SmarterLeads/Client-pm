@@ -8,12 +8,10 @@ import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 import { pm } from "@/lib/supabase/pm";
 import type { Database } from "@/lib/types/database";
 
-const CLIENT_ACCESS_BLOCKED_PATH = "/client-portal-unavailable";
 const ACCESS_DENIED_PATH = "/auth/access-denied";
 
-function isClientAccessAllowedPath(pathname: string): boolean {
+function isAuthExemptPath(pathname: string): boolean {
   return (
-    pathname === CLIENT_ACCESS_BLOCKED_PATH ||
     pathname === ACCESS_DENIED_PATH ||
     pathname === "/auth/callback" ||
     pathname.startsWith("/auth/callback/")
@@ -70,6 +68,19 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse;
   }
 
+  const { data: publicClientUser } = await supabase
+    .from("client_users")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (publicClientUser && !isAuthExemptPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = ACCESS_DENIED_PATH;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   if (isBlockedPmEmail(user.email)) {
     if (pathname !== ACCESS_DENIED_PATH) {
       const url = request.nextUrl.clone();
@@ -80,26 +91,18 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse;
   }
 
-  const isClientUserByMetadata = user.user_metadata?.role === "client_user";
-
-  const [{ data: teamMember }, { data: clientPortalUser }, { data: publicClientUser }] =
-    await Promise.all([
-      pm(supabase)
-        .from("team_members")
-        .select("id, email")
-        .eq("auth_user_id", user.id)
-        .maybeSingle(),
-      pm(supabase)
-        .from("client_portal_users")
-        .select("id")
-        .eq("auth_user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("client_users")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle(),
-    ]);
+  const [{ data: teamMember }, { data: clientPortalUser }] = await Promise.all([
+    pm(supabase)
+      .from("team_members")
+      .select("id, email")
+      .eq("auth_user_id", user.id)
+      .maybeSingle(),
+    pm(supabase)
+      .from("client_portal_users")
+      .select("id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   if (isBlockedPmEmail(teamMember?.email)) {
     if (pathname !== ACCESS_DENIED_PATH) {
@@ -113,16 +116,6 @@ export async function proxy(request: NextRequest) {
 
   const isTeam = Boolean(teamMember);
   const isPortal = Boolean(clientPortalUser);
-  const isClientUser =
-    !isTeam &&
-    (isClientUserByMetadata || Boolean(publicClientUser) || isPortal);
-
-  if (isClientUser && !isClientAccessAllowedPath(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = CLIENT_ACCESS_BLOCKED_PATH;
-    url.search = "";
-    return NextResponse.redirect(url);
-  }
 
   if (isLogin && isTeam && !isBlockedPmEmail(user.email)) {
     const url = request.nextUrl.clone();
@@ -130,7 +123,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (isPortalLogin && isPortal && !isClientUser) {
+  if (isPortalLogin && isPortal) {
     const url = request.nextUrl.clone();
     url.pathname = "/portal/dashboard";
     return NextResponse.redirect(url);

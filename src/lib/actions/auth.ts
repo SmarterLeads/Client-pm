@@ -77,6 +77,19 @@ export async function signIn(
     return { error: "Your account does not have access to this application." };
   }
 
+  const { data: publicClientUser } = await supabase
+    .from("client_users")
+    .select("user_id")
+    .eq("user_id", data.user.id)
+    .maybeSingle();
+
+  if (persona === "team" && publicClientUser) {
+    await supabase.auth.signOut();
+    return {
+      error: "Client accounts cannot access the internal PM system.",
+    };
+  }
+
   try {
     if (persona === "team") {
       console.log("[signIn] calling ensureTeamMember for:", data.user.id);

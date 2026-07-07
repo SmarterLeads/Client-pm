@@ -11,14 +11,28 @@ export async function ensureTeamMember(
     throw new Error("Your account does not have access to this application.");
   }
 
+  if (isBlockedPmEmail(email)) {
+    throw new Error("Your account does not have access to this application.");
+  }
+
+  const supabase = createServiceClient();
+
+  const { data: publicClientUser } = await supabase
+    .from("client_users")
+    .select("user_id")
+    .eq("user_id", authUserId)
+    .maybeSingle();
+
+  if (publicClientUser) {
+    throw new Error("Client accounts cannot access the internal PM system.");
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   console.log("[ensureTeamMember] Supabase URL:", supabaseUrl);
   console.log(
     "[ensureTeamMember] querying pm.team_members by auth_user_id:",
     authUserId,
   );
-
-  const supabase = createServiceClient();
 
   const { data: byAuth, error: byAuthError } = await pm(supabase)
     .from("team_members")

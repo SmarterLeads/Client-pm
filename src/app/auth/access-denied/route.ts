@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
+import { getPublicClientUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 /** Signs out blocked sessions and sends the user to login with an error message. */
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user && isBlockedPmEmail(user.email)) {
+  if (user && (isBlockedPmEmail(user.email) || (await getPublicClientUser(user.id)))) {
     await supabase.auth.signOut();
   }
 

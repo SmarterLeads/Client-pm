@@ -35,6 +35,17 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/auth/access-denied`);
   }
 
+  const { data: publicClientUser } = await supabase
+    .from("client_users")
+    .select("user_id")
+    .eq("user_id", data.user.id)
+    .maybeSingle();
+
+  if (publicClientUser && persona === "team") {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(`${origin}/auth/access-denied`);
+  }
+
   try {
     if (persona === "portal") {
       await ensureClientUserLinked(data.user.id, email);

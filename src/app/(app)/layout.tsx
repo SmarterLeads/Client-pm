@@ -4,6 +4,7 @@ import { QuickCreateProvider } from "@/components/app/quick-create-provider";
 import { TaskDrawerProvider } from "@/components/tasks/task-drawer-provider";
 import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 import {
+  getPublicClientUser,
   getSessionUser,
   getTeamMember,
   getUnreadNotificationCount,
@@ -24,6 +25,11 @@ export default async function AppLayout({
   }
 
   if (isBlockedPmEmail(user.email)) {
+    redirect("/auth/access-denied");
+  }
+
+  const publicClientUser = await getPublicClientUser(user.id);
+  if (publicClientUser) {
     redirect("/auth/access-denied");
   }
 
