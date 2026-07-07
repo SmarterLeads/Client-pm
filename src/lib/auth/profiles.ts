@@ -1,11 +1,16 @@
 ﻿import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
+import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 
 export async function ensureTeamMember(
   authUserId: string,
   email: string,
   name?: string | null,
 ) {
+  if (isBlockedPmEmail(email)) {
+    throw new Error("Your account does not have access to this application.");
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   console.log("[ensureTeamMember] Supabase URL:", supabaseUrl);
   console.log(
@@ -17,7 +22,7 @@ export async function ensureTeamMember(
 
   const { data: byAuth, error: byAuthError } = await pm(supabase)
     .from("team_members")
-    .select("id")
+    .select("id, email")
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
@@ -35,7 +40,12 @@ export async function ensureTeamMember(
   });
 
   if (byAuthError) throw byAuthError;
-  if (byAuth) return byAuth;
+  if (byAuth) {
+    if (isBlockedPmEmail(byAuth.email)) {
+      throw new Error("Your account does not have access to this application.");
+    }
+    return byAuth;
+  }
 
   console.log(
     "[ensureTeamMember] not found by auth_user_id, querying pm.team_members by email:",
@@ -44,7 +54,7 @@ export async function ensureTeamMember(
 
   const { data: byEmail, error: byEmailError } = await pm(supabase)
     .from("team_members")
-    .select("id, auth_user_id")
+    .select("id, auth_user_id, email")
     .ilike("email", email)
     .maybeSingle();
 
@@ -64,6 +74,9 @@ export async function ensureTeamMember(
   if (byEmailError) throw byEmailError;
 
   if (byEmail) {
+    if (isBlockedPmEmail(byEmail.email)) {
+      throw new Error("Your account does not have access to this application.");
+    }
     if (byEmail.auth_user_id && byEmail.auth_user_id !== authUserId) {
       console.log(
         "[ensureTeamMember] email linked to different auth_user_id:",

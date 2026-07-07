@@ -1,6 +1,7 @@
 ﻿import { pm } from "@/lib/supabase/pm";
 import { createClient } from "@/lib/supabase/server";
 import type { UserPersona } from "@/lib/auth/types";
+import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 import { isAdmin } from "@/lib/auth/roles";
 import type { ClientUser, TeamMember } from "@/lib/types";
 
@@ -53,7 +54,12 @@ export async function getTeamMember(): Promise<TeamMember | null> {
     .maybeSingle();
 
   if (byAuthError) return null;
-  if (byAuth) return byAuth;
+  if (byAuth) {
+    if (isBlockedPmEmail(byAuth.email) || isBlockedPmEmail(user.email)) {
+      return null;
+    }
+    return byAuth;
+  }
 
   if (!user.email) return null;
 
@@ -64,6 +70,9 @@ export async function getTeamMember(): Promise<TeamMember | null> {
     .maybeSingle();
 
   if (byEmailError || !byEmail) return null;
+  if (isBlockedPmEmail(byEmail.email) || isBlockedPmEmail(user.email)) {
+    return null;
+  }
   return byEmail;
 }
 

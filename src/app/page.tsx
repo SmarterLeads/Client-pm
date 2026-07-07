@@ -1,4 +1,5 @@
 ﻿import { redirect } from "next/navigation";
+import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 import { getClientUser, getTeamMember } from "@/lib/auth/session";
 
 export default async function HomePage() {
@@ -6,6 +7,11 @@ export default async function HomePage() {
     getTeamMember(),
     getClientUser(),
   ]);
+
+  const user = teamMember ?? clientUser;
+  if (user && "email" in user && isBlockedPmEmail(user.email)) {
+    redirect("/auth/access-denied");
+  }
 
   if (teamMember) {
     redirect("/dashboard");

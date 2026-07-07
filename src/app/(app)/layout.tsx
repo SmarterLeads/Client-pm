@@ -2,6 +2,7 @@
 import { AppShell } from "@/components/app/app-shell";
 import { QuickCreateProvider } from "@/components/app/quick-create-provider";
 import { TaskDrawerProvider } from "@/components/tasks/task-drawer-provider";
+import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 import {
   getSessionUser,
   getTeamMember,
@@ -22,8 +23,15 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  if (isBlockedPmEmail(user.email)) {
+    redirect("/auth/access-denied");
+  }
+
   const teamMember = await getTeamMember();
   if (!teamMember) {
+    if (user.email && isBlockedPmEmail(user.email)) {
+      redirect("/auth/access-denied");
+    }
     redirect("/login");
   }
 

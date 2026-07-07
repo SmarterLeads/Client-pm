@@ -3,6 +3,7 @@ import {
   ensureClientUserLinked,
   ensureTeamMember,
 } from "@/lib/auth/profiles";
+import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 import type { UserPersona } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,6 +29,11 @@ export async function GET(request: Request) {
   }
 
   const email = data.user.email;
+
+  if (isBlockedPmEmail(email)) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(`${origin}/auth/access-denied`);
+  }
 
   try {
     if (persona === "portal") {

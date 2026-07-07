@@ -14,7 +14,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         ? "Could not link your account. Contact an administrator."
         : params.error === "missing_code"
           ? "Invalid confirmation link."
-          : undefined;
+          : params.error === "access_denied"
+            ? "Your account does not have access to this application."
+            : undefined;
 
   return (
     <div className="flex w-full max-w-md flex-col items-center">

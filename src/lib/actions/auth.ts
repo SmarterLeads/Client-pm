@@ -6,6 +6,7 @@ import {
   ensureClientUserLinked,
   ensureTeamMember,
 } from "@/lib/auth/profiles";
+import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 import type { UserPersona } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,6 +33,10 @@ export async function signIn(
 
   if (!email || !password) {
     return { error: "Email and password are required." };
+  }
+
+  if (isBlockedPmEmail(email)) {
+    return { error: "Your account does not have access to this application." };
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -65,6 +70,11 @@ export async function signIn(
   if (!data.user) {
     console.log("[signIn] signInWithPassword returned no user");
     return { error: "Sign in failed. Please try again." };
+  }
+
+  if (isBlockedPmEmail(data.user.email)) {
+    await supabase.auth.signOut();
+    return { error: "Your account does not have access to this application." };
   }
 
   try {
