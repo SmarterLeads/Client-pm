@@ -14,10 +14,18 @@ export const MARKETING_DASHBOARD_WITH_PAUSED_STATUSES = [
   MARKETING_PAUSED_STATUS,
 ] as const;
 
-export function marketingDashboardStatuses(includePaused: boolean): string[] {
-  return includePaused
-    ? [...MARKETING_DASHBOARD_WITH_PAUSED_STATUSES]
-    : [...MARKETING_DASHBOARD_ACTIVE_STATUSES];
+export function marketingDashboardStatuses(
+  includePaused = false,
+  includeChurned = false,
+): string[] {
+  const statuses: string[] = [MARKETING_ACTIVE_STATUS];
+  if (includePaused) {
+    statuses.push(MARKETING_PAUSED_STATUS);
+  }
+  if (includeChurned) {
+    statuses.push(MARKETING_CHURNED_STATUS);
+  }
+  return statuses;
 }
 
 export function isMarketingChurnedClient(

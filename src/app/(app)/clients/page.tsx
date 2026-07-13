@@ -20,6 +20,7 @@ type ClientsPageProps = {
     agency_id?: string;
     service?: string;
     include_inactive?: string;
+    include_churned?: string;
   }>;
 };
 
@@ -33,9 +34,12 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     agency_id: params.agency_id || undefined,
     service: params.service || undefined,
     include_inactive: params.include_inactive || undefined,
+    include_churned: params.include_churned || undefined,
   });
 
-  const filters = parsed.success ? parsed.data : { includeInactive: false };
+  const filters = parsed.success
+    ? parsed.data
+    : { includeInactive: false, includeChurned: false };
   const [clientsPage, agencies, serviceCounts] = await Promise.all([
     getClientsList(filters),
     getAgenciesList(),

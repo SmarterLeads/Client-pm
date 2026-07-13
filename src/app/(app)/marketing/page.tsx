@@ -7,10 +7,11 @@ import { createClient } from "@/lib/supabase/server";
 export default async function MarketingOverviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ show_paused?: string }>;
+  searchParams: Promise<{ show_paused?: string; include_churned?: string }>;
 }) {
   const params = await searchParams;
   const includePaused = params.show_paused === "true";
+  const includeChurned = params.include_churned === "true";
   const supabase = await createClient();
   const agencies = await fetchAgencies(supabase);
 
@@ -32,6 +33,7 @@ export default async function MarketingOverviewPage({
         <MarketingDashboardShell
           agencies={agencies}
           includePaused={includePaused}
+          includeChurned={includeChurned}
         />
       </Suspense>
     </div>

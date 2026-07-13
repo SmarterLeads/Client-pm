@@ -264,6 +264,7 @@ export async function fetchAgenciesForClientType(
   supabase: SB,
   clientType: DashboardClientType,
   includePaused = false,
+  includeChurned = false,
 ) {
   const {
     data: { user },
@@ -278,7 +279,7 @@ export async function fetchAgenciesForClientType(
   const allowed = new Set((memberships ?? []).map((m) => m.agency_id));
   if (allowed.size === 0) return [];
 
-  const statuses = marketingDashboardStatuses(includePaused);
+  const statuses = marketingDashboardStatuses(includePaused, includeChurned);
   const { data: clientRows, error: cErr } = await supabase
     .from("clients")
     .select("agency_id")
@@ -306,12 +307,13 @@ export async function fetchAgencyClientTypeAvailability(
   agencyId: string | "all",
   includePaused = false,
   agencyIds: string[] = [],
+  includeChurned = false,
 ): Promise<{ hasLeadGen: boolean; hasEcommerce: boolean }> {
   if (agencyId === "all" && agencyIds.length === 0) {
     return { hasLeadGen: false, hasEcommerce: false };
   }
 
-  const statuses = marketingDashboardStatuses(includePaused);
+  const statuses = marketingDashboardStatuses(includePaused, includeChurned);
   let query = supabase.from("clients").select("client_type").in("status", statuses);
   if (agencyId === "all") {
     query = query.in("agency_id", agencyIds);
@@ -362,12 +364,19 @@ export async function fetchDashboardClients(
     agencyIds: string[];
     clientType: DashboardClientTypeFilter;
     includePaused?: boolean;
+    includeChurned?: boolean;
   },
 ) {
-  const { agencyId, agencyIds, clientType, includePaused = false } = options;
+  const {
+    agencyId,
+    agencyIds,
+    clientType,
+    includePaused = false,
+    includeChurned = false,
+  } = options;
   if (agencyId === "all" && agencyIds.length === 0) return [];
 
-  const statuses = marketingDashboardStatuses(includePaused);
+  const statuses = marketingDashboardStatuses(includePaused, includeChurned);
   const types =
     clientType === "all" ? (["lead_gen", "ecommerce"] as const) : [clientType];
 
@@ -420,12 +429,14 @@ export async function fetchClientsForAgency(
   agencyId: string,
   clientType: DashboardClientType,
   includePaused = false,
+  includeChurned = false,
 ) {
   return fetchDashboardClients(supabase, {
     agencyId,
     agencyIds: [agencyId],
     clientType,
     includePaused,
+    includeChurned,
   });
 }
 

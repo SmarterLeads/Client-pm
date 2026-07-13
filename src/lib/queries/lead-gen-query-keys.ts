@@ -28,29 +28,41 @@ export function dashboardRangeQueryKey(state: DashboardDateRangeState) {
   return [rangePart, state.comparison] as const;
 }
 
+function dashboardStatusKey(includePaused: boolean, includeChurned: boolean) {
+  if (includePaused && includeChurned) return "paused-churned";
+  if (includeChurned) return "churned";
+  if (includePaused) return "paused";
+  return "active";
+}
+
 export const leadGenKeys = {
   all: ["lead-gen"] as const,
   allAgencies: () => [...leadGenKeys.all, "agencies", "all"] as const,
   agencies: (clientType: DashboardClientType) =>
     [...leadGenKeys.all, "agencies", clientType] as const,
-  agencyClientTypes: (agencyId: DashboardAgencyFilter, includePaused = false) =>
+  agencyClientTypes: (
+    agencyId: DashboardAgencyFilter,
+    includePaused = false,
+    includeChurned = false,
+  ) =>
     [
       ...leadGenKeys.all,
       "agency-client-types",
       agencyId,
-      includePaused ? "paused" : "active",
+      dashboardStatusKey(includePaused, includeChurned),
     ] as const,
   clients: (
     agencyId: DashboardAgencyFilter,
     clientType: DashboardClientTypeFilter,
     includePaused = false,
+    includeChurned = false,
   ) =>
     [
       ...leadGenKeys.all,
       "clients",
       agencyId,
       clientType,
-      includePaused ? "paused" : "active",
+      dashboardStatusKey(includePaused, includeChurned),
     ] as const,
   clientPlatforms: (clientId: string) =>
     [...leadGenKeys.all, "platforms", clientId] as const,

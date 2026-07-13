@@ -11,11 +11,13 @@ import { DashboardDateRangeProvider } from "@/contexts/dashboard-date-range-cont
 type MarketingDashboardShellProps = {
   agencies: MarketingDashboardAgency[];
   includePaused?: boolean;
+  includeChurned?: boolean;
 };
 
 export function MarketingDashboardShell({
   agencies,
   includePaused = false,
+  includeChurned = false,
 }: MarketingDashboardShellProps) {
   return (
     <DashboardDateRangeProvider>
@@ -23,7 +25,11 @@ export function MarketingDashboardShell({
         <DashboardDateRangeDropdown />
         <DashboardComparisonDropdown />
       </div>
-      <LeadGenDashboard agencies={agencies} includePaused={includePaused} />
+      <LeadGenDashboard
+        agencies={agencies}
+        includePaused={includePaused}
+        includeChurned={includeChurned}
+      />
     </DashboardDateRangeProvider>
   );
 }

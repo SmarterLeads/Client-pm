@@ -82,6 +82,7 @@ export type MarketingDashboardAgency = { id: string; name: string };
 type MarketingDashboardProps = {
   agencies: MarketingDashboardAgency[];
   includePaused?: boolean;
+  includeChurned?: boolean;
 };
 
 /**
@@ -90,6 +91,7 @@ type MarketingDashboardProps = {
 export function MarketingDashboard({
   agencies: agenciesFromServer,
   includePaused = false,
+  includeChurned = false,
 }: MarketingDashboardProps) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -165,14 +167,29 @@ export function MarketingDashboard({
     });
   }
 
+  function toggleIncludeChurned(checked: boolean) {
+    replaceSearchParams((params) => {
+      if (checked) {
+        params.set("include_churned", "true");
+      } else {
+        params.delete("include_churned");
+      }
+    });
+  }
+
   const availabilityQuery = useQuery({
-    queryKey: leadGenKeys.agencyClientTypes(selectedAgency, includePaused),
+    queryKey: leadGenKeys.agencyClientTypes(
+      selectedAgency,
+      includePaused,
+      includeChurned,
+    ),
     queryFn: () =>
       fetchAgencyClientTypeAvailability(
         supabase,
         selectedAgency,
         includePaused,
         allAgencyIds,
+        includeChurned,
       ),
     enabled: allAgencyIds.length > 0,
   });
@@ -180,13 +197,19 @@ export function MarketingDashboard({
   const availability = availabilityQuery.data;
 
   const clientsQuery = useQuery({
-    queryKey: leadGenKeys.clients(selectedAgency, clientTypeFilter, includePaused),
+    queryKey: leadGenKeys.clients(
+      selectedAgency,
+      clientTypeFilter,
+      includePaused,
+      includeChurned,
+    ),
     queryFn: () =>
       fetchDashboardClients(supabase, {
         agencyId: selectedAgency,
         agencyIds: allAgencyIds,
         clientType: clientTypeFilter,
         includePaused,
+        includeChurned,
       }),
     enabled: allAgencyIds.length > 0,
   });
@@ -292,7 +315,15 @@ export function MarketingDashboard({
         </p>
       ) : availability && !availability.hasLeadGen && !availability.hasEcommerce ? (
         <p className="text-sm text-zinc-500">
-          No {includePaused ? "active or paused" : "active"} clients match the current filters.
+          No{" "}
+          {includePaused && includeChurned
+            ? "active, paused, or churned"
+            : includePaused
+              ? "active or paused"
+              : includeChurned
+                ? "active or churned"
+                : "active"}{" "}
+          clients match the current filters.
         </p>
       ) : clientsQuery.isLoading ? (
         <div className="space-y-2">
@@ -305,7 +336,7 @@ export function MarketingDashboard({
         </p>
       ) : (
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
               <input
                 type="checkbox"
@@ -314,6 +345,15 @@ export function MarketingDashboard({
                 className="size-4 rounded border-input"
               />
               Show paused clients
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <input
+                type="checkbox"
+                checked={includeChurned}
+                onChange={(e) => toggleIncludeChurned(e.target.checked)}
+                className="size-4 rounded border-input"
+              />
+              Show churned
             </label>
           </div>
           {(clientsQuery.data ?? []).map((c) => (

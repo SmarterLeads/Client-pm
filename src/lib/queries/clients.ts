@@ -82,6 +82,7 @@ export type ClientListFilters = {
   agency?: string;
   service?: ClientServiceFilterValue;
   includeInactive?: boolean;
+  includeChurned?: boolean;
 };
 
 export type ClientServiceFilterCounts = Record<ClientServiceFilterValue, number>;
@@ -292,8 +293,16 @@ export async function getClientsList(
 
     if (filters.status) {
       next = next.eq("status", filters.status);
-    } else if (!filters.includeInactive) {
-      next = next.in("status", [...CLIENT_LIST_ACTIVE_STATUSES]);
+    } else {
+      const statuses = new Set<string>([...CLIENT_LIST_ACTIVE_STATUSES]);
+      if (filters.includeInactive) {
+        statuses.add("on_hold");
+        statuses.add("inactive");
+      }
+      if (filters.includeChurned) {
+        statuses.add("churned");
+      }
+      next = next.in("status", [...statuses]);
     }
 
     if (filters.rag) {

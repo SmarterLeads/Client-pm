@@ -353,9 +353,11 @@ export const clientListFiltersSchema = z
     agency_id: z.string().uuid("Invalid agency").optional(),
     service: z.enum(CLIENT_SERVICE_FILTER_VALUES).optional(),
     include_inactive: z.enum(["true", "false"]).optional(),
+    include_churned: z.enum(["true", "false"]).optional(),
   })
-  .transform(({ agency, agency_id, include_inactive, ...rest }) => ({
+  .transform(({ agency, agency_id, include_inactive, include_churned, ...rest }) => ({
     ...rest,
     agency: agency ?? agency_id,
     includeInactive: include_inactive === "true",
+    includeChurned: include_churned === "true",
   }));

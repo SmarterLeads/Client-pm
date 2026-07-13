@@ -29,6 +29,7 @@ export function ClientsFilters({ agencies, serviceCounts }: ClientsFiltersProps)
     searchParams.get("agency_id") ?? searchParams.get("agency") ?? "";
   const service = searchParams.get("service") ?? "";
   const includeInactive = searchParams.get("include_inactive") === "true";
+  const includeChurned = searchParams.get("include_churned") === "true";
 
   function updateParams(updates: Record<string, string | boolean>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -122,6 +123,17 @@ export function ClientsFilters({ agencies, serviceCounts }: ClientsFiltersProps)
           className="size-4 rounded border-input"
         />
         <span>Include inactive</span>
+      </label>
+      <label className="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-input px-3 text-sm">
+        <input
+          type="checkbox"
+          checked={includeChurned}
+          onChange={(e) =>
+            updateParams({ include_churned: e.target.checked })
+          }
+          className="size-4 rounded border-input"
+        />
+        <span>Show churned</span>
       </label>
     </div>
   );

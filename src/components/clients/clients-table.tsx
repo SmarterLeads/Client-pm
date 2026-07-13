@@ -2,6 +2,7 @@
 import { ClientStatusDot } from "@/components/clients/client-status-dot";
 import { RagDot } from "@/components/clients/rag-dot";
 import { StatusBadge } from "@/components/clients/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { formatInteractionDate } from "@/components/clients/last-contacted-indicator";
 import {
   Table,
@@ -40,17 +41,28 @@ export function ClientsTable({ clients }: { clients: ClientListRow[] }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {clients.map((client) => (
-            <TableRow key={client.id}>
+          {clients.map((client) => {
+            const isChurned = client.status === "churned";
+
+            return (
+              <TableRow
+                key={client.id}
+                className={isChurned ? "bg-muted/40 text-muted-foreground" : undefined}
+              >
               <TableCell>
                 <div className="flex items-center gap-2">
                   <ClientStatusDot status={client.status} />
                   <Link
                     href={`/clients/${client.id}`}
-                    className="font-medium hover:underline"
+                    className={`font-medium hover:underline ${isChurned ? "text-muted-foreground" : ""}`}
                   >
                     {client.name}
                   </Link>
+                  {isChurned ? (
+                    <Badge variant="destructive" className="text-xs">
+                      Churned
+                    </Badge>
+                  ) : null}
                 </div>
               </TableCell>
               <TableCell className="hidden text-muted-foreground lg:table-cell">
@@ -81,8 +93,9 @@ export function ClientsTable({ clients }: { clients: ClientListRow[] }) {
               <TableCell className="hidden text-muted-foreground lg:table-cell">
                 {formatInteractionDate(client.last_interaction_at)}
               </TableCell>
-            </TableRow>
-          ))}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
