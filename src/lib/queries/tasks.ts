@@ -585,7 +585,7 @@ export async function getTasksToReview(): Promise<TaskToReviewRow[]> {
       updated_at,
       reviewed_at,
       project_id,
-      assignee:team_members(name),
+      assignee:team_members!assignee_id(name),
       project:projects(name, client_id)
     `,
     )

@@ -568,7 +568,7 @@ export async function getClientOpenTasks(
       priority,
       due_date,
       section:project_sections(name),
-      assignee:team_members(name, avatar_url)
+      assignee:team_members!assignee_id(name, avatar_url)
     `,
     )
     .in("project_id", projectIds)

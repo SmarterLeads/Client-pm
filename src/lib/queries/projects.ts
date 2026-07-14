@@ -346,7 +346,7 @@ export async function getProjectTasks(
         due_date,
         assignee_id,
         is_recurring,
-        assignee:team_members(name, avatar_url),
+        assignee:team_members!assignee_id(name, avatar_url),
         comments:task_comments(id)
       `,
       )
