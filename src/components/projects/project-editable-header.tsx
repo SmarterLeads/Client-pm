@@ -17,7 +17,7 @@ type ProjectEditableHeaderProps = {
   name: string;
   status: ProjectStatus;
   ragStatus: RagStatus;
-  members: ProjectListMember[];
+  members?: ProjectListMember[] | null;
   onUpdate: (updates: Record<string, unknown>) => Promise<{ error?: string }>;
   subtitlePrefix?: React.ReactNode;
   footer?: React.ReactNode;
@@ -27,7 +27,7 @@ export function ProjectEditableHeader({
   name,
   status,
   ragStatus,
-  members,
+  members = [],
   onUpdate,
   subtitlePrefix,
   footer,

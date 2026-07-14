@@ -12,11 +12,13 @@ import { RichTextDisplay } from "@/components/shared/rich-text-display-lazy";
 import { FileUploadZone } from "@/components/shared/file-upload-zone";
 import type { AttachmentListItem } from "@/lib/attachments/types";
 import { updateInternalProject } from "@/lib/actions/internal";
+import { resolveProjectListMembers } from "@/lib/projects/members";
 import type {
   InternalProjectHealth,
   InternalProjectMemberRow,
   InternalProjectTaskRow,
 } from "@/lib/queries/internal";
+import type { ProjectListMember } from "@/lib/queries/projects";
 import { cn } from "@/lib/utils";
 import type {
   InternalMilestone,
@@ -38,6 +40,7 @@ type TabId = (typeof tabs)[number]["id"];
 
 type InternalProjectDetailTabsProps = {
   project: InternalProject;
+  legacyOwner?: ProjectListMember | null;
   health: InternalProjectHealth;
   sections: InternalProjectSection[];
   tasks: InternalProjectTaskRow[];
@@ -49,6 +52,7 @@ type InternalProjectDetailTabsProps = {
 
 export function InternalProjectDetailTabs({
   project,
+  legacyOwner = null,
   health,
   sections,
   tasks,
@@ -60,6 +64,7 @@ export function InternalProjectDetailTabs({
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const activeTab = (searchParams.get("tab") as TabId) || "board";
+  const headerMembers = resolveProjectListMembers(members, legacyOwner);
 
   return (
     <div className="space-y-6">
@@ -68,11 +73,7 @@ export function InternalProjectDetailTabs({
           name={project.name}
           status={project.status}
           ragStatus={project.rag_status}
-          members={members.map((member) => ({
-            id: member.team_member.id,
-            name: member.team_member.name,
-            avatar_url: member.team_member.avatar_url,
-          }))}
+          members={headerMembers}
           onUpdate={(updates) => updateInternalProject(project.id, updates)}
           subtitlePrefix={
             <span className="text-muted-foreground">Internal project</span>

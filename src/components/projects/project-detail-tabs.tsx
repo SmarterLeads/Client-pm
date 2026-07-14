@@ -12,9 +12,11 @@ import { ProjectMilestonesTab } from "@/components/projects/project-milestones-t
 import { FileUploadZone } from "@/components/shared/file-upload-zone";
 import type { AttachmentListItem } from "@/lib/attachments/types";
 import { updateProject } from "@/lib/actions/projects";
+import { resolveProjectListMembers } from "@/lib/projects/members";
 import { cn } from "@/lib/utils";
 import type {
   ProjectHealth,
+  ProjectListMember,
   ProjectMemberRow,
   ProjectTaskRow,
 } from "@/lib/queries/projects";
@@ -35,6 +37,7 @@ type ProjectDetailTabsProps = {
   project: Project;
   clientName: string;
   templateName: string | null;
+  legacyOwner?: ProjectListMember | null;
   health: ProjectHealth;
   sections: ProjectSection[];
   tasks: ProjectTaskRow[];
@@ -49,6 +52,7 @@ export function ProjectDetailTabs({
   project,
   clientName,
   templateName,
+  legacyOwner = null,
   health,
   sections,
   tasks,
@@ -61,6 +65,7 @@ export function ProjectDetailTabs({
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const activeTab = (searchParams.get("tab") as TabId) || "board";
+  const headerMembers = resolveProjectListMembers(members, legacyOwner);
 
   return (
     <div className="space-y-6">
@@ -69,11 +74,7 @@ export function ProjectDetailTabs({
           name={project.name}
           status={project.status}
           ragStatus={project.rag_status}
-          members={members.map((member) => ({
-            id: member.team_member.id,
-            name: member.team_member.name,
-            avatar_url: member.team_member.avatar_url,
-          }))}
+          members={headerMembers}
           onUpdate={(updates) => updateProject(project.id, updates)}
           subtitlePrefix={
             <Link

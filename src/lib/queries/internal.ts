@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { pm } from "@/lib/supabase/pm";
+import type { ProjectListMember } from "@/lib/queries/projects";
+import { toProjectListMember } from "@/lib/projects/members";
 import type { AttachmentListItem } from "@/lib/attachments/types";
 import { getAttachmentsForEntity } from "@/lib/queries/attachments";
 import type {
@@ -44,6 +46,7 @@ export type InternalProjectListRow = {
 export type InternalProjectDetail = {
   project: InternalProject;
   owner_name: string | null;
+  legacy_owner: ProjectListMember | null;
 };
 
 export type InternalProjectTaskRow = {
@@ -203,7 +206,7 @@ export async function getInternalProjectById(
 
   const { data, error } = await internalPm(supabase)
     .from("internal_projects")
-    .select(`*, owner:team_members(name)`)
+    .select(`*, owner:team_members(id, name, avatar_url)`)
     .eq("id", id)
     .maybeSingle();
 
@@ -216,13 +219,14 @@ export async function getInternalProjectById(
       description: data.description,
       status: data.status,
       rag_status: data.rag_status,
-      owner_id: data.owner_id,
+      owner_id: data.owner_id ?? null,
       start_date: data.start_date,
-      due_date: data.due_date,
+      due_date: data.due_date ?? null,
       created_at: data.created_at,
       updated_at: data.updated_at,
     },
     owner_name: data.owner?.name ?? null,
+    legacy_owner: toProjectListMember(data.owner),
   };
 }
 
@@ -341,7 +345,7 @@ export async function getInternalProjectMembers(
   return (data ?? [])
     .filter(
       (row: { team_member: InternalProjectMemberRow["team_member"] | null }) =>
-        Boolean(row.team_member),
+        Boolean(row.team_member?.id),
     )
     .map((row: InternalProjectMemberRow) => ({
       id: row.id,

@@ -2,6 +2,7 @@
   clientNameFromMap,
   loadClientNameMap,
 } from "@/lib/clients/client-names";
+import { toProjectListMember } from "@/lib/projects/members";
 import { getProjectTemplateName } from "@/lib/queries/templates";
 import { pm } from "@/lib/supabase/pm";
 import { createClient } from "@/lib/supabase/server";
@@ -62,6 +63,8 @@ export type ProjectDetail = {
   project: Project;
   client_name: string;
   owner_name: string | null;
+  /** Pre-members model: show owner in header when project_members is empty. */
+  legacy_owner: ProjectListMember | null;
   template_name: string | null;
 };
 
@@ -189,6 +192,8 @@ export async function getProjectsList(
       client_id,
       status,
       rag_status,
+      owner_id,
+      owner:team_members(id, name, avatar_url),
       tasks(id, status)
     `,
     )
@@ -243,6 +248,8 @@ export async function getProjectsList(
   return rows.map((row) => {
     const tasks = row.tasks ?? [];
     const done_tasks = tasks.filter((t) => t.status === "done").length;
+    const members = membersByProject.get(row.id) ?? [];
+    const legacyOwner = toProjectListMember(row.owner);
 
     return {
       id: row.id,
@@ -251,7 +258,12 @@ export async function getProjectsList(
       client_name: clientNameFromMap(row.client_id, clientNameMap),
       status: row.status,
       rag_status: row.rag_status,
-      members: membersByProject.get(row.id) ?? [],
+      members:
+        members.length > 0
+          ? members
+          : legacyOwner
+            ? [legacyOwner]
+            : [],
       total_tasks: tasks.length,
       done_tasks,
     };
@@ -268,7 +280,7 @@ export async function getProjectById(
     .select(
       `
       *,
-      owner:team_members(name)
+      owner:team_members(id, name, avatar_url)
     `,
     )
     .eq("id", id)
@@ -278,24 +290,26 @@ export async function getProjectById(
 
   const clientNameMap = await loadClientNameMap(supabase, [data.client_id]);
   const templateName = await getProjectTemplateName(data.template_id);
+  const legacyOwner = toProjectListMember(data.owner);
 
   return {
     project: {
       id: data.id,
       name: data.name,
       client_id: data.client_id,
-      owner_id: data.owner_id,
+      owner_id: data.owner_id ?? null,
       description: data.description,
       status: data.status,
       rag_status: data.rag_status,
       start_date: data.start_date,
-      due_date: data.due_date,
+      due_date: data.due_date ?? null,
       template_id: data.template_id,
       created_at: data.created_at,
       updated_at: data.updated_at,
     },
     client_name: clientNameFromMap(data.client_id, clientNameMap),
     owner_name: data.owner?.name ?? null,
+    legacy_owner: legacyOwner,
     template_name: templateName,
   };
 }
@@ -407,8 +421,10 @@ export async function getProjectMembers(
   if (error) throw new Error(error.message);
 
   return (data ?? [])
-    .filter((row): row is typeof row & { team_member: NonNullable<typeof row.team_member> } =>
-      Boolean(row.team_member),
+    .filter(
+      (row): row is typeof row & {
+        team_member: NonNullable<typeof row.team_member> & { id: string };
+      } => Boolean(row.team_member?.id),
     )
     .map((row) => ({
       id: row.id,

@@ -61,7 +61,10 @@ export function ProjectsTable({ projects }: { projects: ProjectListRow[] }) {
                 <RagDot status={project.rag_status} />
               </TableCell>
               <TableCell className="hidden sm:table-cell">
-                <ProjectMemberAvatars members={project.members} />
+                <ProjectMemberAvatars
+                  members={project.members}
+                  emptyLabel="No members"
+                />
               </TableCell>
               <TableCell className="hidden md:table-cell">
                 <TaskProgressBar

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { ProjectMemberRow } from "@/lib/queries/projects";
+import { safeMemberInitials } from "@/lib/projects/members";
 import type { TeamMember } from "@/lib/types";
 import { PmEnumValues } from "@/lib/types/enums";
 
@@ -26,13 +27,8 @@ type ProjectMembersTabProps = {
   teamMembers: Pick<TeamMember, "id" | "name" | "email">[];
 };
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+function initials(name: string | null | undefined) {
+  return safeMemberInitials(name);
 }
 
 export function ProjectMembersTab({
@@ -123,7 +119,9 @@ export function ProjectMembersTab({
         <p className="text-sm text-muted-foreground">No members yet.</p>
       ) : (
         <ul className="divide-y divide-border rounded-lg border border-border">
-          {members.map((member) => (
+          {members
+            .filter((member) => member.team_member?.id)
+            .map((member) => (
             <li
               key={member.id}
               className="flex items-center justify-between gap-3 px-4 py-3"
@@ -141,9 +139,11 @@ export function ProjectMembersTab({
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">{member.team_member.name}</p>
+                  <p className="font-medium">
+                    {member.team_member.name ?? "Unknown member"}
+                  </p>
                   <p className="text-sm text-muted-foreground">
-                    {member.team_member.email}
+                    {member.team_member.email ?? "—"}
                   </p>
                 </div>
                 <Badge variant="secondary">

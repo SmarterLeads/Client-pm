@@ -29,7 +29,7 @@ export default async function InternalProjectDetailPage({
     notFound();
   }
 
-  const { project } = result;
+  const { project, legacy_owner } = result;
 
   const [
     health,
@@ -62,6 +62,7 @@ export default async function InternalProjectDetailPage({
         <InternalTaskDrawerProvider teamMembers={teamMembers}>
           <InternalProjectDetailTabs
             project={project}
+            legacyOwner={legacy_owner}
             health={health}
             sections={sections}
             tasks={tasks}

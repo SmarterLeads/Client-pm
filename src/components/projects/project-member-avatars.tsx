@@ -1,28 +1,26 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ProjectListMember } from "@/lib/queries/projects";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
+import { safeMemberInitials } from "@/lib/projects/members";
 
 export function ProjectMemberAvatars({
   members,
   max = 4,
+  emptyLabel = "No members assigned",
 }: {
-  members: ProjectListMember[];
+  members?: ProjectListMember[] | null;
   max?: number;
+  emptyLabel?: string;
 }) {
-  if (members.length === 0) {
-    return <span className="text-muted-foreground">—</span>;
+  const safeMembers = (members ?? []).filter((member) => Boolean(member?.id));
+
+  if (safeMembers.length === 0) {
+    return (
+      <span className="text-muted-foreground italic">{emptyLabel}</span>
+    );
   }
 
-  const visible = members.slice(0, max);
-  const overflow = members.length - visible.length;
+  const visible = safeMembers.slice(0, max);
+  const overflow = safeMembers.length - visible.length;
 
   return (
     <div className="flex items-center -space-x-2">
@@ -36,7 +34,7 @@ export function ProjectMemberAvatars({
           {member.avatar_url ? (
             <AvatarImage src={member.avatar_url} alt="" />
           ) : null}
-          <AvatarFallback>{initials(member.name)}</AvatarFallback>
+          <AvatarFallback>{safeMemberInitials(member.name)}</AvatarFallback>
         </Avatar>
       ))}
       {overflow > 0 ? (
