@@ -550,3 +550,67 @@ export async function getTeamMembersForTasks(): Promise<
   if (error) throw new Error(error.message);
   return data ?? [];
 }
+
+export type TaskToReviewRow = {
+  id: string;
+  title: string;
+  project_id: string;
+  project_name: string;
+  client_name: string;
+  assignee_name: string | null;
+  completed_at: string;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+};
+
+type TaskToReviewQueryRow = {
+  id: string;
+  title: string;
+  updated_at: string;
+  reviewed_at: string | null;
+  project_id: string;
+  assignee: { name: string | null } | null;
+  project: { name: string | null; client_id: string | null } | null;
+};
+
+export async function getTasksToReview(): Promise<TaskToReviewRow[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await pm(supabase)
+    .from("tasks")
+    .select(
+      `
+      id,
+      title,
+      updated_at,
+      reviewed_at,
+      project_id,
+      assignee:team_members(name),
+      project:projects(name, client_id)
+    `,
+    )
+    .eq("status", "done")
+    .is("reviewed_by", null)
+    .is("parent_task_id", null)
+    .order("updated_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as TaskToReviewQueryRow[];
+  const clientNameMap = await loadClientNameMap(
+    supabase,
+    rows.map((row) => row.project?.client_id).filter((id): id is string => Boolean(id)),
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    project_id: row.project_id,
+    project_name: row.project?.name ?? "—",
+    client_name: clientNameFromMap(row.project?.client_id, clientNameMap),
+    assignee_name: row.assignee?.name ?? null,
+    completed_at: row.updated_at,
+    reviewed_by_name: null,
+    reviewed_at: null,
+  }));
+}

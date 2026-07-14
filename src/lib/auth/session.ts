@@ -3,11 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import type { UserPersona } from "@/lib/auth/types";
 import { isBlockedPmEmail } from "@/lib/auth/blocked-emails";
 import { isAdmin } from "@/lib/auth/roles";
+import { canReviewTasks } from "@/lib/tasks/reviewers";
 import type { ClientUser, PublicClientUser, TeamMember } from "@/lib/types";
 
 export type { UserPersona } from "@/lib/auth/types";
 export type { TeamMemberRole } from "@/lib/auth/roles";
 export { canManageTeam } from "@/lib/auth/roles";
+export { canReviewTasks } from "@/lib/tasks/reviewers";
 
 /** MRR, hourly billing, and related client financial fields. */
 export function canViewClientMrr(
@@ -17,17 +19,11 @@ export function canViewClientMrr(
   return teamMember.can_view_mrr || isAdmin(teamMember.role);
 }
 
-const TEAM_ACTIVITY_REPORT_EMAILS = new Set([
-  "max@smarterleads.ca",
-  "alex@smarterleads.ca",
-]);
-
 /** Team Activity Report on /team — Max and Alex only. */
 export function canViewTeamActivityReport(
   teamMember: Pick<TeamMember, "email"> | null | undefined,
 ): boolean {
-  if (!teamMember?.email) return false;
-  return TEAM_ACTIVITY_REPORT_EMAILS.has(teamMember.email.toLowerCase());
+  return canReviewTasks(teamMember);
 }
 
 export async function getSessionUser() {

@@ -20,6 +20,8 @@ import type {
 } from "@/lib/types";
 import type { Database } from "@/lib/types/database";
 
+export type ProjectListMember = Pick<TeamMember, "id" | "name" | "avatar_url">;
+
 export type ProjectListRow = {
   id: string;
   name: string;
@@ -27,8 +29,7 @@ export type ProjectListRow = {
   client_name: string;
   status: ProjectStatus;
   rag_status: RagStatus;
-  owner_name: string | null;
-  due_date: string | null;
+  members: ProjectListMember[];
   total_tasks: number;
   done_tasks: number;
 };
@@ -37,7 +38,7 @@ export type ProjectListFilters = {
   q?: string;
   status?: ProjectStatus;
   client?: string;
-  owner?: string;
+  member?: string;
 };
 
 export type SelectOption = { id: string; name: string };
@@ -90,11 +91,11 @@ export type ActivityRow = {
 
 export async function getProjectFilterOptions(): Promise<{
   clients: SelectOption[];
-  owners: SelectOption[];
+  members: SelectOption[];
 }> {
   const supabase = await createClient();
 
-  const [clientsRes, ownersRes] = await Promise.all([
+  const [clientsRes, membersRes] = await Promise.all([
     supabase.from("clients").select("id, name").order("name"),
     pm(supabase)
       .from("team_members")
@@ -104,11 +105,11 @@ export async function getProjectFilterOptions(): Promise<{
   ]);
 
   if (clientsRes.error) throw new Error(clientsRes.error.message);
-  if (ownersRes.error) throw new Error(ownersRes.error.message);
+  if (membersRes.error) throw new Error(membersRes.error.message);
 
   return {
     clients: clientsRes.data ?? [],
-    owners: ownersRes.data ?? [],
+    members: membersRes.data ?? [],
   };
 }
 
@@ -167,6 +168,18 @@ export async function getProjectsList(
 ): Promise<ProjectListRow[]> {
   const supabase = await createClient();
 
+  let projectIdsForMember: string[] | null = null;
+  if (filters.member) {
+    const { data: memberRows, error: memberError } = await pm(supabase)
+      .from("project_members")
+      .select("project_id")
+      .eq("team_member_id", filters.member);
+
+    if (memberError) throw new Error(memberError.message);
+    projectIdsForMember = (memberRows ?? []).map((row) => row.project_id);
+    if (projectIdsForMember.length === 0) return [];
+  }
+
   let query = pm(supabase)
     .from("projects")
     .select(
@@ -176,8 +189,6 @@ export async function getProjectsList(
       client_id,
       status,
       rag_status,
-      due_date,
-      owner:team_members(name),
       tasks(id, status)
     `,
     )
@@ -189,8 +200,8 @@ export async function getProjectsList(
   if (filters.client) {
     query = query.eq("client_id", filters.client);
   }
-  if (filters.owner) {
-    query = query.eq("owner_id", filters.owner);
+  if (projectIdsForMember) {
+    query = query.in("id", projectIdsForMember);
   }
   if (filters.q?.trim()) {
     query = query.ilike("name", `%${filters.q.trim()}%`);
@@ -205,6 +216,30 @@ export async function getProjectsList(
     rows.map((row) => row.client_id),
   );
 
+  const projectIds = rows.map((row) => row.id);
+  const membersByProject = new Map<string, ProjectListMember[]>();
+
+  if (projectIds.length > 0) {
+    const { data: memberRows, error: membersError } = await pm(supabase)
+      .from("project_members")
+      .select("project_id, team_member:team_members(id, name, avatar_url)")
+      .in("project_id", projectIds);
+
+    if (membersError) throw new Error(membersError.message);
+
+    for (const row of memberRows ?? []) {
+      const member = row.team_member;
+      if (!member) continue;
+      const list = membersByProject.get(row.project_id) ?? [];
+      list.push({
+        id: member.id,
+        name: member.name,
+        avatar_url: member.avatar_url,
+      });
+      membersByProject.set(row.project_id, list);
+    }
+  }
+
   return rows.map((row) => {
     const tasks = row.tasks ?? [];
     const done_tasks = tasks.filter((t) => t.status === "done").length;
@@ -216,8 +251,7 @@ export async function getProjectsList(
       client_name: clientNameFromMap(row.client_id, clientNameMap),
       status: row.status,
       rag_status: row.rag_status,
-      owner_name: row.owner?.name ?? null,
-      due_date: row.due_date,
+      members: membersByProject.get(row.id) ?? [],
       total_tasks: tasks.length,
       done_tasks,
     };

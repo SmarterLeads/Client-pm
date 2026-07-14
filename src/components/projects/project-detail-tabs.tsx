@@ -69,9 +69,11 @@ export function ProjectDetailTabs({
           name={project.name}
           status={project.status}
           ragStatus={project.rag_status}
-          dueDate={project.due_date}
-          ownerId={project.owner_id}
-          teamMembers={teamMembers}
+          members={members.map((member) => ({
+            id: member.team_member.id,
+            name: member.team_member.name,
+            avatar_url: member.team_member.avatar_url,
+          }))}
           onUpdate={(updates) => updateProject(project.id, updates)}
           subtitlePrefix={
             <Link

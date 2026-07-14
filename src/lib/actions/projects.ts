@@ -8,6 +8,11 @@ import {
   notifyMilestoneCompleted,
   notifyMilestoneCreated,
 } from "@/lib/notifications/notify";
+import { handleTaskMarkedDone } from "@/lib/tasks/handle-task-marked-done";
+import {
+  isTransitionToDone,
+  mergeDoneReviewFields,
+} from "@/lib/tasks/task-done-workflow";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -18,6 +23,7 @@ import {
   updateMilestoneWithTeamMemberContext,
   updateProjectWithTeamMemberContext,
   updateTaskSectionWithTeamMemberContext,
+  updateTaskWithTeamMemberContext,
 } from "@/lib/supabase/with-team-member-context";
 import { applyTemplate } from "@/lib/actions/templates";
 import {
@@ -63,6 +69,12 @@ function revalidateProject(projectId: string) {
   revalidatePath("/projects");
 }
 
+function parseMemberIds(formData: FormData): string[] {
+  return formData
+    .getAll("member_ids")
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+}
+
 export async function createProject(
   _prevState: ProjectFormState,
   formData: FormData,
@@ -72,13 +84,12 @@ export async function createProject(
   const parsed = createProjectSchema.safeParse({
     name: formData.get("name"),
     client_id: formData.get("client_id"),
-    owner_id: formData.get("owner_id"),
     description: formData.get("description"),
     status: formData.get("status"),
     rag_status: formData.get("rag_status"),
     start_date: formData.get("start_date"),
-    due_date: formData.get("due_date"),
     template_id: formData.get("template_id"),
+    member_ids: parseMemberIds(formData),
   });
 
   if (!parsed.success) {
@@ -91,15 +102,26 @@ export async function createProject(
     const projectId = await insertProjectWithTeamMemberContext(teamMember.id, {
       name: parsed.data.name,
       client_id: parsed.data.client_id,
-      owner_id: parsed.data.owner_id ?? null,
+      owner_id: null,
       description: parsed.data.description ?? null,
       status: parsed.data.status,
       rag_status: parsed.data.rag_status,
       start_date: parsed.data.start_date ?? null,
-      due_date: parsed.data.due_date ?? null,
+      due_date: null,
       template_id: templateId,
       skip_default_sections: Boolean(templateId),
     });
+
+    const memberIds = new Set(parsed.data.member_ids ?? []);
+    memberIds.add(teamMember.id);
+
+    for (const memberId of memberIds) {
+      await insertProjectMemberWithTeamMemberContext(teamMember.id, {
+        project_id: projectId,
+        team_member_id: memberId,
+        role: memberId === teamMember.id ? "lead" : "contributor",
+      });
+    }
 
     if (templateId) {
       const applyResult = await applyTemplate(projectId, templateId);
@@ -169,11 +191,46 @@ export async function moveTaskSection(
       return { error: "Invalid move." };
     }
 
+    const service = createServiceClient();
+    const { data: taskBefore } = await pm(service)
+      .from("tasks")
+      .select("status, title, assignee_id")
+      .eq("id", parsed.data.task_id)
+      .maybeSingle();
+
     await updateTaskSectionWithTeamMemberContext(
       teamMember.id,
       parsed.data.task_id,
       parsed.data.section_id,
     );
+
+    const { data: taskAfter } = await pm(service)
+      .from("tasks")
+      .select("status, title, assignee_id")
+      .eq("id", parsed.data.task_id)
+      .maybeSingle();
+
+    if (
+      taskBefore &&
+      taskAfter &&
+      isTransitionToDone(taskBefore.status, taskAfter.status)
+    ) {
+      const reviewPayload = mergeDoneReviewFields(teamMember, { status: "done" });
+      await updateTaskWithTeamMemberContext(
+        teamMember.id,
+        parsed.data.task_id,
+        reviewPayload,
+      );
+
+      await handleTaskMarkedDone({
+        teamMember,
+        taskId: parsed.data.task_id,
+        projectId,
+        taskTitle: taskAfter.title,
+        assigneeId: taskAfter.assignee_id,
+      });
+    }
+
     revalidateProject(projectId);
     return {};
   } catch (err) {

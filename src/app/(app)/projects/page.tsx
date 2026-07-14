@@ -15,6 +15,7 @@ type ProjectsPageProps = {
     q?: string;
     status?: string;
     client?: string;
+    member?: string;
     owner?: string;
   }>;
 };
@@ -25,7 +26,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
     q: params.q,
     status: params.status || undefined,
     client: params.client || undefined,
-    owner: params.owner || undefined,
+    member: params.member || params.owner || undefined,
   });
 
   const filters = parsed.success ? parsed.data : {};
@@ -49,7 +50,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
       <Suspense fallback={<FiltersSkeleton />}>
         <ProjectsFilters
           clients={filterOptions.clients}
-          owners={filterOptions.owners}
+          members={filterOptions.members}
         />
       </Suspense>
 

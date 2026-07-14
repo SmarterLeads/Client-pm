@@ -4,7 +4,7 @@ import {
   stripHtmlForMentions,
 } from "@/lib/notifications/mentions";
 import { safeCreateNotification } from "@/lib/notifications/create";
-import { getProjectOwnerContext } from "@/lib/queries/projects";
+import { isTaskReviewerEmail } from "@/lib/tasks/reviewers";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { NotificationType } from "@/lib/types";
@@ -38,6 +38,13 @@ async function loadActiveTeamMembers() {
   return data ?? [];
 }
 
+async function loadTaskReviewerIds(): Promise<string[]> {
+  const teamMembers = await loadActiveTeamMembers();
+  return teamMembers
+    .filter((member) => isTaskReviewerEmail(member.email))
+    .map((member) => member.id);
+}
+
 async function loadProjectMemberIds(projectId: string): Promise<string[]> {
   const service = createServiceClient();
   const { data, error } = await pm(service)
@@ -51,6 +58,63 @@ async function loadProjectMemberIds(projectId: string): Promise<string[]> {
   }
 
   return uniqueIds((data ?? []).map((row) => row.team_member_id));
+}
+
+async function loadProjectMemberIdsForClient(clientId: string): Promise<string[]> {
+  const service = createServiceClient();
+  const { data: projects, error: projectsError } = await pm(service)
+    .from("projects")
+    .select("id")
+    .eq("client_id", clientId);
+
+  if (projectsError) {
+    console.error("[loadProjectMemberIdsForClient]", projectsError.message);
+    return [];
+  }
+
+  const projectIds = (projects ?? []).map((row) => row.id);
+  if (projectIds.length === 0) return [];
+
+  const { data, error } = await pm(service)
+    .from("project_members")
+    .select("team_member_id")
+    .in("project_id", projectIds);
+
+  if (error) {
+    console.error("[loadProjectMemberIdsForClient]", error.message);
+    return [];
+  }
+
+  return uniqueIds((data ?? []).map((row) => row.team_member_id));
+}
+
+async function getProjectNotificationContext(projectId: string) {
+  const service = createServiceClient();
+  const { data: project, error } = await pm(service)
+    .from("projects")
+    .select("name, client_id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (error || !project) {
+    console.error("[getProjectNotificationContext]", error?.message);
+    return null;
+  }
+
+  let clientName = "Client";
+  if (project.client_id) {
+    const { data: client } = await service
+      .from("clients")
+      .select("name")
+      .eq("id", project.client_id)
+      .maybeSingle();
+    clientName = client?.name?.trim() || clientName;
+  }
+
+  return {
+    projectName: project.name?.trim() || "a project",
+    clientName,
+  };
 }
 
 async function loadPriorTaskCommentAuthorIds(taskId: string): Promise<string[]> {
@@ -129,14 +193,13 @@ export async function notifyTaskComment(params: {
 }) {
   const service = createServiceClient();
 
-  const [{ data: task, error: taskError }, project, memberIds, priorAuthors, teamMembers] =
+  const [{ data: task, error: taskError }, memberIds, priorAuthors, teamMembers] =
     await Promise.all([
       pm(service)
         .from("tasks")
         .select("assignee_id")
         .eq("id", params.taskId)
         .maybeSingle(),
-      getProjectOwnerContext(params.projectId),
       loadProjectMemberIds(params.projectId),
       loadPriorTaskCommentAuthorIds(params.taskId),
       loadActiveTeamMembers(),
@@ -153,7 +216,6 @@ export async function notifyTaskComment(params: {
 
   const recipientIds = uniqueIds([
     task?.assignee_id,
-    project?.ownerId,
     ...memberIds,
     ...priorAuthors,
     ...mentionedIds,
@@ -186,21 +248,17 @@ export async function notifyTaskReadyForReview(params: {
   actorId: string;
   actorName: string;
 }) {
-  const [project, memberIds] = await Promise.all([
-    getProjectOwnerContext(params.projectId),
+  const [context, memberIds] = await Promise.all([
+    getProjectNotificationContext(params.projectId),
     loadProjectMemberIds(params.projectId),
   ]);
 
-  if (!project) return;
+  if (!context) return;
 
   const title = `Task ready for review: ${params.taskTitle}`;
-  const body = `${params.actorName} marked "${params.taskTitle}" as In Review in ${project.projectName}. Please review and mark as complete.`;
+  const body = `${params.actorName} marked "${params.taskTitle}" as In Review in ${context.projectName}. Please review and mark as complete.`;
 
-  const recipientIds = uniqueIds([
-    project.ownerId,
-    params.assigneeId,
-    ...memberIds,
-  ]);
+  const recipientIds = uniqueIds([params.assigneeId, ...memberIds]);
 
   const sent = await notifyUniqueRecipients({
     recipientIds,
@@ -217,6 +275,88 @@ export async function notifyTaskReadyForReview(params: {
   }
 }
 
+export async function notifyTaskCompletedNeedsReview(params: {
+  taskId: string;
+  taskTitle: string;
+  projectId: string;
+  assigneeName: string;
+  actorId: string;
+}) {
+  const context = await getProjectNotificationContext(params.projectId);
+  if (!context) return;
+
+  const reviewerIds = await loadTaskReviewerIds();
+  const title = `Task completed - needs review: ${params.taskTitle}`;
+  const body = `${params.assigneeName} completed '${params.taskTitle}' in ${context.projectName} for ${context.clientName}`;
+
+  const sent = await notifyUniqueRecipients({
+    recipientIds: reviewerIds,
+    actorId: params.actorId,
+    type: "task_review",
+    entityType: "task",
+    entityId: params.taskId,
+    title,
+    body,
+  });
+
+  if (sent) {
+    revalidateNotificationBell();
+  }
+}
+
+export async function notifyTaskCompletedToProjectMembers(params: {
+  taskId: string;
+  taskTitle: string;
+  projectId: string;
+  actorId: string;
+  actorName: string;
+}) {
+  const [context, memberIds] = await Promise.all([
+    getProjectNotificationContext(params.projectId),
+    loadProjectMemberIds(params.projectId),
+  ]);
+
+  if (!context) return;
+
+  const title = `Task completed: ${params.taskTitle}`;
+  const body = `${params.actorName} completed "${params.taskTitle}" in ${context.projectName}.`;
+
+  const sent = await notifyUniqueRecipients({
+    recipientIds: memberIds,
+    actorId: params.actorId,
+    type: "task_complete",
+    entityType: "task",
+    entityId: params.taskId,
+    title,
+    body,
+  });
+
+  if (sent) {
+    revalidateNotificationBell();
+  }
+}
+
+export async function notifyTaskReviewed(params: {
+  taskId: string;
+  taskTitle: string;
+  assigneeId: string | null;
+  reviewerId: string;
+  reviewerName: string;
+}) {
+  if (!params.assigneeId || params.assigneeId === params.reviewerId) return;
+
+  await safeCreateNotification({
+    recipientId: params.assigneeId,
+    actorId: params.reviewerId,
+    type: "task_review",
+    entityType: "task",
+    entityId: params.taskId,
+    title: `Task reviewed: ${params.taskTitle}`,
+    body: `${params.reviewerName} reviewed and approved '${params.taskTitle}'`,
+  });
+  revalidateNotificationBell();
+}
+
 export async function notifyClientInteractionLogged(params: {
   clientId: string;
   interactionId: string;
@@ -227,22 +367,64 @@ export async function notifyClientInteractionLogged(params: {
   const service = createServiceClient();
   const { data: client, error } = await service
     .from("clients")
-    .select("name, account_manager_id")
+    .select("name")
     .eq("id", params.clientId)
     .maybeSingle();
 
-  if (error || !client?.account_manager_id) return;
+  if (error || !client) return;
 
-  await safeCreateNotification({
-    recipientId: client.account_manager_id,
+  const memberIds = await loadProjectMemberIdsForClient(params.clientId);
+  const title = `Interaction logged: ${client.name ?? "Client"}`;
+  const body = `${params.actorName} logged "${params.summary}".`;
+
+  const sent = await notifyUniqueRecipients({
+    recipientIds: memberIds,
     actorId: params.actorId,
     type: "comment_mention",
     entityType: "client",
     entityId: params.clientId,
-    title: `Interaction logged: ${client.name ?? "Client"}`,
-    body: `${params.actorName} logged "${params.summary}".`,
+    title,
+    body,
   });
-  revalidateNotificationBell();
+
+  if (sent) {
+    revalidateNotificationBell();
+  }
+}
+
+export async function notifyClientUpdateLogged(params: {
+  clientId: string;
+  updateId: string;
+  actorId: string;
+  actorName: string;
+  summary: string;
+}) {
+  const service = createServiceClient();
+  const { data: client, error } = await service
+    .from("clients")
+    .select("name")
+    .eq("id", params.clientId)
+    .maybeSingle();
+
+  if (error || !client) return;
+
+  const memberIds = await loadProjectMemberIdsForClient(params.clientId);
+  const title = `Client update logged: ${client.name ?? "Client"}`;
+  const body = `${params.actorName} logged "${params.summary}".`;
+
+  const sent = await notifyUniqueRecipients({
+    recipientIds: memberIds,
+    actorId: params.actorId,
+    type: "comment_mention",
+    entityType: "client",
+    entityId: params.clientId,
+    title,
+    body,
+  });
+
+  if (sent) {
+    revalidateNotificationBell();
+  }
 }
 
 export async function notifyMilestoneCreated(params: {
@@ -251,25 +433,26 @@ export async function notifyMilestoneCreated(params: {
   actorId: string;
   actorName: string;
 }) {
-  const service = createServiceClient();
-  const { data: project, error } = await pm(service)
-    .from("projects")
-    .select("name, owner_id")
-    .eq("id", params.projectId)
-    .maybeSingle();
+  const [context, memberIds] = await Promise.all([
+    getProjectNotificationContext(params.projectId),
+    loadProjectMemberIds(params.projectId),
+  ]);
 
-  if (error || !project?.owner_id) return;
+  if (!context || memberIds.length === 0) return;
 
-  await safeCreateNotification({
-    recipientId: project.owner_id,
+  const sent = await notifyUniqueRecipients({
+    recipientIds: memberIds,
     actorId: params.actorId,
     type: "milestone_due",
     entityType: "project",
     entityId: params.projectId,
     title: "New milestone added",
-    body: `${params.actorName} added "${params.milestoneTitle}" on ${project.name ?? "a project"}.`,
+    body: `${params.actorName} added "${params.milestoneTitle}" on ${context.projectName}.`,
   });
-  revalidateNotificationBell();
+
+  if (sent) {
+    revalidateNotificationBell();
+  }
 }
 
 export async function notifyMilestoneCompleted(params: {
@@ -279,23 +462,24 @@ export async function notifyMilestoneCompleted(params: {
   actorId: string;
   actorName: string;
 }) {
-  const service = createServiceClient();
-  const { data: project, error } = await pm(service)
-    .from("projects")
-    .select("name, owner_id")
-    .eq("id", params.projectId)
-    .maybeSingle();
+  const [context, memberIds] = await Promise.all([
+    getProjectNotificationContext(params.projectId),
+    loadProjectMemberIds(params.projectId),
+  ]);
 
-  if (error || !project?.owner_id) return;
+  if (!context || memberIds.length === 0) return;
 
-  await safeCreateNotification({
-    recipientId: project.owner_id,
+  const sent = await notifyUniqueRecipients({
+    recipientIds: memberIds,
     actorId: params.actorId,
     type: "task_complete",
     entityType: "milestone",
     entityId: params.milestoneId,
     title: "Milestone completed",
-    body: `${params.actorName} completed "${params.milestoneTitle}" on ${project.name ?? "a project"}.`,
+    body: `${params.actorName} completed "${params.milestoneTitle}" on ${context.projectName}.`,
   });
-  revalidateNotificationBell();
+
+  if (sent) {
+    revalidateNotificationBell();
+  }
 }

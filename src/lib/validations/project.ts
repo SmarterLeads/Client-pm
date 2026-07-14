@@ -13,10 +13,17 @@ const emptyToNull = (value: unknown) => {
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1, "Project name is required").max(200),
   client_id: z.string().uuid("Select a client"),
-  owner_id: z
+  member_ids: z
     .preprocess(
-      emptyToNull,
-      z.union([z.string().uuid("Invalid owner"), z.null()]).optional(),
+      (value) => {
+        if (Array.isArray(value)) {
+          return value.filter(
+            (item): item is string => typeof item === "string" && item.length > 0,
+          );
+        }
+        return [];
+      },
+      z.array(z.string().uuid()).optional(),
     )
     .optional(),
   description: z
@@ -31,12 +38,6 @@ export const createProjectSchema = z.object({
     .preprocess(
       emptyToNull,
       z.union([z.string().date("Invalid start date"), z.null()]).optional(),
-    )
-    .optional(),
-  due_date: z
-    .preprocess(
-      emptyToNull,
-      z.union([z.string().date("Invalid due date"), z.null()]).optional(),
     )
     .optional(),
   template_id: z
@@ -62,7 +63,7 @@ export const projectListFiltersSchema = z.object({
   q: z.string().optional(),
   status: z.enum(projectStatuses).optional(),
   client: z.string().uuid().optional(),
-  owner: z.string().uuid().optional(),
+  member: z.string().uuid().optional(),
 });
 
 export const createMilestoneSchema = z.object({

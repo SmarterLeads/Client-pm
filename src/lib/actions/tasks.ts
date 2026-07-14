@@ -1,13 +1,19 @@
 ﻿"use server";
 
 import { revalidatePath } from "next/cache";
-import { getTeamMember } from "@/lib/auth/session";
+import { canReviewTasks, getTeamMember } from "@/lib/auth/session";
 import { getTaskDetail } from "@/lib/queries/tasks";
 import {
   notifyTaskAssigned,
   notifyTaskComment,
   notifyTaskReadyForReview,
+  notifyTaskReviewed,
 } from "@/lib/notifications/notify";
+import { handleTaskMarkedDone } from "@/lib/tasks/handle-task-marked-done";
+import {
+  isTransitionToDone,
+  mergeDoneReviewFields,
+} from "@/lib/tasks/task-done-workflow";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -60,6 +66,7 @@ function revalidateTaskPaths(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");
   revalidatePath("/tasks");
+  revalidatePath("/dashboard");
 }
 
 export async function loadTaskDetail(taskId: string) {
@@ -185,7 +192,7 @@ export async function updateTask(
       existingTask = data;
     }
 
-    if ("status" in parsed.data) {
+    if ("status" in parsed.data || "section_id" in parsed.data) {
       const { data } = await pm(service)
         .from("tasks")
         .select("status, title, assignee_id")
@@ -194,11 +201,37 @@ export async function updateTask(
       taskBeforeStatusUpdate = data;
     }
 
+    let payload = { ...parsed.data } as Record<string, unknown>;
+    if (
+      isTransitionToDone(
+        taskBeforeStatusUpdate?.status,
+        typeof payload.status === "string" ? payload.status : undefined,
+      )
+    ) {
+      payload = mergeDoneReviewFields(teamMember, payload);
+    }
+
     await updateTaskWithTeamMemberContext(
       teamMember.id,
       taskId,
-      parsed.data as Record<string, unknown>,
+      payload,
     );
+
+    if (
+      isTransitionToDone(
+        taskBeforeStatusUpdate?.status,
+        typeof payload.status === "string" ? payload.status : undefined,
+      ) &&
+      taskBeforeStatusUpdate
+    ) {
+      await handleTaskMarkedDone({
+        teamMember,
+        taskId,
+        projectId,
+        taskTitle: taskBeforeStatusUpdate.title,
+        assigneeId: taskBeforeStatusUpdate.assignee_id,
+      });
+    }
 
     if (
       "status" in parsed.data &&
@@ -438,6 +471,57 @@ export async function removeDependency(
     return {
       error:
         err instanceof Error ? err.message : "Failed to remove dependency.",
+    };
+  }
+}
+
+export async function markTaskReviewed(
+  taskId: string,
+  projectId: string,
+): Promise<{ error?: string }> {
+  try {
+    const teamMember = await requireTeamMember();
+    if (!canReviewTasks(teamMember)) {
+      return { error: "You are not authorized to review tasks." };
+    }
+
+    const service = createServiceClient();
+    const { data: task, error: taskError } = await pm(service)
+      .from("tasks")
+      .select("id, title, status, assignee_id, reviewed_by")
+      .eq("id", taskId)
+      .maybeSingle();
+
+    if (taskError || !task) {
+      return { error: "Task not found." };
+    }
+
+    if (task.status !== "done") {
+      return { error: "Only completed tasks can be reviewed." };
+    }
+
+    if (task.reviewed_by) {
+      return {};
+    }
+
+    await updateTaskWithTeamMemberContext(teamMember.id, taskId, {
+      reviewed_by: teamMember.id,
+      reviewed_at: new Date().toISOString(),
+    });
+
+    await notifyTaskReviewed({
+      taskId,
+      taskTitle: task.title,
+      assigneeId: task.assignee_id,
+      reviewerId: teamMember.id,
+      reviewerName: teamMember.name,
+    });
+
+    revalidateTaskPaths(projectId);
+    return {};
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Failed to mark task reviewed.",
     };
   }
 }

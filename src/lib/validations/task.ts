@@ -121,6 +121,18 @@ export const updateTaskSchema = z.object({
       z.union([z.string().max(2000), z.null()]).optional(),
     )
     .optional(),
+  reviewed_by: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string().uuid(), z.null()]).optional(),
+    )
+    .optional(),
+  reviewed_at: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string().datetime(), z.null()]).optional(),
+    )
+    .optional(),
 });
 
 export const createCommentSchema = z.object({

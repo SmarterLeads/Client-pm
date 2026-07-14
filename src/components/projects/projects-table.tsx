@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import { ProjectStatusBadge } from "@/components/clients/project-status-badge";
 import { RagDot } from "@/components/clients/rag-dot";
+import { ProjectMemberAvatars } from "@/components/projects/project-member-avatars";
 import { TaskProgressBar } from "@/components/clients/task-progress-bar";
 import {
   Table,
@@ -11,15 +12,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { ProjectListRow } from "@/lib/queries/projects";
-
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 export function ProjectsTable({ projects }: { projects: ProjectListRow[] }) {
   if (projects.length === 0) {
@@ -39,8 +31,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListRow[] }) {
             <TableHead className="hidden md:table-cell">Client</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>RAG</TableHead>
-            <TableHead className="hidden sm:table-cell">Owner</TableHead>
-            <TableHead className="hidden lg:table-cell">Due date</TableHead>
+            <TableHead className="hidden sm:table-cell">Team</TableHead>
             <TableHead className="hidden md:table-cell">Progress</TableHead>
           </TableRow>
         </TableHeader>
@@ -69,11 +60,8 @@ export function ProjectsTable({ projects }: { projects: ProjectListRow[] }) {
               <TableCell>
                 <RagDot status={project.rag_status} />
               </TableCell>
-              <TableCell className="hidden text-muted-foreground sm:table-cell">
-                {project.owner_name ?? "—"}
-              </TableCell>
-              <TableCell className="hidden text-muted-foreground lg:table-cell">
-                {formatDate(project.due_date)}
+              <TableCell className="hidden sm:table-cell">
+                <ProjectMemberAvatars members={project.members} />
               </TableCell>
               <TableCell className="hidden md:table-cell">
                 <TaskProgressBar

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { ClientSearchSelect } from "@/components/projects/client-search-select";
+import { TeamMembersMultiSelect } from "@/components/projects/team-members-multi-select";
 import { ProjectTemplateSelector } from "@/components/templates/project-template-selector";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
@@ -78,14 +79,10 @@ export function ProjectForm({
         defaultClientId={defaultClientId}
         error={state.fieldErrors?.client_id?.[0]}
       />
-      <SheetFormField label="Owner" htmlFor="owner_id" error={state.fieldErrors?.owner_id?.[0]}>
-        <select id="owner_id" name="owner_id" defaultValue="" className={selectClass}>
-          <option value="">Unassigned</option>
-          {teamMembers.map((m) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
-          ))}
-        </select>
-      </SheetFormField>
+      <TeamMembersMultiSelect
+        teamMembers={teamMembers}
+        error={state.fieldErrors?.member_ids?.[0]}
+      />
       <SheetFormField label="Status" required htmlFor="status" error={state.fieldErrors?.status?.[0]}>
         <select id="status" name="status" required defaultValue="planned" className={selectClass}>
           {PROJECT_STATUS_OPTIONS.map((s) => (
@@ -105,9 +102,6 @@ export function ProjectForm({
       <SheetFormField label="Start date" htmlFor="start_date" error={state.fieldErrors?.start_date?.[0]}>
         <Input id="start_date" name="start_date" type="date" className={inputClass} />
       </SheetFormField>
-      <SheetFormField label="Due date" htmlFor="due_date" error={state.fieldErrors?.due_date?.[0]}>
-        <Input id="due_date" name="due_date" type="date" className={inputClass} />
-      </SheetFormField>
       <SheetFormField label="Description" htmlFor="description" error={state.fieldErrors?.description?.[0]}>
         {descriptionField}
       </SheetFormField>
@@ -125,14 +119,12 @@ export function ProjectForm({
           error={state.fieldErrors?.client_id?.[0]}
         />
       </div>
-      <Field id="owner_id" label="Owner" error={state.fieldErrors?.owner_id?.[0]}>
-        <select id="owner_id" name="owner_id" defaultValue="" className={selectClass}>
-          <option value="">Unassigned</option>
-          {teamMembers.map((m) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
-          ))}
-        </select>
-      </Field>
+      <div className="sm:col-span-2">
+        <TeamMembersMultiSelect
+          teamMembers={teamMembers}
+          error={state.fieldErrors?.member_ids?.[0]}
+        />
+      </div>
       <Field id="status" label="Status" required error={state.fieldErrors?.status?.[0]}>
         <select id="status" name="status" required defaultValue="planned" className={selectClass}>
           {PROJECT_STATUS_OPTIONS.map((s) => (
@@ -151,9 +143,6 @@ export function ProjectForm({
       </Field>
       <Field id="start_date" label="Start date" error={state.fieldErrors?.start_date?.[0]}>
         <Input id="start_date" name="start_date" type="date" />
-      </Field>
-      <Field id="due_date" label="Due date" error={state.fieldErrors?.due_date?.[0]}>
-        <Input id="due_date" name="due_date" type="date" />
       </Field>
       <Field id="description" label="Description" className="sm:col-span-2" error={state.fieldErrors?.description?.[0]}>
         {descriptionField}

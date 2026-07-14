@@ -3,12 +3,15 @@ import { MyTasksFilters } from "@/components/tasks/my-tasks-filters";
 import { MyTasksListShell } from "@/components/tasks/my-tasks-list-shell";
 import { MyTasksNewTaskButton } from "@/components/tasks/my-tasks-new-task-button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getTeamMember } from "@/lib/auth/session";
+import { canReviewTasks, getTeamMember } from "@/lib/auth/session";
 import {
   getMyTaskClientOptions,
   groupMyTasks,
   getMyTasks,
+  getTasksToReview,
 } from "@/lib/queries/tasks";
+import { TasksToReviewSection } from "@/components/tasks/tasks-to-review-section";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { myTasksFiltersSchema } from "@/lib/validations/task";
 import { redirect } from "next/navigation";
 
@@ -52,9 +55,12 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
       (filters.dueDateFilter && filters.dueDateFilter !== "all"),
   );
 
-  const [taskResult, clients] = await Promise.all([
+  const showReviewQueue = canReviewTasks(teamMember);
+
+  const [taskResult, clients, tasksToReview] = await Promise.all([
     getMyTasks(teamMember.id, filters),
     getMyTaskClientOptions(teamMember.id),
+    showReviewQueue ? getTasksToReview() : Promise.resolve([]),
   ]);
 
   const groups = groupMyTasks(taskResult.active);
@@ -90,6 +96,17 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           avatar_url: teamMember.avatar_url,
         }}
       />
+
+      {showReviewQueue ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasks to Review</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TasksToReviewSection tasks={tasksToReview} />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

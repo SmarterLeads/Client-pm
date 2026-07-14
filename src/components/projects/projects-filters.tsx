@@ -10,10 +10,10 @@ const statuses = PmEnumValues.project_status;
 
 type ProjectsFiltersProps = {
   clients: SelectOption[];
-  owners: SelectOption[];
+  members: SelectOption[];
 };
 
-export function ProjectsFilters({ clients, owners }: ProjectsFiltersProps) {
+export function ProjectsFilters({ clients, members }: ProjectsFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -21,7 +21,7 @@ export function ProjectsFilters({ clients, owners }: ProjectsFiltersProps) {
   const q = searchParams.get("q") ?? "";
   const status = searchParams.get("status") ?? "";
   const client = searchParams.get("client") ?? "";
-  const owner = searchParams.get("owner") ?? "";
+  const member = searchParams.get("member") ?? searchParams.get("owner") ?? "";
 
   function updateParams(updates: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -74,15 +74,15 @@ export function ProjectsFilters({ clients, owners }: ProjectsFiltersProps) {
         ))}
       </select>
       <select
-        value={owner}
-        onChange={(e) => updateParams({ owner: e.target.value })}
+        value={member}
+        onChange={(e) => updateParams({ member: e.target.value, owner: "" })}
         className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm sm:w-44 dark:bg-input/30"
-        aria-label="Filter by owner"
+        aria-label="Filter by team member"
       >
-        <option value="">All owners</option>
-        {owners.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.name}
+        <option value="">All team members</option>
+        {members.map((memberOption) => (
+          <option key={memberOption.id} value={memberOption.id}>
+            {memberOption.name}
           </option>
         ))}
       </select>

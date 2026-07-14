@@ -32,7 +32,7 @@ import {
 } from "@/lib/validations/client";
 import type { ClientStatus } from "@/lib/pm/constants";
 import { buildStoredMarketingChannel } from "@/lib/updates/display";
-import { notifyClientInteractionLogged } from "@/lib/notifications/notify";
+import { notifyClientInteractionLogged, notifyClientUpdateLogged } from "@/lib/notifications/notify";
 import { pm } from "@/lib/supabase/pm";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -898,16 +898,30 @@ export async function createClientUpdate(
     );
 
     const supabase = await createSupabaseClient();
-    const { error } = await pm(supabase).from("client_updates").insert({
-      client_id: clientId,
-      logged_by: teamMember.id,
-      marketing_channel,
-      summary: parsed.data.summary,
-      occurred_at: new Date(parsed.data.occurred_at).toISOString(),
-    });
+    const { data: inserted, error } = await pm(supabase)
+      .from("client_updates")
+      .insert({
+        client_id: clientId,
+        logged_by: teamMember.id,
+        marketing_channel,
+        summary: parsed.data.summary,
+        occurred_at: new Date(parsed.data.occurred_at).toISOString(),
+      })
+      .select("id")
+      .single();
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    if (inserted?.id) {
+      await notifyClientUpdateLogged({
+        clientId,
+        updateId: inserted.id,
+        actorId: teamMember.id,
+        actorName: teamMember.name,
+        summary: parsed.data.summary,
+      });
     }
 
     revalidateClient(clientId);

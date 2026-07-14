@@ -6,7 +6,7 @@ import { DashboardKpiCards } from "@/components/dashboard/dashboard-kpi-cards";
 import { DashboardMyTasksWidget } from "@/components/dashboard/dashboard-my-tasks-widget";
 import { DashboardTeamWorkloadPanel } from "@/components/dashboard/dashboard-team-workload";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getTeamMember } from "@/lib/auth/session";
+import { canReviewTasks, getTeamMember } from "@/lib/auth/session";
 import {
   getDashboardBillableHoursByClient,
   getDashboardClientHealth,
@@ -16,6 +16,8 @@ import {
 } from "@/lib/queries/dashboard";
 import { getPendingEmailLogs } from "@/lib/queries/email-log";
 import { getClientsForSelect } from "@/lib/queries/projects";
+import { getTasksToReview } from "@/lib/queries/tasks";
+import { TasksToReviewSection } from "@/components/tasks/tasks-to-review-section";
 
 export default async function DashboardPage() {
   const teamMember = await getTeamMember();
@@ -23,7 +25,9 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [kpis, clients, teamWorkload, billableByClient, myTasks, pendingEmails, clientOptions] =
+  const showReviewQueue = canReviewTasks(teamMember);
+
+  const [kpis, clients, teamWorkload, billableByClient, myTasks, pendingEmails, clientOptions, tasksToReview] =
     await Promise.all([
       getDashboardKpis(),
       getDashboardClientHealth(),
@@ -32,6 +36,7 @@ export default async function DashboardPage() {
       getDashboardMyTasks(teamMember.id),
       getPendingEmailLogs(),
       getClientsForSelect(),
+      showReviewQueue ? getTasksToReview() : Promise.resolve([]),
     ]);
 
   return (
@@ -76,6 +81,17 @@ export default async function DashboardPage() {
           <DashboardMyTasksWidget tasks={myTasks} />
         </div>
       </div>
+
+      {showReviewQueue ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasks to Review</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TasksToReviewSection tasks={tasksToReview} />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }
