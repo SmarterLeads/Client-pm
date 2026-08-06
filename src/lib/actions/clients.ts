@@ -121,6 +121,14 @@ function parseCreateClientForm(formData: FormData) {
     google_drive_url: formData.get("google_drive_url"),
     business_phone: formData.get("business_phone"),
     marketing_channels: formData.getAll("marketing_channels"),
+    client_type: formData.get("client_type"),
+    show_in_dashboard: formData.get("show_in_dashboard") === "true",
+    report_slug: formData.get("report_slug"),
+    platform_google: formData.get("platform_google"),
+    platform_meta: formData.get("platform_meta"),
+    platform_microsoft: formData.get("platform_microsoft"),
+    platform_tiktok: formData.get("platform_tiktok"),
+    whatconverts_profile_id: formData.get("whatconverts_profile_id"),
     primary_contact: {
       first_name: formData.get("contact_first_name"),
       last_name: formData.get("contact_last_name"),
@@ -129,6 +137,57 @@ function parseCreateClientForm(formData: FormData) {
       job_title: formData.get("contact_job_title"),
     },
   };
+}
+
+async function applyCreateClientMarketingSetup(
+  teamMemberId: string,
+  clientId: string,
+  data: {
+    client_type: string;
+    show_in_dashboard: boolean;
+    report_slug?: string | null;
+    whatconverts_profile_id?: string | null;
+    platform_google?: string | null;
+    platform_meta?: string | null;
+    platform_microsoft?: string | null;
+    platform_tiktok?: string | null;
+  },
+) {
+  const marketingPayload: Record<string, unknown> = {
+    client_type: data.client_type,
+    show_in_dashboard: data.show_in_dashboard,
+  };
+
+  if (data.report_slug) {
+    marketingPayload.report_slug = data.report_slug;
+  }
+
+  if (data.whatconverts_profile_id) {
+    marketingPayload.whatconverts_profile_id = data.whatconverts_profile_id;
+  }
+
+  await updateClientWithTeamMemberContext(teamMemberId, clientId, marketingPayload);
+
+  const platformEntries: Array<{ platform: string; accountId: string | null | undefined }> =
+    [
+      { platform: "google", accountId: data.platform_google },
+      { platform: "meta", accountId: data.platform_meta },
+      { platform: "microsoft", accountId: data.platform_microsoft },
+      { platform: "tiktok", accountId: data.platform_tiktok },
+      { platform: "whatconverts", accountId: data.whatconverts_profile_id },
+    ];
+
+  for (const entry of platformEntries) {
+    const accountId = entry.accountId?.trim();
+    if (!accountId) continue;
+
+    await upsertPlatformConnectionWithTeamMemberContext(
+      teamMemberId,
+      clientId,
+      entry.platform,
+      accountId,
+    );
+  }
 }
 
 function parseContactForm(formData: FormData) {
@@ -239,6 +298,17 @@ export async function createClient(
         marketing_channels: marketingChannels,
       });
     }
+
+    await applyCreateClientMarketingSetup(teamMember.id, clientId, {
+      client_type: parsed.data.client_type,
+      show_in_dashboard: parsed.data.show_in_dashboard,
+      report_slug: parsed.data.report_slug,
+      whatconverts_profile_id: parsed.data.whatconverts_profile_id,
+      platform_google: parsed.data.platform_google,
+      platform_meta: parsed.data.platform_meta,
+      platform_microsoft: parsed.data.platform_microsoft,
+      platform_tiktok: parsed.data.platform_tiktok,
+    });
 
     console.log("[createClient] created client:", clientId);
     revalidateClient(clientId);

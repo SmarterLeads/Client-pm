@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
   createClient,
   type ClientFormState,
@@ -22,7 +22,12 @@ import {
 } from "@/components/ui/sheet-form";
 import { Textarea } from "@/components/ui/textarea";
 import { CLIENT_STATUSES } from "@/lib/pm/constants";
+import {
+  CREATE_CLIENT_PLATFORM_FIELDS,
+  CREATE_CLIENT_TYPE_OPTIONS,
+} from "@/lib/clients/create-client-platforms";
 import { MARKETING_CHANNEL_OPTIONS } from "@/lib/clients/overview-fields";
+import { slugifyClientName } from "@/lib/clients/report-slug";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { AgencyListRow } from "@/lib/queries/agencies";
 import type { TeamMember } from "@/lib/types";
@@ -50,8 +55,21 @@ export function ClientForm({
   const router = useRouter();
   const [state, formAction, pending] = useActionState(createClient, initialState);
   const redirectedClientId = useRef<string | null>(null);
+  const [reportSlug, setReportSlug] = useState("");
+  const [reportSlugManual, setReportSlugManual] = useState(false);
 
   useActionToast(state, { successMessage: "Client created" });
+
+  function handleCompanyNameChange(value: string) {
+    if (!reportSlugManual) {
+      setReportSlug(slugifyClientName(value));
+    }
+  }
+
+  function handleReportSlugChange(value: string) {
+    setReportSlugManual(true);
+    setReportSlug(value);
+  }
 
   useEffect(() => {
     if (!state.success || !state.clientId) return;
@@ -122,7 +140,13 @@ export function ClientForm({
       {sheetMode ? (
         <SheetFormBody>
           <Field id="name" label="Company name" required sheetMode error={state.fieldErrors?.name?.[0]}>
-            <Input id="name" name="name" required className={inputClass} />
+            <Input
+              id="name"
+              name="name"
+              required
+              className={inputClass}
+              onChange={(e) => handleCompanyNameChange(e.target.value)}
+            />
           </Field>
           <Field id="status" label="Status" required sheetMode error={state.fieldErrors?.status?.[0]}>
             <select id="status" name="status" required defaultValue="prospect" className={selectClass}>
@@ -168,6 +192,14 @@ export function ClientForm({
             <Textarea id="notes" name="notes" rows={4} className={textareaClass} />
           </Field>
           <MarketingChannelsField sheetMode />
+          <MarketingDashboardFields
+            sheetMode
+            reportSlug={reportSlug}
+            onReportSlugChange={handleReportSlugChange}
+            fieldErrors={state.fieldErrors}
+            inputClass={inputClass}
+            selectClass={selectClass}
+          />
           <Field id="contact_first_name" label="First name" required sheetMode error={state.fieldErrors?.["primary_contact.first_name"]?.[0]}>
             <Input id="contact_first_name" name="contact_first_name" required className={inputClass} />
           </Field>
@@ -190,7 +222,12 @@ export function ClientForm({
             <h2 className="text-sm font-medium text-muted-foreground">Client</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="name" label="Company name" required className="sm:col-span-2" error={state.fieldErrors?.name?.[0]}>
-                <Input id="name" name="name" required />
+                <Input
+                  id="name"
+                  name="name"
+                  required
+                  onChange={(e) => handleCompanyNameChange(e.target.value)}
+                />
               </Field>
               <Field id="status" label="Status" required error={state.fieldErrors?.status?.[0]}>
                 <select id="status" name="status" required defaultValue="prospect" className={selectClass}>
@@ -241,6 +278,17 @@ export function ClientForm({
               Marketing channels
             </h2>
             <MarketingChannelsField />
+          </section>
+          <section className="space-y-4">
+            <h2 className="text-sm font-medium text-muted-foreground">
+              Marketing dashboard
+            </h2>
+            <MarketingDashboardFields
+              reportSlug={reportSlug}
+              onReportSlugChange={handleReportSlugChange}
+              fieldErrors={state.fieldErrors}
+              selectClass={selectClass}
+            />
           </section>
           <section className="space-y-4">
             <h2 className="text-sm font-medium text-muted-foreground">Primary contact</h2>
@@ -316,6 +364,108 @@ function MarketingChannelsField({ sheetMode = false }: { sheetMode?: boolean }) 
   }
 
   return grid;
+}
+
+function MarketingDashboardFields({
+  sheetMode = false,
+  reportSlug,
+  onReportSlugChange,
+  fieldErrors,
+  inputClass,
+  selectClass,
+}: {
+  sheetMode?: boolean;
+  reportSlug: string;
+  onReportSlugChange: (value: string) => void;
+  fieldErrors?: Record<string, string[]>;
+  inputClass?: string;
+  selectClass?: string;
+}) {
+  const selectCls =
+    selectClass ??
+    "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm dark:bg-input/30";
+
+  const fields = (
+    <div className="space-y-4">
+      <Field
+        id="client_type"
+        label="Client type"
+        sheetMode={sheetMode}
+        error={fieldErrors?.client_type?.[0]}
+      >
+        <select
+          id="client_type"
+          name="client_type"
+          defaultValue="lead_gen"
+          className={selectCls}
+        >
+          {CREATE_CLIENT_TYPE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="show_in_dashboard"
+          value="true"
+          className="size-4 rounded border-input"
+        />
+        <span>Show in dashboard</span>
+      </label>
+
+      <Field
+        id="report_slug"
+        label="Report slug"
+        sheetMode={sheetMode}
+        error={fieldErrors?.report_slug?.[0]}
+        className="sm:col-span-2"
+      >
+        <Input
+          id="report_slug"
+          name="report_slug"
+          value={reportSlug}
+          onChange={(e) => onReportSlugChange(e.target.value)}
+          placeholder="brafit-iq"
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Auto-generated from company name; used for marketing report URLs.
+        </p>
+      </Field>
+
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Platform connections</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {CREATE_CLIENT_PLATFORM_FIELDS.map((field) => (
+            <Field
+              key={field.formKey}
+              id={field.formKey}
+              label={field.label}
+              sheetMode={sheetMode}
+              error={fieldErrors?.[field.formKey]?.[0]}
+            >
+              <Input
+                id={field.formKey}
+                name={field.formKey}
+                className={inputClass}
+                placeholder="Account ID"
+              />
+            </Field>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (sheetMode) {
+    return <>{fields}</>;
+  }
+
+  return fields;
 }
 
 function Field({

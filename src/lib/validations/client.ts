@@ -89,6 +89,46 @@ export const createClientSchema = z.object({
     .array(z.enum(MARKETING_CHANNEL_VALUES))
     .optional()
     .default([]),
+  client_type: z.enum(["lead_gen", "ecommerce"]).default("lead_gen"),
+  show_in_dashboard: z
+    .preprocess(
+      (value) => value === true || value === "true",
+      z.boolean(),
+    )
+    .default(false),
+  report_slug: z
+    .preprocess(
+      emptyToNull,
+      z
+        .union([
+          z
+            .string()
+            .trim()
+            .max(100)
+            .regex(
+              /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+              "Use lowercase letters, numbers, and hyphens only",
+            ),
+          z.null(),
+        ])
+        .optional(),
+    )
+    .optional(),
+  platform_google: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
+  platform_meta: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
+  platform_microsoft: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
+  platform_tiktok: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
+  whatconverts_profile_id: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
 });
 
 export type CreateClientInput = z.infer<typeof createClientSchema>;

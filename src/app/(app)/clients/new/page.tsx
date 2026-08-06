@@ -29,7 +29,7 @@ export default async function NewClientPage() {
           New client
         </h1>
         <p className="text-sm text-muted-foreground">
-          Add a new client to the CRM.
+          Add a new client to the CRM, including marketing dashboard setup.
         </p>
       </div>
       {agencies.length === 0 ? (
