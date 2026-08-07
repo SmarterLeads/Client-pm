@@ -53,7 +53,7 @@ export async function updateClientWithTeamMemberContext(
 
   if (error) {
     throw new Error(
-      `Failed to update client: ${error.message}. Apply supabase/migrations/20260614120000_fix_marketing_channels_array_rpc.sql`,
+      `Failed to update client: ${error.message}. Apply supabase/migrations/20260807183000_client_report_slug_overview_rpc.sql`,
     );
   }
 }

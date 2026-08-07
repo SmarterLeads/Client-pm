@@ -408,6 +408,10 @@ export async function updateClientOverviewFields(
       return { error: "No fields to update." };
     }
 
+    if ("report_slug" in payload) {
+      console.log("[dashboard] saving report_slug:", payload.report_slug);
+    }
+
     await updateClientWithTeamMemberContext(teamMember.id, clientId, payload);
     revalidateClient(clientId);
     return {};
