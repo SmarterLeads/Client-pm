@@ -131,6 +131,48 @@ export const createClientSchema = z.object({
     .optional(),
 });
 
+export const updateClientMarketingDashboardSchema = z.object({
+  show_in_dashboard: z.preprocess(
+    (value) => value === true || value === "true",
+    z.boolean(),
+  ),
+  report_slug: z.preprocess(
+    emptyToNull,
+    z
+      .union([
+        z
+          .string()
+          .trim()
+          .max(100)
+          .regex(
+            /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+            "Use lowercase letters, numbers, and hyphens only",
+          ),
+        z.null(),
+      ])
+      .optional(),
+  ),
+  platform_google: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
+  platform_meta: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
+  platform_microsoft: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
+  platform_tiktok: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
+  whatconverts_profile_id: z
+    .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
+    .optional(),
+});
+
+export type UpdateClientMarketingDashboardInput = z.infer<
+  typeof updateClientMarketingDashboardSchema
+>;
+
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 
 export const updateClientSchema = z.object({

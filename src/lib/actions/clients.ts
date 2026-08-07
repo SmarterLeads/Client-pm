@@ -15,6 +15,7 @@ import {
   updateClientWithTeamMemberContext,
   upsertPlatformConnectionWithTeamMemberContext,
 } from "@/lib/supabase/with-team-member-context";
+import { applyClientMarketingDashboardSetup } from "@/lib/clients/marketing-dashboard-setup";
 import {
   contactFormSchema,
   createClientSchema,
@@ -23,6 +24,7 @@ import {
   archiveClientStatusSchema,
   updateClientFieldSchema,
   updateClientOverviewFieldsSchema,
+  updateClientMarketingDashboardSchema,
   updateClientSchema,
   updateContactFieldsSchema,
   updateMarketingBriefSchema,
@@ -153,41 +155,7 @@ async function applyCreateClientMarketingSetup(
     platform_tiktok?: string | null;
   },
 ) {
-  const marketingPayload: Record<string, unknown> = {
-    client_type: data.client_type,
-    show_in_dashboard: data.show_in_dashboard,
-  };
-
-  if (data.report_slug) {
-    marketingPayload.report_slug = data.report_slug;
-  }
-
-  if (data.whatconverts_profile_id) {
-    marketingPayload.whatconverts_profile_id = data.whatconverts_profile_id;
-  }
-
-  await updateClientWithTeamMemberContext(teamMemberId, clientId, marketingPayload);
-
-  const platformEntries: Array<{ platform: string; accountId: string | null | undefined }> =
-    [
-      { platform: "google", accountId: data.platform_google },
-      { platform: "meta", accountId: data.platform_meta },
-      { platform: "microsoft", accountId: data.platform_microsoft },
-      { platform: "tiktok", accountId: data.platform_tiktok },
-      { platform: "whatconverts", accountId: data.whatconverts_profile_id },
-    ];
-
-  for (const entry of platformEntries) {
-    const accountId = entry.accountId?.trim();
-    if (!accountId) continue;
-
-    await upsertPlatformConnectionWithTeamMemberContext(
-      teamMemberId,
-      clientId,
-      entry.platform,
-      accountId,
-    );
-  }
+  await applyClientMarketingDashboardSetup(teamMemberId, clientId, data);
 }
 
 function parseContactForm(formData: FormData) {
@@ -226,6 +194,7 @@ function revalidateClient(clientId: string) {
   revalidatePath("/clients");
   revalidatePath("/contacts");
   revalidatePath("/interactions");
+  revalidatePath("/marketing");
 }
 
 export async function createClient(
@@ -446,6 +415,42 @@ export async function updateClientOverviewFields(
     console.error("[updateClientOverviewFields] error:", err);
     return {
       error: err instanceof Error ? err.message : "Failed to update client.",
+    };
+  }
+}
+
+export async function updateClientMarketingDashboard(
+  clientId: string,
+  data: Record<string, unknown>,
+): Promise<{ error?: string }> {
+  try {
+    const teamMember = await requireTeamMember();
+    const parsed = updateClientMarketingDashboardSchema.safeParse(data);
+
+    if (!parsed.success) {
+      console.error(
+        "[updateClientMarketingDashboard] validation failed:",
+        JSON.stringify(parsed.error.flatten()),
+      );
+      const message =
+        parsed.error.issues[0]?.message ?? "Invalid field value.";
+      return { error: message };
+    }
+
+    await applyClientMarketingDashboardSetup(
+      teamMember.id,
+      clientId,
+      parsed.data,
+    );
+    revalidateClient(clientId);
+    return {};
+  } catch (err) {
+    console.error("[updateClientMarketingDashboard] error:", err);
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Failed to update marketing dashboard settings.",
     };
   }
 }
