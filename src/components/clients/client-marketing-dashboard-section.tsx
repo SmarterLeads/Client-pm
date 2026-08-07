@@ -125,9 +125,10 @@ export function ClientMarketingDashboardSection({
 
   function handleSave() {
     startTransition(async () => {
+      const normalizedSlug = slugifyClientName(reportSlug.trim());
       const payload = {
         show_in_dashboard: showInDashboard,
-        report_slug: reportSlug.trim() || null,
+        report_slug: normalizedSlug || null,
         platform_google: platformIds.platform_google?.trim() || null,
         platform_meta: platformIds.platform_meta?.trim() || null,
         platform_microsoft: platformIds.platform_microsoft?.trim() || null,
@@ -135,6 +136,8 @@ export function ClientMarketingDashboardSection({
         whatconverts_profile_id:
           platformIds.whatconverts_profile_id?.trim() || null,
       };
+
+      console.log("[dashboard] form submit report_slug:", payload.report_slug);
 
       const result = await updateClientMarketingDashboard(client.id, payload);
       if (result.error) {

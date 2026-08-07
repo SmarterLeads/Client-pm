@@ -1,4 +1,5 @@
 ﻿import { CLIENT_STATUSES } from "@/lib/pm/constants";
+import { slugifyClientName } from "@/lib/clients/report-slug";
 import {
   CLIENT_SERVICE_FILTER_VALUES,
   MARKETING_CHANNEL_VALUES,
@@ -14,6 +15,27 @@ const emptyToNull = (value: unknown) => {
   if (typeof value === "string" && value.trim() === "") return null;
   return value;
 };
+
+const reportSlugSchema = z.preprocess(
+  (value) => {
+    const normalized = emptyToNull(value);
+    if (normalized == null) return null;
+    if (typeof normalized !== "string") return normalized;
+    return slugifyClientName(normalized);
+  },
+  z
+    .union([
+      z
+        .string()
+        .max(100)
+        .regex(
+          /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+          "Use lowercase letters, numbers, and hyphens only",
+        ),
+      z.null(),
+    ])
+    .optional(),
+);
 
 export const primaryContactSchema = z.object({
   first_name: z.string().trim().min(1, "First name is required").max(100),
@@ -96,24 +118,7 @@ export const createClientSchema = z.object({
       z.boolean(),
     )
     .default(false),
-  report_slug: z
-    .preprocess(
-      emptyToNull,
-      z
-        .union([
-          z
-            .string()
-            .trim()
-            .max(100)
-            .regex(
-              /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-              "Use lowercase letters, numbers, and hyphens only",
-            ),
-          z.null(),
-        ])
-        .optional(),
-    )
-    .optional(),
+  report_slug: reportSlugSchema,
   platform_google: z
     .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
     .optional(),
@@ -136,22 +141,7 @@ export const updateClientMarketingDashboardSchema = z.object({
     (value) => value === true || value === "true",
     z.boolean(),
   ),
-  report_slug: z.preprocess(
-    emptyToNull,
-    z
-      .union([
-        z
-          .string()
-          .trim()
-          .max(100)
-          .regex(
-            /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-            "Use lowercase letters, numbers, and hyphens only",
-          ),
-        z.null(),
-      ])
-      .optional(),
-  ),
+  report_slug: reportSlugSchema,
   platform_google: z
     .preprocess(emptyToNull, z.union([z.string().max(200), z.null()]).optional())
     .optional(),

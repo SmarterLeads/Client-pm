@@ -1,3 +1,4 @@
+import { slugifyClientName } from "@/lib/clients/report-slug";
 import {
   updateClientWithTeamMemberContext,
   upsertPlatformConnectionWithTeamMemberContext,
@@ -14,14 +15,25 @@ export type ClientMarketingDashboardSetupData = {
   platform_tiktok?: string | null;
 };
 
+function normalizeReportSlugForSave(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const slug = slugifyClientName(trimmed);
+  return slug === "client" && !/[a-z0-9]/i.test(trimmed) ? null : slug;
+}
+
 export async function applyClientMarketingDashboardSetup(
   teamMemberId: string,
   clientId: string,
   data: ClientMarketingDashboardSetupData,
 ) {
+  const reportSlug = normalizeReportSlugForSave(data.report_slug);
+  console.log("[dashboard] saving report_slug:", reportSlug);
+
   const marketingPayload: Record<string, unknown> = {
     show_in_dashboard: data.show_in_dashboard,
-    report_slug: data.report_slug?.trim() || null,
+    report_slug: reportSlug,
     whatconverts_profile_id: data.whatconverts_profile_id?.trim() || null,
   };
 

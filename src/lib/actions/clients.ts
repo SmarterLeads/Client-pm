@@ -425,6 +425,10 @@ export async function updateClientMarketingDashboard(
 ): Promise<{ error?: string }> {
   try {
     const teamMember = await requireTeamMember();
+    console.log(
+      "[updateClientMarketingDashboard] incoming report_slug:",
+      data.report_slug,
+    );
     const parsed = updateClientMarketingDashboardSchema.safeParse(data);
 
     if (!parsed.success) {
@@ -436,6 +440,8 @@ export async function updateClientMarketingDashboard(
         parsed.error.issues[0]?.message ?? "Invalid field value.";
       return { error: message };
     }
+
+    console.log("[dashboard] saving report_slug:", parsed.data.report_slug);
 
     await applyClientMarketingDashboardSetup(
       teamMember.id,
