@@ -7,7 +7,6 @@ import { ClientActionsMenu } from "@/components/clients/client-actions-menu";
 import { ClientUpdatesTab } from "@/components/clients/client-updates-tab";
 import { ClientInteractionsTab } from "@/components/clients/client-interactions-tab";
 import { ClientMarketingBriefTab } from "@/components/clients/client-marketing-brief-tab";
-import { ClientMarketingDashboardTab } from "@/components/clients/client-marketing-dashboard-tab";
 import { ClientMarketingSubTabs } from "@/components/clients/client-marketing-sub-tabs";
 import { ClientOverviewTab } from "@/components/clients/client-overview-tab";
 import { ClientProjectsTab } from "@/components/clients/client-projects-tab";
@@ -37,7 +36,6 @@ const tabs = [
   { id: "access", label: "Access" },
   { id: "history", label: "History" },
   { id: "marketing-brief", label: "Marketing Brief" },
-  { id: "dashboard", label: "Dashboard" },
   { id: "marketing", label: "Marketing" },
 ] as const;
 
@@ -206,13 +204,6 @@ export function ClientDetailTabs({
         <ClientMarketingBriefTab
           clientId={client.id}
           brief={client.marketing_brief}
-        />
-      ) : null}
-
-      {activeTab === "dashboard" ? (
-        <ClientMarketingDashboardTab
-          client={client}
-          platformConnections={platformConnections ?? []}
         />
       ) : null}
 

@@ -336,6 +336,8 @@ export const updateClientOverviewFieldsSchema = z
         z.union([z.string().uuid(), z.null()]).optional(),
       )
       .optional(),
+    show_in_dashboard: z.boolean().optional(),
+    report_slug: reportSlugSchema,
   })
   .strict();
 

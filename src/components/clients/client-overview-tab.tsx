@@ -39,6 +39,7 @@ import {
   OVERVIEW_STATUS_OPTIONS,
   type OverviewStatus,
 } from "@/lib/clients/overview-fields";
+import { slugifyClientName } from "@/lib/clients/report-slug";
 import type { ClientPlatformConnection } from "@/lib/queries/clients";
 import { PmEnumValues } from "@/lib/types/enums";
 import type { Client, ClientContact, ClientUser, TeamMember } from "@/lib/types";
@@ -295,6 +296,36 @@ export function ClientOverviewTab({
             connections={platformConnections}
             embedded
           />
+          <OverviewSectionDivider />
+          <OverviewSubsection title="Marketing Dashboard">
+            <OverviewFieldRow editable label="Show in dashboard">
+              <InlineSelectField
+                aria-label="Show in dashboard"
+                value={client.show_in_dashboard ? "true" : "false"}
+                options={[
+                  { value: "false", label: "No" },
+                  { value: "true", label: "Yes" },
+                ]}
+                className="min-w-[5rem]"
+                onSave={(value) =>
+                  saveField({ show_in_dashboard: value === "true" })
+                }
+              />
+            </OverviewFieldRow>
+            <OverviewFieldRow editable label="Report slug">
+              <InlineTextField
+                value={client.report_slug}
+                placeholder="brafit-iq"
+                aria-label="Report slug"
+                inputClassName="font-mono tabular-nums"
+                onSave={(value) =>
+                  saveField({
+                    report_slug: value ? slugifyClientName(value) : null,
+                  })
+                }
+              />
+            </OverviewFieldRow>
+          </OverviewSubsection>
         </OverviewCard>
       </div>
 
