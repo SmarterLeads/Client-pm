@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   deactivateClientConversionForGoal,
-  syncClientConversionFromGoal,
+  syncClientConversions,
 } from "@/lib/clients/sync-client-conversions";
 import { getTeamMember } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -142,9 +142,16 @@ export async function updateClientConversionGoal(
       return { error: updateError.message };
     }
 
-    await syncClientConversionFromGoal(supabase, saved, {
-      previousConversionId: existing.conversion_id,
+    console.log("[sync] updateClientConversionGoal saved goal:", {
+      id: saved.id,
+      clientId,
+      platform: saved.platform,
+      conversionName: saved.conversion_name,
+      conversionId: saved.conversion_id,
+      priority: saved.priority,
     });
+
+    await syncClientConversions(clientId);
 
     revalidateClientConversionPaths(clientId);
     return {};
@@ -172,7 +179,7 @@ export async function deleteClientConversionGoal(
 
     const { data: existing, error: fetchError } = await supabase
       .from("client_conversion_goals")
-      .select("client_id, platform, conversion_id")
+      .select("client_id, platform, conversion_id, conversion_name")
       .eq("id", id)
       .eq("client_id", clientId)
       .maybeSingle();
@@ -185,7 +192,7 @@ export async function deleteClientConversionGoal(
       return { error: "Conversion goal not found." };
     }
 
-    await deactivateClientConversionForGoal(supabase, existing);
+    await deactivateClientConversionForGoal(undefined, existing);
 
     const { error: deleteError } = await supabase
       .from("client_conversion_goals")
