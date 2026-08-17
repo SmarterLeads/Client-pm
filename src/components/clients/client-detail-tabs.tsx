@@ -6,6 +6,7 @@ import { ClientAccessTab } from "@/components/clients/client-access-tab";
 import { ClientActionsMenu } from "@/components/clients/client-actions-menu";
 import { ClientUpdatesTab } from "@/components/clients/client-updates-tab";
 import { ClientInteractionsTab } from "@/components/clients/client-interactions-tab";
+import { ClientConversionsTab } from "@/components/clients/client-conversions-tab";
 import { ClientMarketingBriefTab } from "@/components/clients/client-marketing-brief-tab";
 import { ClientMarketingSubTabs } from "@/components/clients/client-marketing-sub-tabs";
 import { ClientOverviewTab } from "@/components/clients/client-overview-tab";
@@ -21,6 +22,7 @@ import type {
   ClientProjectOpenTaskRow,
   ClientProjectRow,
 } from "@/lib/queries/clients";
+import type { ClientConversionGoal } from "@/lib/types";
 import type { ClientCredentialsResult } from "@/lib/credentials/types";
 import type { ClientHourlyWorkSummary } from "@/lib/clients/hourly-billing";
 import type { InteractionRow } from "@/lib/interactions/types";
@@ -36,6 +38,7 @@ const tabs = [
   { id: "access", label: "Access" },
   { id: "history", label: "History" },
   { id: "marketing-brief", label: "Marketing Brief" },
+  { id: "conversions", label: "Conversions" },
   { id: "marketing", label: "Marketing" },
 ] as const;
 
@@ -58,6 +61,7 @@ type ClientDetailTabsProps = {
   access: ClientCredentialsResult;
   portalUsers: ClientUser[];
   platformConnections: ClientPlatformConnection[];
+  conversionGoals: ClientConversionGoal[];
   canViewMrr: boolean;
   hourlyWork?: ClientHourlyWorkSummary | null;
   isAdmin: boolean;
@@ -81,6 +85,7 @@ export function ClientDetailTabs({
   access,
   portalUsers,
   platformConnections,
+  conversionGoals,
   canViewMrr,
   hourlyWork = null,
   isAdmin,
@@ -204,6 +209,14 @@ export function ClientDetailTabs({
         <ClientMarketingBriefTab
           clientId={client.id}
           brief={client.marketing_brief}
+        />
+      ) : null}
+
+      {activeTab === "conversions" ? (
+        <ClientConversionsTab
+          clientId={client.id}
+          marketingChannels={client.marketing_channels}
+          conversionGoals={conversionGoals ?? []}
         />
       ) : null}
 

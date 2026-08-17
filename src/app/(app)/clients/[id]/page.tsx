@@ -19,6 +19,7 @@ import {
   groupClientOpenTasksByProject,
 } from "@/lib/queries/clients";
 import { getClientUpdates } from "@/lib/queries/client-updates";
+import { getClientConversionGoals } from "@/lib/queries/conversion-goals";
 import { getClientCredentials } from "@/lib/queries/credentials";
 import { getClientBillableHoursThisMonth } from "@/lib/queries/hourly-billing";
 import { buildClientHourlyWorkSummary } from "@/lib/clients/hourly-billing";
@@ -107,7 +108,7 @@ export default async function ClientDetailPage({
   const { client, primaryContact, contacts, agencyName, lastInteractionAt } =
     result;
 
-  const [teamMembers, projects, openTasks, updates, interactions, attachments, access, portalUsers, platformConnections, teamMember] =
+  const [teamMembers, projects, openTasks, updates, interactions, attachments, access, portalUsers, platformConnections, conversionGoals, teamMember] =
     await Promise.all([
       getActiveTeamMembers().catch(() => [] as Awaited<ReturnType<typeof getActiveTeamMembers>>),
       getClientProjects(id),
@@ -118,6 +119,7 @@ export default async function ClientDetailPage({
       getClientCredentials(id, client.account_manager_id),
       getClientPortalUsers(id),
       getClientPlatformConnections(id),
+      getClientConversionGoals(id),
       getTeamMember(),
     ]);
 
@@ -168,6 +170,7 @@ export default async function ClientDetailPage({
           access={access}
           portalUsers={portalUsers ?? []}
           platformConnections={platformConnections ?? []}
+          conversionGoals={conversionGoals ?? []}
           canViewMrr={canViewMrr}
           hourlyWork={hourlyWork}
           isAdmin={teamMember ? isAdmin(teamMember.role) : false}

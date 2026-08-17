@@ -38,6 +38,12 @@ export type ClientContact = PublicTables["client_contacts"]["Row"];
 export type ClientContactInsert = PublicTables["client_contacts"]["Insert"];
 export type ClientContactUpdate = PublicTables["client_contacts"]["Update"];
 
+export type ClientConversionGoal = PublicTables["client_conversion_goals"]["Row"];
+export type ClientConversionGoalInsert =
+  PublicTables["client_conversion_goals"]["Insert"];
+export type ClientConversionGoalUpdate =
+  PublicTables["client_conversion_goals"]["Update"];
+
 export type PublicClientUser = PublicTables["client_users"]["Row"];
 
 export type EmailLog = PmTables["email_log"]["Row"];

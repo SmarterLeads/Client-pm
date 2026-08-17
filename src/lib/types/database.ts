@@ -2340,6 +2340,59 @@ export type Database = {
           },
         ]
       }
+      client_conversion_goals: {
+        Row: {
+          client_id: string
+          conversion_id: string | null
+          conversion_name: string
+          conversion_value: number | null
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          platform: string
+          priority: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          conversion_id?: string | null
+          conversion_name: string
+          conversion_value?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          platform: string
+          priority?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          conversion_id?: string | null
+          conversion_name?: string
+          conversion_value?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          platform?: string
+          priority?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_conversion_goals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_conversions: {
         Row: {
           client_id: string
