@@ -1,6 +1,9 @@
 import { z } from "zod";
 
+import { CONVERSION_GOAL_TYPES } from "@/lib/clients/conversion-goal-types";
+
 export const conversionGoalPrioritySchema = z.enum(["primary", "secondary"]);
+export const conversionGoalTypeSchema = z.enum(CONVERSION_GOAL_TYPES);
 
 export const addClientConversionGoalSchema = z.object({
   clientId: z.string().uuid(),
@@ -18,6 +21,7 @@ export const updateClientConversionGoalSchema = z.object({
     .nullable()
     .optional(),
   priority: conversionGoalPrioritySchema.optional(),
+  conversion_type: conversionGoalTypeSchema.optional(),
   conversion_value: z.number().min(0).nullable().optional(),
   notes: z.string().trim().max(2000).nullable().optional(),
 });

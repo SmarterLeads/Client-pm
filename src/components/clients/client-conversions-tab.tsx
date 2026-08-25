@@ -24,6 +24,11 @@ import {
   compareConversionGoals,
   conversionPlatformSectionLabel,
 } from "@/lib/clients/conversion-channels";
+import {
+  CONVERSION_GOAL_TYPES,
+  inferConversionGoalType,
+  type ConversionGoalType,
+} from "@/lib/clients/conversion-goal-types";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { ClientConversionGoal } from "@/lib/types";
@@ -120,6 +125,28 @@ function ConversionGoalRow({ clientId, goal, disabled }: ConversionGoalRowProps)
             saveField({ conversion_id: next || null });
           }}
         />
+      </TableCell>
+      <TableCell className="w-[8.5rem]">
+        <select
+          key={`type-${goal.id}-${goal.conversion_type ?? inferConversionGoalType(goal)}`}
+          defaultValue={goal.conversion_type ?? inferConversionGoalType(goal)}
+          disabled={rowDisabled}
+          aria-label="Conversion type"
+          className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+          onChange={(event) => {
+            const next = event.target.value as ConversionGoalType;
+            const current = (goal.conversion_type ??
+              inferConversionGoalType(goal)) as ConversionGoalType;
+            if (next === current) return;
+            saveField({ conversion_type: next }, "Conversion type updated");
+          }}
+        >
+          {CONVERSION_GOAL_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
       </TableCell>
       <TableCell className="w-[8.5rem]">
         <select
@@ -248,6 +275,7 @@ function ConversionPlatformSection({
             <TableRow>
               <TableHead>Conversion Name</TableHead>
               <TableHead>Conversion ID</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Value</TableHead>
               <TableHead>Notes</TableHead>

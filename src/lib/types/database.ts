@@ -2345,6 +2345,7 @@ export type Database = {
           client_id: string
           conversion_id: string | null
           conversion_name: string
+          conversion_type: string
           conversion_value: number | null
           created_at: string
           id: string
@@ -2359,6 +2360,7 @@ export type Database = {
           client_id: string
           conversion_id?: string | null
           conversion_name: string
+          conversion_type?: string
           conversion_value?: number | null
           created_at?: string
           id?: string
@@ -2373,6 +2375,7 @@ export type Database = {
           client_id?: string
           conversion_id?: string | null
           conversion_name?: string
+          conversion_type?: string
           conversion_value?: number | null
           created_at?: string
           id?: string

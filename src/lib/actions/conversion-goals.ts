@@ -6,6 +6,7 @@ import {
   deactivateClientConversionForGoal,
   syncClientConversions,
 } from "@/lib/clients/sync-client-conversions";
+import { inferConversionGoalType } from "@/lib/clients/conversion-goal-types";
 import { getTeamMember } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import type { ClientConversionGoalUpdate } from "@/lib/types";
@@ -128,6 +129,22 @@ export async function updateClientConversionGoal(
     }
     if (updates.notes !== undefined) {
       payload.notes = updates.notes;
+    }
+    if (updates.conversion_type !== undefined) {
+      payload.conversion_type = updates.conversion_type;
+    } else if (
+      updates.conversion_name !== undefined ||
+      updates.conversion_id !== undefined
+    ) {
+      payload.conversion_type = inferConversionGoalType({
+        conversion_name:
+          updates.conversion_name ?? existing.conversion_name,
+        conversion_id:
+          updates.conversion_id === undefined
+            ? existing.conversion_id
+            : updates.conversion_id,
+        conversion_type: existing.conversion_type,
+      });
     }
 
     const { data: saved, error: updateError } = await supabase

@@ -3,6 +3,10 @@ import {
   canonicalReportPlatformSlug,
   platformSlugMatchesRow,
 } from "@/lib/marketing/report/report-tab-platform";
+import {
+  inferConversionGoalType,
+  type ConversionGoalType,
+} from "@/lib/clients/conversion-goal-types";
 import type { Database } from "@/lib/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -15,6 +19,7 @@ export type ConversionGoalSyncRow = {
   conversion_name: string;
   conversion_id: string | null;
   priority: string;
+  conversion_type?: string | null;
   is_active: boolean;
   sort_order: number;
 };
@@ -109,6 +114,7 @@ async function activateClientConversion(
   rowId: string,
   goal: ConversionGoalSyncRow,
   displayName: string,
+  conversionType: ConversionGoalType,
 ) {
   const now = new Date().toISOString();
   const { error } = await supabase
@@ -116,6 +122,7 @@ async function activateClientConversion(
     .update({
       display_name: displayName,
       group_name: displayName,
+      conversion_type: conversionType,
       is_active: true,
       is_primary: true,
       sort_order: goal.sort_order,
@@ -144,6 +151,7 @@ async function insertClientConversion(
   goal: ConversionGoalSyncRow,
   rawName: string,
   displayName: string,
+  conversionType: ConversionGoalType,
 ) {
   const now = new Date().toISOString();
   const platform = canonicalPlatform(goal.platform);
@@ -154,7 +162,7 @@ async function insertClientConversion(
     raw_name: rawName,
     display_name: displayName,
     group_name: displayName,
-    conversion_type: "lead",
+    conversion_type: conversionType,
     status: "mapped",
     is_active: true,
     is_primary: true,
@@ -193,7 +201,7 @@ export async function syncClientConversions(
   const { data: goals, error: goalsError } = await supabase
     .from("client_conversion_goals")
     .select(
-      "id, client_id, platform, conversion_name, conversion_id, priority, is_active, sort_order",
+      "id, client_id, platform, conversion_name, conversion_id, priority, conversion_type, is_active, sort_order",
     )
     .eq("client_id", clientId)
     .eq("is_active", true);
@@ -225,6 +233,7 @@ export async function syncClientConversions(
     const matches = findMatchingClientConversions(conversions, goal);
     const displayName = goal.conversion_name.trim() || goal.conversion_id?.trim() || "";
     const rawName = goal.conversion_id?.trim() || matches[0]?.raw_name?.trim() || "";
+    const conversionType = inferConversionGoalType(goal);
 
     logSyncUpdate({
       clientId: goal.client_id,
@@ -239,13 +248,25 @@ export async function syncClientConversions(
     if (shouldActivate) {
       if (matches.length > 0) {
         for (const row of matches) {
-          await activateClientConversion(supabase, row.id, goal, displayName || row.raw_name);
+          await activateClientConversion(
+            supabase,
+            row.id,
+            goal,
+            displayName || row.raw_name,
+            conversionType,
+          );
         }
         continue;
       }
 
       if (rawName) {
-        await insertClientConversion(supabase, goal, rawName, displayName || rawName);
+        await insertClientConversion(
+          supabase,
+          goal,
+          rawName,
+          displayName || rawName,
+          conversionType,
+        );
         const { data: refreshed } = await supabase
           .from("client_conversions")
           .select("id, platform, raw_name, display_name, mapped_name")
