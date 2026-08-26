@@ -121,6 +121,9 @@ export async function updateClientConversionGoal(
     if (updates.conversion_id !== undefined) {
       payload.conversion_id = updates.conversion_id;
     }
+    if (updates.event_name !== undefined) {
+      payload.event_name = updates.event_name;
+    }
     if (updates.priority !== undefined) {
       payload.priority = updates.priority;
     }
@@ -134,7 +137,8 @@ export async function updateClientConversionGoal(
       payload.conversion_type = updates.conversion_type;
     } else if (
       updates.conversion_name !== undefined ||
-      updates.conversion_id !== undefined
+      updates.conversion_id !== undefined ||
+      updates.event_name !== undefined
     ) {
       payload.conversion_type = inferConversionGoalType({
         conversion_name:
@@ -143,8 +147,21 @@ export async function updateClientConversionGoal(
           updates.conversion_id === undefined
             ? existing.conversion_id
             : updates.conversion_id,
+        event_name:
+          updates.event_name === undefined
+            ? existing.event_name
+            : updates.event_name,
         conversion_type: existing.conversion_type,
       });
+    }
+
+    if (
+      updates.conversion_id !== undefined &&
+      updates.conversion_id?.trim() &&
+      !existing.event_name?.trim() &&
+      updates.event_name === undefined
+    ) {
+      payload.event_name = updates.conversion_id.trim();
     }
 
     const { data: saved, error: updateError } = await supabase
@@ -165,6 +182,7 @@ export async function updateClientConversionGoal(
       platform: saved.platform,
       conversionName: saved.conversion_name,
       conversionId: saved.conversion_id,
+      eventName: saved.event_name,
       priority: saved.priority,
     });
 
@@ -196,7 +214,7 @@ export async function deleteClientConversionGoal(
 
     const { data: existing, error: fetchError } = await supabase
       .from("client_conversion_goals")
-      .select("client_id, platform, conversion_id, conversion_name")
+      .select("client_id, platform, conversion_id, conversion_name, event_name")
       .eq("id", id)
       .eq("client_id", clientId)
       .maybeSingle();

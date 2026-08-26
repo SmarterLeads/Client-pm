@@ -35,6 +35,7 @@ import type { ClientConversionGoal } from "@/lib/types";
 
 type ClientConversionsTabProps = {
   clientId: string;
+  clientType?: string | null;
   marketingChannels: string[] | null;
   conversionGoals: ClientConversionGoal[];
 };
@@ -42,8 +43,17 @@ type ClientConversionsTabProps = {
 type ConversionGoalRowProps = {
   clientId: string;
   goal: ClientConversionGoal;
+  isEcommerce: boolean;
   disabled?: boolean;
 };
+
+function isEcommerceClient(clientType?: string | null) {
+  return (clientType ?? "").trim().toLowerCase() === "ecommerce";
+}
+
+function displayEventName(goal: ClientConversionGoal) {
+  return goal.event_name?.trim() || goal.conversion_id?.trim() || "";
+}
 
 function parseOptionalNumber(value: string): number | null {
   const trimmed = value.trim();
@@ -57,7 +67,7 @@ function formatOptionalNumber(value: number | null): string {
   return String(value);
 }
 
-function ConversionGoalRow({ clientId, goal, disabled }: ConversionGoalRowProps) {
+function ConversionGoalRow({ clientId, goal, isEcommerce, disabled }: ConversionGoalRowProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -117,7 +127,7 @@ function ConversionGoalRow({ clientId, goal, disabled }: ConversionGoalRowProps)
           disabled={rowDisabled}
           aria-label="Conversion ID"
           className="h-8 text-sm font-mono"
-          placeholder="Raw event / action ID"
+          placeholder="Platform action ID"
           onBlur={(event) => {
             const next = event.target.value.trim();
             const current = goal.conversion_id?.trim() ?? "";
@@ -125,6 +135,34 @@ function ConversionGoalRow({ clientId, goal, disabled }: ConversionGoalRowProps)
             saveField({ conversion_id: next || null });
           }}
         />
+      </TableCell>
+      <TableCell className="min-w-[11rem] whitespace-normal">
+        <Input
+          key={`event-${goal.id}-${displayEventName(goal)}`}
+          defaultValue={displayEventName(goal)}
+          disabled={rowDisabled}
+          aria-label="Event name"
+          className="h-8 text-sm font-mono"
+          placeholder="Exact name from Google Ads / Meta"
+          title={
+            isEcommerce
+              ? "For purchases use: purchase, Purchase, or exact Google Ads conversion name"
+              : "Must match platform event name"
+          }
+          onBlur={(event) => {
+            const next = event.target.value.trim();
+            const stored = goal.event_name?.trim() ?? "";
+            const effectiveCurrent = stored || goal.conversion_id?.trim() || "";
+            const effectiveNext = next || goal.conversion_id?.trim() || "";
+            if (effectiveNext === effectiveCurrent) return;
+            saveField({ event_name: next || null });
+          }}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          {isEcommerce
+            ? "For purchases use: purchase, Purchase, or exact Google Ads conversion name"
+            : "Must match platform event name"}
+        </p>
       </TableCell>
       <TableCell className="w-[8.5rem]">
         <select
@@ -231,6 +269,7 @@ type ConversionPlatformSectionProps = {
   platform: string;
   label: string;
   goals: ClientConversionGoal[];
+  isEcommerce: boolean;
 };
 
 function ConversionPlatformSection({
@@ -238,6 +277,7 @@ function ConversionPlatformSection({
   platform,
   label,
   goals,
+  isEcommerce,
 }: ConversionPlatformSectionProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -275,6 +315,7 @@ function ConversionPlatformSection({
             <TableRow>
               <TableHead>Conversion Name</TableHead>
               <TableHead>Conversion ID</TableHead>
+              <TableHead>Event Name</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Value</TableHead>
@@ -288,6 +329,7 @@ function ConversionPlatformSection({
                 key={goal.id}
                 clientId={clientId}
                 goal={goal}
+                isEcommerce={isEcommerce}
                 disabled={isPending}
               />
             ))}
@@ -315,9 +357,11 @@ function ConversionPlatformSection({
 
 export function ClientConversionsTab({
   clientId,
+  clientType,
   marketingChannels,
   conversionGoals,
 }: ClientConversionsTabProps) {
+  const isEcommerce = isEcommerceClient(clientType);
   const activeChannels = useMemo(
     () => activeAdConversionChannels(marketingChannels),
     [marketingChannels],
@@ -360,7 +404,8 @@ export function ClientConversionsTab({
         <h2 className="text-lg font-semibold tracking-tight">Conversions</h2>
         <p className="text-sm text-muted-foreground">
           Primary conversions sync to the marketing dashboard breakdown.
-          Changes save automatically when you leave a field.
+          Event Name must match the value in conversion_events. Changes save
+          automatically when you leave a field.
         </p>
       </div>
 
@@ -371,6 +416,7 @@ export function ClientConversionsTab({
           platform={channel.platform}
           label={conversionPlatformSectionLabel(channel.platform)}
           goals={goalsByPlatform.get(channel.platform) ?? []}
+          isEcommerce={isEcommerce}
         />
       ))}
     </div>

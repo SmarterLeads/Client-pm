@@ -20,6 +20,12 @@ export const updateClientConversionGoalSchema = z.object({
     .max(200)
     .nullable()
     .optional(),
+  event_name: z
+    .string()
+    .trim()
+    .max(200)
+    .nullable()
+    .optional(),
   priority: conversionGoalPrioritySchema.optional(),
   conversion_type: conversionGoalTypeSchema.optional(),
   conversion_value: z.number().min(0).nullable().optional(),

@@ -215,6 +215,7 @@ export function ClientDetailTabs({
       {activeTab === "conversions" ? (
         <ClientConversionsTab
           clientId={client.id}
+          clientType={client.client_type}
           marketingChannels={client.marketing_channels}
           conversionGoals={conversionGoals ?? []}
         />

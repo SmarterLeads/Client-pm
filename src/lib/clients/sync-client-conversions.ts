@@ -18,6 +18,7 @@ export type ConversionGoalSyncRow = {
   platform: string;
   conversion_name: string;
   conversion_id: string | null;
+  event_name?: string | null;
   priority: string;
   conversion_type?: string | null;
   is_active: boolean;
@@ -32,13 +33,22 @@ type ClientConversionRow = {
   mapped_name: string | null;
 };
 
+/** Event name stored as client_conversions.raw_name (falls back to conversion_id). */
+export function resolveGoalEventName(
+  goal: Pick<ConversionGoalSyncRow, "event_name" | "conversion_id">,
+): string {
+  return goal.event_name?.trim() || goal.conversion_id?.trim() || "";
+}
+
 function canonicalPlatform(platform: string): string {
   return (
     canonicalReportPlatformSlug(platform) ?? platform.trim().toLowerCase()
   );
 }
 
-function conversionRowLabel(row: Pick<ClientConversionRow, "display_name" | "mapped_name" | "raw_name">): string {
+function conversionRowLabel(
+  row: Pick<ClientConversionRow, "display_name" | "mapped_name" | "raw_name">,
+): string {
   return (
     row.display_name?.trim() ||
     row.mapped_name?.trim() ||
@@ -60,22 +70,25 @@ function namesMatch(a: string, b: string): boolean {
   return left.length > 0 && left === right;
 }
 
-/** Match `client_conversions` rows for a goal (platform slug + raw_name or display name). */
+/** Match `client_conversions` rows for a goal (platform slug + event/raw name or display name). */
 export function findMatchingClientConversions(
   conversions: ClientConversionRow[],
-  goal: Pick<ConversionGoalSyncRow, "platform" | "conversion_id" | "conversion_name">,
+  goal: Pick<
+    ConversionGoalSyncRow,
+    "platform" | "event_name" | "conversion_id" | "conversion_name"
+  >,
 ): ClientConversionRow[] {
   const platformSlug = canonicalPlatform(goal.platform);
-  const conversionId = goal.conversion_id?.trim() ?? "";
+  const eventName = resolveGoalEventName(goal);
   const conversionName = goal.conversion_name.trim();
 
   const platformMatches = conversions.filter((row) =>
     platformSlugMatchesRow(row.platform ?? "", platformSlug),
   );
 
-  if (conversionId) {
+  if (eventName) {
     const byRaw = platformMatches.filter((row) =>
-      rawNamesMatch(row.raw_name ?? "", conversionId),
+      rawNamesMatch(row.raw_name ?? "", eventName),
     );
     if (byRaw.length > 0) return byRaw;
   }
@@ -93,6 +106,7 @@ function logSyncUpdate(args: {
   clientId: string;
   platform: string;
   conversionName: string;
+  eventName?: string | null;
   isActive: boolean;
   conversionId?: string | null;
   matchedIds?: string[];
@@ -102,6 +116,7 @@ function logSyncUpdate(args: {
     clientId: args.clientId,
     platform: args.platform,
     conversionName: args.conversionName,
+    eventName: args.eventName ?? null,
     isActive: args.isActive,
     conversionId: args.conversionId ?? null,
     matchedIds: args.matchedIds ?? [],
@@ -113,6 +128,7 @@ async function activateClientConversion(
   supabase: DbClient,
   rowId: string,
   goal: ConversionGoalSyncRow,
+  rawName: string,
   displayName: string,
   conversionType: ConversionGoalType,
 ) {
@@ -120,6 +136,7 @@ async function activateClientConversion(
   const { error } = await supabase
     .from("client_conversions")
     .update({
+      raw_name: rawName,
       display_name: displayName,
       group_name: displayName,
       conversion_type: conversionType,
@@ -201,7 +218,7 @@ export async function syncClientConversions(
   const { data: goals, error: goalsError } = await supabase
     .from("client_conversion_goals")
     .select(
-      "id, client_id, platform, conversion_name, conversion_id, priority, conversion_type, is_active, sort_order",
+      "id, client_id, platform, conversion_name, conversion_id, event_name, priority, conversion_type, is_active, sort_order",
     )
     .eq("client_id", clientId)
     .eq("is_active", true);
@@ -228,17 +245,17 @@ export async function syncClientConversions(
     : (goals ?? []);
 
   for (const goal of goalsToSync) {
-    const shouldActivate =
-      goal.is_active && goal.priority === "primary";
+    const shouldActivate = goal.is_active && goal.priority === "primary";
     const matches = findMatchingClientConversions(conversions, goal);
-    const displayName = goal.conversion_name.trim() || goal.conversion_id?.trim() || "";
-    const rawName = goal.conversion_id?.trim() || matches[0]?.raw_name?.trim() || "";
+    const rawName = resolveGoalEventName(goal) || matches[0]?.raw_name?.trim() || "";
+    const displayName = goal.conversion_name.trim() || rawName;
     const conversionType = inferConversionGoalType(goal);
 
     logSyncUpdate({
       clientId: goal.client_id,
       platform: goal.platform,
       conversionName: goal.conversion_name,
+      eventName: goal.event_name,
       isActive: shouldActivate,
       conversionId: goal.conversion_id,
       matchedIds: matches.map((row) => row.id),
@@ -252,7 +269,8 @@ export async function syncClientConversions(
             supabase,
             row.id,
             goal,
-            displayName || row.raw_name,
+            rawName || row.raw_name,
+            displayName,
             conversionType,
           );
         }
@@ -264,7 +282,7 @@ export async function syncClientConversions(
           supabase,
           goal,
           rawName,
-          displayName || rawName,
+          displayName,
           conversionType,
         );
         const { data: refreshed } = await supabase
@@ -286,7 +304,7 @@ export async function deactivateClientConversionForGoal(
   supabase: DbClient = createServiceClient(),
   goal: Pick<
     ConversionGoalSyncRow,
-    "client_id" | "platform" | "conversion_id" | "conversion_name"
+    "client_id" | "platform" | "event_name" | "conversion_id" | "conversion_name"
   >,
 ) {
   const { data, error } = await supabase
@@ -304,6 +322,7 @@ export async function deactivateClientConversionForGoal(
     clientId: goal.client_id,
     platform: goal.platform,
     conversionName: goal.conversion_name,
+    eventName: goal.event_name,
     isActive: false,
     conversionId: goal.conversion_id,
     matchedIds: matches.map((row) => row.id),

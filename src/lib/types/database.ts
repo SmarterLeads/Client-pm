@@ -2348,6 +2348,7 @@ export type Database = {
           conversion_type: string
           conversion_value: number | null
           created_at: string
+          event_name: string | null
           id: string
           is_active: boolean
           notes: string | null
@@ -2363,6 +2364,7 @@ export type Database = {
           conversion_type?: string
           conversion_value?: number | null
           created_at?: string
+          event_name?: string | null
           id?: string
           is_active?: boolean
           notes?: string | null
@@ -2378,6 +2380,7 @@ export type Database = {
           conversion_type?: string
           conversion_value?: number | null
           created_at?: string
+          event_name?: string | null
           id?: string
           is_active?: boolean
           notes?: string | null

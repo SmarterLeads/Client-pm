@@ -12,6 +12,7 @@ export type ConversionGoalType = (typeof CONVERSION_GOAL_TYPES)[number];
 export function inferConversionGoalType(input: {
   conversion_name?: string | null;
   conversion_id?: string | null;
+  event_name?: string | null;
   conversion_type?: string | null;
 }): ConversionGoalType {
   const explicit = input.conversion_type?.trim().toLowerCase();
@@ -24,7 +25,12 @@ export function inferConversionGoalType(input: {
 
   const name = input.conversion_name?.trim().toLowerCase() ?? "";
   const id = input.conversion_id?.trim().toLowerCase() ?? "";
-  if (name.includes("purchase") || id === "purchase") {
+  const eventName = input.event_name?.trim().toLowerCase() ?? "";
+  if (
+    name.includes("purchase") ||
+    id === "purchase" ||
+    eventName === "purchase"
+  ) {
     return "purchase";
   }
 
