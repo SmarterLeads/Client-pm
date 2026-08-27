@@ -1,5 +1,6 @@
 ﻿import {
   BarChart3,
+  BookOpen,
   Building2,
   CheckSquare,
   FolderKanban,
@@ -94,6 +95,12 @@ export const deliveryNavItems: AppNavItem[] = [
     href: "/internal/meetings",
     label: "Team Meetings",
     icon: Users,
+    matchPrefix: true,
+  },
+  {
+    href: "/knowledge-base",
+    label: "Knowledge Base",
+    icon: BookOpen,
     matchPrefix: true,
   },
   { href: "/team", label: "Team", icon: Users, matchPrefix: true },

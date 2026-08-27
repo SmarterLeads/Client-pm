@@ -58,6 +58,18 @@ export type Interaction = PmTables["interactions"]["Row"];
 export type InteractionInsert = PmTables["interactions"]["Insert"];
 export type InteractionUpdate = PmTables["interactions"]["Update"];
 
+export type KbCategory = PmTables["kb_categories"]["Row"];
+export type KbCategoryInsert = PmTables["kb_categories"]["Insert"];
+export type KbCategoryUpdate = PmTables["kb_categories"]["Update"];
+
+export type KbArticle = PmTables["kb_articles"]["Row"];
+export type KbArticleInsert = PmTables["kb_articles"]["Insert"];
+export type KbArticleUpdate = PmTables["kb_articles"]["Update"];
+
+export type KbArticleVersion = PmTables["kb_article_versions"]["Row"];
+export type KbArticleVersionInsert = PmTables["kb_article_versions"]["Insert"];
+export type KbArticleVersionUpdate = PmTables["kb_article_versions"]["Update"];
+
 export type Milestone = PmTables["milestones"]["Row"];
 export type MilestoneInsert = PmTables["milestones"]["Insert"];
 export type MilestoneUpdate = PmTables["milestones"]["Update"];
