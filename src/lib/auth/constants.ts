@@ -8,6 +8,7 @@ export const APP_PROTECTED_PREFIXES = [
   "/team",
   "/settings",
   "/history",
+  "/knowledge-base",
 ] as const;
 
 export function isAppProtectedPath(pathname: string): boolean {

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { canManageKnowledgeBase } from "@/lib/knowledge-base/access";
 import { getTeamMember } from "@/lib/auth/session";
 import {
+  getKbArticleBySlug,
   getKbArticleBySlugs,
   getKbArticleVersions,
 } from "@/lib/queries/knowledge-base";
@@ -23,7 +24,18 @@ export default async function KnowledgeBaseArticlePage({
   if (!teamMember) redirect("/login");
 
   const { categorySlug, articleSlug } = await params;
-  const article = await getKbArticleBySlugs(categorySlug, articleSlug);
+  let article = await getKbArticleBySlugs(categorySlug, articleSlug);
+
+  if (!article) {
+    const bySlug = await getKbArticleBySlug(articleSlug);
+    if (bySlug) {
+      if (bySlug.category_slug !== categorySlug) {
+        redirect(`/knowledge-base/${bySlug.category_slug}/${bySlug.slug}`);
+      }
+      article = bySlug;
+    }
+  }
+
   if (!article) notFound();
 
   const canEdit = canManageKnowledgeBase(teamMember);
