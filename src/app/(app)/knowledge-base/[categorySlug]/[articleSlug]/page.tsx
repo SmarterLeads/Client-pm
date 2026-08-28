@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { KbBlockRenderer } from "@/components/knowledge-base/kb-block-renderer";
+import { ArticleRenderer } from "@/components/knowledge-base/article-renderer";
 import { KbSearch } from "@/components/knowledge-base/kb-search";
 import { KbVersionHistory } from "@/components/knowledge-base/kb-version-history";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,7 @@ export default async function KnowledgeBaseArticlePage({
       </div>
 
       <article className="max-w-3xl">
-        <KbBlockRenderer blocks={article.content} />
+        <ArticleRenderer blocks={article.content} />
       </article>
 
       {canEdit ? (
