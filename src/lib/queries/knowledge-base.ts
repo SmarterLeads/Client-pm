@@ -169,11 +169,13 @@ export async function getKbArticlesByCategory(
   const { data, error } = await pm(supabase)
     .from("kb_articles")
     .select(
-      "id, title, slug, excerpt, updated_at, kb_categories!inner(slug, name)",
+      `id, title, slug, excerpt, updated_at,
+      kb_categories!inner(slug, name),
+      updated_by:team_members!kb_articles_updated_by_fkey(name, avatar_url)`,
     )
     .eq("category_id", category.id)
     .eq("is_published", true)
-    .order("title", { ascending: true });
+    .order("updated_at", { ascending: false });
 
   if (error) {
     console.error("[getKbArticlesByCategory]", error.message);
@@ -182,6 +184,7 @@ export async function getKbArticlesByCategory(
 
   const articles: KbArticleListRow[] = (data ?? []).map((row) => {
     const cat = row.kb_categories as { slug: string; name: string };
+    const updatedBy = row.updated_by as { name: string; avatar_url: string | null } | null;
     return {
       id: row.id,
       title: row.title,
@@ -190,6 +193,8 @@ export async function getKbArticlesByCategory(
       updated_at: row.updated_at,
       category_slug: cat.slug,
       category_name: cat.name,
+      updated_by_name: updatedBy?.name ?? null,
+      updated_by_avatar_url: updatedBy?.avatar_url ?? null,
     };
   });
 
@@ -203,7 +208,9 @@ export async function getKbRecentArticles(
   const { data, error } = await pm(supabase)
     .from("kb_articles")
     .select(
-      "id, title, slug, excerpt, updated_at, kb_categories!inner(slug, name)",
+      `id, title, slug, excerpt, updated_at,
+      kb_categories!inner(slug, name),
+      updated_by:team_members!kb_articles_updated_by_fkey(name, avatar_url)`,
     )
     .eq("is_published", true)
     .order("updated_at", { ascending: false })
@@ -216,6 +223,7 @@ export async function getKbRecentArticles(
 
   return (data ?? []).map((row) => {
     const cat = row.kb_categories as { slug: string; name: string };
+    const updatedBy = row.updated_by as { name: string; avatar_url: string | null } | null;
     return {
       id: row.id,
       title: row.title,
@@ -224,6 +232,8 @@ export async function getKbRecentArticles(
       updated_at: row.updated_at,
       category_slug: cat.slug,
       category_name: cat.name,
+      updated_by_name: updatedBy?.name ?? null,
+      updated_by_avatar_url: updatedBy?.avatar_url ?? null,
     };
   });
 }

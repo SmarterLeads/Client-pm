@@ -1,4 +1,5 @@
 import type { KbBlock } from "@/lib/knowledge-base/types";
+import { plainTextFromBlocks } from "@/lib/knowledge-base/html-content";
 import { parseKbBlocks } from "@/lib/knowledge-base/types";
 
 function newBlockId(): string {
@@ -20,34 +21,15 @@ export function createEmptyBlock(type: KbBlock["type"] = "paragraph"): KbBlock {
       return { id, type, src: "", alt: "" };
     case "link":
       return { id, type, content: "", text: "" };
+    case "html":
+      return { id, type, content: "<p></p>" };
     default:
       return { id, type, content: "" };
   }
 }
 
 export function blocksToPlainText(blocks: KbBlock[]): string {
-  const parts: string[] = [];
-
-  for (const block of blocks) {
-    switch (block.type) {
-      case "bullet_list":
-      case "numbered_list":
-        parts.push(...(block.items ?? []).filter(Boolean));
-        break;
-      case "link":
-        parts.push(block.text ?? "", block.content ?? "");
-        break;
-      case "image":
-        parts.push(block.alt ?? "");
-        break;
-      case "divider":
-        break;
-      default:
-        parts.push(block.content ?? "");
-    }
-  }
-
-  return parts.filter(Boolean).join("\n");
+  return plainTextFromBlocks(blocks);
 }
 
 export function generateKbExcerpt(blocks: KbBlock[], maxLength = 200): string {

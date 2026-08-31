@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
-import { KbBlockEditor } from "@/components/knowledge-base/kb-block-editor";
+import { KbRichTextEditor } from "@/components/knowledge-base/kb-rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,8 +12,8 @@ import {
   updateArticle,
   uploadKbImage,
 } from "@/lib/actions/knowledge-base";
-import type { KbArticleDetail } from "@/lib/knowledge-base/types";
-import type { KbCategoryRow } from "@/lib/knowledge-base/types";
+import { blocksToHtml, htmlToBlocks } from "@/lib/knowledge-base/html-content";
+import type { KbArticleDetail, KbCategoryRow } from "@/lib/knowledge-base/types";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 type KbArticleEditorProps = {
@@ -25,14 +25,14 @@ export function KbArticleEditor({ article, categories }: KbArticleEditorProps) {
   const router = useRouter();
   const [title, setTitle] = useState(article.title);
   const [categoryId, setCategoryId] = useState(article.category_id ?? "");
-  const [blocks, setBlocks] = useState(article.content);
+  const [html, setHtml] = useState(() => blocksToHtml(article.content));
   const [isPending, startTransition] = useTransition();
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const dirtyRef = useRef(false);
 
   useEffect(() => {
     dirtyRef.current = true;
-  }, [title, categoryId, blocks]);
+  }, [title, categoryId, html]);
 
   const save = useCallback(() => {
     startTransition(async () => {
@@ -40,7 +40,7 @@ export function KbArticleEditor({ article, categories }: KbArticleEditorProps) {
         id: article.id,
         title,
         categoryId: categoryId || null,
-        content: blocks,
+        content: htmlToBlocks(html),
       });
       if (result.error) {
         toastError(result.error);
@@ -51,7 +51,7 @@ export function KbArticleEditor({ article, categories }: KbArticleEditorProps) {
       toastSuccess("Article saved");
       router.refresh();
     });
-  }, [article.id, blocks, categoryId, router, title]);
+  }, [article.id, categoryId, html, router, title]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -89,16 +89,14 @@ export function KbArticleEditor({ article, categories }: KbArticleEditorProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">
             {article.category_name} · Auto-saves every 30 seconds
           </p>
           {lastSavedAt ? (
-            <p className="text-xs text-muted-foreground">
-              Last saved at {lastSavedAt}
-            </p>
+            <p className="text-xs text-muted-foreground">Last saved at {lastSavedAt}</p>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -144,9 +142,9 @@ export function KbArticleEditor({ article, categories }: KbArticleEditorProps) {
         </select>
       </div>
 
-      <KbBlockEditor
-        blocks={blocks}
-        onChange={setBlocks}
+      <KbRichTextEditor
+        value={html}
+        onChange={setHtml}
         onUploadImage={handleUploadImage}
         disabled={isPending}
       />

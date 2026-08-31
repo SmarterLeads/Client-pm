@@ -138,6 +138,14 @@ function renderBlock(block: KbBlock) {
     case "divider":
       return <hr className="my-6 border-t border-gray-200 dark:border-border" />;
 
+    case "html":
+      return (
+        <div
+          className="kb-html-block"
+          dangerouslySetInnerHTML={{ __html: block.content ?? "" }}
+        />
+      );
+
     case "paragraph":
     default: {
       const content = block.content?.trim() ?? "";

@@ -298,7 +298,7 @@ export async function createArticle(
     if (!category) return { error: "Category not found." };
 
     const initialBlocks: KbBlock[] = [
-      { id: randomUUID(), type: "paragraph", content: "" },
+      { id: randomUUID(), type: "html", content: "<p></p>" },
     ];
 
     const { data, error } = await pm(supabase)

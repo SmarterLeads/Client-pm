@@ -16,6 +16,7 @@ export const KB_BLOCK_TYPES = [
   "link",
   "code",
   "divider",
+  "html",
 ] as const;
 
 export type KbBlockType = (typeof KB_BLOCK_TYPES)[number];
@@ -51,6 +52,8 @@ export type KbArticleListRow = {
   updated_at: string;
   category_slug: string;
   category_name: string;
+  updated_by_name: string | null;
+  updated_by_avatar_url: string | null;
 };
 
 export type KbArticleDetail = {
