@@ -8,7 +8,7 @@ import {
   Pencil,
 } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { KbArticleContent } from "@/components/knowledge-base/kb-article-content";
 import { Button } from "@/components/ui/button";
 import { reorderArticles } from "@/lib/actions/knowledge-base";
 import type { KbArticleListRow } from "@/lib/knowledge-base/types";
@@ -23,16 +23,6 @@ type KbArticleListProps = {
   canEdit: boolean;
   emptyMessage: string;
 };
-
-function initials(name: string | null | undefined): string {
-  if (!name) return "?";
-  return name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
 
 function ArticleRow({
   article,
@@ -64,18 +54,19 @@ function ArticleRow({
         )}
       >
         <div className="flex items-center gap-2 py-3 pl-4 pr-3">
-          <Link
-            href={articleHref}
-            className="min-w-0 flex-1 truncate text-base font-medium hover:text-primary"
+          <button
+            type="button"
+            onClick={() => setExpanded((open) => !open)}
+            className="min-w-0 flex-1 truncate text-left text-base font-medium hover:text-primary"
           >
             {article.title}
-          </Link>
+          </button>
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
             aria-expanded={expanded}
-            aria-label={expanded ? "Collapse details" : "Expand details"}
+            aria-label={expanded ? "Collapse article" : "Expand article"}
             onClick={() => setExpanded((open) => !open)}
             className="shrink-0 text-muted-foreground"
           >
@@ -89,44 +80,11 @@ function ArticleRow({
         </div>
 
         {expanded ? (
-          <div className="space-y-3 border-t border-border px-4 py-3 pr-12">
-            {article.excerpt ? (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {article.excerpt}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">No preview available.</p>
-            )}
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              {article.updated_by_name ? (
-                <span className="flex items-center gap-1.5">
-                  <Avatar size="sm">
-                    {article.updated_by_avatar_url ? (
-                      <AvatarImage src={article.updated_by_avatar_url} alt="" />
-                    ) : null}
-                    <AvatarFallback className="text-[9px]">
-                      {initials(article.updated_by_name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {article.updated_by_name}
-                </span>
-              ) : null}
-              {article.updated_by_name ? <span aria-hidden>·</span> : null}
-              <time dateTime={article.updated_at}>
-                Updated{" "}
-                {new Date(article.updated_at).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </time>
-            </div>
-            <Link
-              href={articleHref}
-              className="inline-block text-sm font-medium text-primary hover:underline"
-            >
-              Read article
-            </Link>
+          <div className="border-t border-border px-4 py-4 pr-12">
+            <KbArticleContent
+              blocks={article.content ?? []}
+              showToc={false}
+            />
           </div>
         ) : null}
 

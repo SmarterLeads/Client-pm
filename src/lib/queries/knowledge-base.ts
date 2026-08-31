@@ -39,6 +39,7 @@ function mapArticleListRow(row: {
   title: string;
   slug: string;
   excerpt: string | null;
+  content?: unknown;
   sort_order?: number;
   updated_at: string;
   subcategory_id?: string | null;
@@ -54,6 +55,9 @@ function mapArticleListRow(row: {
     title: row.title,
     slug: row.slug,
     excerpt: row.excerpt,
+    ...(row.content !== undefined
+      ? { content: parseKbBlocks(row.content as never) }
+      : {}),
     sort_order: row.sort_order ?? 0,
     updated_at: row.updated_at,
     category_slug: cat.slug,
@@ -261,7 +265,7 @@ export async function getKbArticlesByCategory(
     pm(supabase)
       .from("kb_articles")
       .select(
-        `id, title, slug, excerpt, sort_order, updated_at, subcategory_id,
+        `id, title, slug, excerpt, content, sort_order, updated_at, subcategory_id,
         kb_categories!kb_articles_category_id_fkey!inner(slug, name),
         subcategory:kb_categories!kb_articles_subcategory_id_fkey(slug, name),
         updated_by:team_members!kb_articles_updated_by_fkey(name, avatar_url)`,

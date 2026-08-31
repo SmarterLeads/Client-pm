@@ -58,6 +58,7 @@ export type KbArticleListRow = {
   title: string;
   slug: string;
   excerpt: string | null;
+  content?: KbBlock[];
   sort_order: number;
   updated_at: string;
   category_slug: string;
