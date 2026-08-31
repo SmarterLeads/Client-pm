@@ -31,6 +31,12 @@ export const reorderKbCategoriesSchema = z.object({
   orderedIds: z.array(z.string().uuid()).min(1),
 });
 
+export const reorderKbArticlesSchema = z.object({
+  categoryId: z.string().uuid(),
+  subcategoryId: z.string().uuid().nullable().optional(),
+  orderedIds: z.array(z.string().uuid()).min(1),
+});
+
 export const createKbArticleSchema = z.object({
   categoryId: z.string().uuid(),
   subcategoryId: z.string().uuid().nullable().optional(),

@@ -28,6 +28,7 @@ import {
   deleteKbArticleSchema,
   deleteKbCategorySchema,
   reorderKbCategoriesSchema,
+  reorderKbArticlesSchema,
   updateKbArticleSchema,
   updateKbCategorySchema,
 } from "@/lib/validations/knowledge-base";
@@ -422,6 +423,87 @@ async function validateSubcategoryForCategory(
   return { subcategoryId };
 }
 
+async function nextArticleSortOrder(
+  supabase: ReturnType<typeof createServiceClient>,
+  categoryId: string,
+  subcategoryId: string | null,
+): Promise<number> {
+  let query = pm(supabase)
+    .from("kb_articles")
+    .select("sort_order")
+    .eq("category_id", categoryId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+
+  if (subcategoryId) {
+    query = query.eq("subcategory_id", subcategoryId);
+  } else {
+    query = query.is("subcategory_id", null);
+  }
+
+  const { data } = await query;
+  return (data?.[0]?.sort_order ?? -1) + 1;
+}
+
+export async function reorderArticles(
+  input: Record<string, unknown>,
+): Promise<{ error?: string }> {
+  try {
+    await requireKbEditor();
+    const parsed = reorderKbArticlesSchema.safeParse(input);
+    if (!parsed.success) {
+      return { error: "Invalid article order." };
+    }
+
+    const supabase = createServiceClient();
+    const subcategoryId = parsed.data.subcategoryId ?? null;
+
+    let scopeQuery = pm(supabase)
+      .from("kb_articles")
+      .select("id")
+      .eq("category_id", parsed.data.categoryId);
+
+    if (subcategoryId) {
+      scopeQuery = scopeQuery.eq("subcategory_id", subcategoryId);
+    } else {
+      scopeQuery = scopeQuery.is("subcategory_id", null);
+    }
+
+    const { data: scoped, error: scopeError } = await scopeQuery;
+    if (scopeError) return { error: scopeError.message };
+
+    const scopedIds = new Set((scoped ?? []).map((row) => row.id));
+    if (
+      parsed.data.orderedIds.length !== scopedIds.size ||
+      !parsed.data.orderedIds.every((id) => scopedIds.has(id))
+    ) {
+      return { error: "Article list does not match this category scope." };
+    }
+
+    for (const [index, id] of parsed.data.orderedIds.entries()) {
+      const { error } = await pm(supabase)
+        .from("kb_articles")
+        .update({ sort_order: index })
+        .eq("id", id);
+      if (error) return { error: error.message };
+    }
+
+    const { data: category } = await pm(supabase)
+      .from("kb_categories")
+      .select("slug")
+      .eq("id", parsed.data.categoryId)
+      .maybeSingle();
+
+    revalidateKbPaths(category?.slug);
+    return {};
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : "Failed to reorder articles.",
+    };
+  }
+}
+
 export async function createArticle(
   input: Record<string, unknown>,
 ): Promise<{ error?: string; redirectTo?: string }> {
@@ -458,11 +540,18 @@ export async function createArticle(
       { id: randomUUID(), type: "html", content: "<p></p>" },
     ];
 
+    const sortOrder = await nextArticleSortOrder(
+      supabase,
+      parsed.data.categoryId,
+      subcategoryCheck.subcategoryId,
+    );
+
     const { data, error } = await pm(supabase)
       .from("kb_articles")
       .insert({
         category_id: parsed.data.categoryId,
         subcategory_id: subcategoryCheck.subcategoryId,
+        sort_order: sortOrder,
         title: parsed.data.title,
         slug,
         content: serializeKbBlocks(initialBlocks),
@@ -499,7 +588,7 @@ export async function updateArticle(
     const { data: existing, error: fetchError } = await pm(supabase)
       .from("kb_articles")
       .select(
-        "id, title, slug, content, category_id, kb_categories!kb_articles_category_id_fkey!inner(slug)",
+        "id, title, slug, content, category_id, subcategory_id, kb_categories!kb_articles_category_id_fkey!inner(slug)",
       )
       .eq("id", parsed.data.id)
       .maybeSingle();
@@ -545,6 +634,28 @@ export async function updateArticle(
       if (subcategoryCheck.error) return { error: subcategoryCheck.error };
       payload.subcategory_id = subcategoryCheck.subcategoryId;
     }
+
+    const targetCategoryId =
+      parsed.data.categoryId ?? existing.category_id ?? null;
+    const targetSubcategoryId =
+      parsed.data.subcategoryId !== undefined
+        ? (payload.subcategory_id ?? null)
+        : existing.subcategory_id;
+
+    if (
+      targetCategoryId &&
+      (parsed.data.categoryId !== undefined ||
+        parsed.data.subcategoryId !== undefined) &&
+      (targetCategoryId !== existing.category_id ||
+        targetSubcategoryId !== existing.subcategory_id)
+    ) {
+      payload.sort_order = await nextArticleSortOrder(
+        supabase,
+        targetCategoryId,
+        targetSubcategoryId,
+      );
+    }
+
     if (parsed.data.isPublished !== undefined) {
       payload.is_published = parsed.data.isPublished;
     }

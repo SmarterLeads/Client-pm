@@ -988,6 +988,7 @@ export type Database = {
           id: string
           is_published: boolean
           slug: string
+          sort_order: number
           subcategory_id: string | null
           title: string
           updated_at: string
@@ -1002,6 +1003,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           slug: string
+          sort_order?: number
           subcategory_id?: string | null
           title: string
           updated_at?: string
@@ -1016,6 +1018,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           slug?: string
+          sort_order?: number
           subcategory_id?: string | null
           title?: string
           updated_at?: string

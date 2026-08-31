@@ -39,6 +39,7 @@ function mapArticleListRow(row: {
   title: string;
   slug: string;
   excerpt: string | null;
+  sort_order?: number;
   updated_at: string;
   subcategory_id?: string | null;
   kb_categories: { slug: string; name: string };
@@ -53,6 +54,7 @@ function mapArticleListRow(row: {
     title: row.title,
     slug: row.slug,
     excerpt: row.excerpt,
+    sort_order: row.sort_order ?? 0,
     updated_at: row.updated_at,
     category_slug: cat.slug,
     category_name: cat.name,
@@ -259,14 +261,15 @@ export async function getKbArticlesByCategory(
     pm(supabase)
       .from("kb_articles")
       .select(
-        `id, title, slug, excerpt, updated_at, subcategory_id,
+        `id, title, slug, excerpt, sort_order, updated_at, subcategory_id,
         kb_categories!kb_articles_category_id_fkey!inner(slug, name),
         subcategory:kb_categories!kb_articles_subcategory_id_fkey(slug, name),
         updated_by:team_members!kb_articles_updated_by_fkey(name, avatar_url)`,
       )
       .eq("category_id", category.id)
       .eq("is_published", true)
-      .order("updated_at", { ascending: false }),
+      .order("sort_order", { ascending: true })
+      .order("title", { ascending: true }),
   ]);
 
   const { data, error } = articlesResult;
