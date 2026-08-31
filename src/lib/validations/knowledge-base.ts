@@ -15,6 +15,12 @@ const kbBlockSchema = z.object({
 export const createKbCategorySchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   description: z.string().trim().max(500).nullable().optional(),
+  parentId: z.string().uuid().nullable().optional(),
+});
+
+export const createKbSubcategorySchema = z.object({
+  parentId: z.string().uuid(),
+  name: z.string().trim().min(1, "Name is required").max(120),
 });
 
 export const updateKbCategorySchema = createKbCategorySchema.extend({
@@ -27,6 +33,7 @@ export const reorderKbCategoriesSchema = z.object({
 
 export const createKbArticleSchema = z.object({
   categoryId: z.string().uuid(),
+  subcategoryId: z.string().uuid().nullable().optional(),
   title: z.string().trim().min(1, "Title is required").max(200),
   slug: z.string().trim().max(120).optional(),
 });
@@ -34,6 +41,7 @@ export const createKbArticleSchema = z.object({
 export const updateKbArticleSchema = z.object({
   id: z.string().uuid(),
   categoryId: z.string().uuid().nullable().optional(),
+  subcategoryId: z.string().uuid().nullable().optional(),
   title: z.string().trim().min(1).max(200).optional(),
   slug: z.string().trim().max(120).optional(),
   content: z.array(kbBlockSchema).optional(),

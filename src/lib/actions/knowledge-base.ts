@@ -24,6 +24,7 @@ import { ATTACHMENTS_BUCKET, ensureAttachmentsBucket } from "@/lib/storage";
 import {
   createKbArticleSchema,
   createKbCategorySchema,
+  createKbSubcategorySchema,
   deleteKbArticleSchema,
   deleteKbCategorySchema,
   reorderKbCategoriesSchema,
@@ -127,11 +128,20 @@ export async function createCategory(
     }
 
     const supabase = createServiceClient();
-    const { data: last } = await pm(supabase)
+    const parentId = parsed.data.parentId ?? null;
+    let lastQuery = pm(supabase)
       .from("kb_categories")
       .select("sort_order")
       .order("sort_order", { ascending: false })
       .limit(1);
+
+    if (parentId) {
+      lastQuery = lastQuery.eq("parent_id", parentId);
+    } else {
+      lastQuery = lastQuery.is("parent_id", null);
+    }
+
+    const { data: last } = await lastQuery;
 
     const slug = await uniqueCategorySlug(supabase, parsed.data.name);
     const { data, error } = await pm(supabase)
@@ -140,6 +150,7 @@ export async function createCategory(
         name: parsed.data.name,
         slug,
         description: parsed.data.description ?? null,
+        parent_id: parsed.data.parentId ?? null,
         sort_order: (last?.[0]?.sort_order ?? -1) + 1,
       })
       .select("id, slug")
@@ -250,6 +261,16 @@ export async function deleteCategory(id: string): Promise<{ error?: string }> {
       return { error: "Remove or move articles before deleting this category." };
     }
 
+    const { count: subCount, error: subCountError } = await pm(supabase)
+      .from("kb_categories")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", id);
+
+    if (subCountError) return { error: subCountError.message };
+    if ((subCount ?? 0) > 0) {
+      return { error: "Remove sub-categories before deleting this category." };
+    }
+
     const { data: category } = await pm(supabase)
       .from("kb_categories")
       .select("slug")
@@ -270,6 +291,135 @@ export async function deleteCategory(id: string): Promise<{ error?: string }> {
       error: err instanceof Error ? err.message : "Failed to delete category.",
     };
   }
+}
+
+export async function createSubcategory(
+  input: Record<string, unknown>,
+): Promise<{ error?: string; subcategoryId?: string }> {
+  try {
+    await requireKbEditor();
+    const parsed = createKbSubcategorySchema.safeParse(input);
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    }
+
+    const supabase = createServiceClient();
+    const { data: parent, error: parentError } = await pm(supabase)
+      .from("kb_categories")
+      .select("id, slug")
+      .eq("id", parsed.data.parentId)
+      .is("parent_id", null)
+      .maybeSingle();
+
+    if (parentError) return { error: parentError.message };
+    if (!parent) return { error: "Parent category not found." };
+
+    const { data: last } = await pm(supabase)
+      .from("kb_categories")
+      .select("sort_order")
+      .eq("parent_id", parsed.data.parentId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+
+    const slug = await uniqueCategorySlug(supabase, parsed.data.name);
+    const { data, error } = await pm(supabase)
+      .from("kb_categories")
+      .insert({
+        name: parsed.data.name,
+        slug,
+        parent_id: parsed.data.parentId,
+        sort_order: (last?.[0]?.sort_order ?? -1) + 1,
+      })
+      .select("id")
+      .single();
+
+    if (error) return { error: error.message };
+
+    revalidateKbPaths(parent.slug);
+    return { subcategoryId: data.id };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : "Failed to create sub-category.",
+    };
+  }
+}
+
+export async function deleteSubcategory(id: string): Promise<{ error?: string }> {
+  try {
+    await requireKbEditor();
+    const parsed = deleteKbCategorySchema.safeParse({ id });
+    if (!parsed.success) {
+      return { error: "Invalid sub-category." };
+    }
+
+    const supabase = createServiceClient();
+    const { data: subcategory, error: fetchError } = await pm(supabase)
+      .from("kb_categories")
+      .select("id, parent_id")
+      .eq("id", id)
+      .not("parent_id", "is", null)
+      .maybeSingle();
+
+    if (fetchError) return { error: fetchError.message };
+    if (!subcategory?.parent_id) return { error: "Sub-category not found." };
+
+    const { data: parent, error: parentError } = await pm(supabase)
+      .from("kb_categories")
+      .select("slug")
+      .eq("id", subcategory.parent_id)
+      .maybeSingle();
+
+    if (parentError) return { error: parentError.message };
+
+    const { count, error: countError } = await pm(supabase)
+      .from("kb_articles")
+      .select("id", { count: "exact", head: true })
+      .eq("subcategory_id", id);
+
+    if (countError) return { error: countError.message };
+    if ((count ?? 0) > 0) {
+      return {
+        error: "Remove or move articles before deleting this sub-category.",
+      };
+    }
+
+    const { error } = await pm(supabase)
+      .from("kb_categories")
+      .delete()
+      .eq("id", id);
+
+    if (error) return { error: error.message };
+
+    revalidateKbPaths(parent?.slug);
+    return {};
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : "Failed to delete sub-category.",
+    };
+  }
+}
+
+async function validateSubcategoryForCategory(
+  supabase: ReturnType<typeof createServiceClient>,
+  categoryId: string,
+  subcategoryId: string | null | undefined,
+): Promise<{ error?: string; subcategoryId: string | null }> {
+  if (!subcategoryId) return { subcategoryId: null };
+
+  const { data: subcategory, error } = await pm(supabase)
+    .from("kb_categories")
+    .select("id, parent_id")
+    .eq("id", subcategoryId)
+    .maybeSingle();
+
+  if (error) return { error: error.message, subcategoryId: null };
+  if (!subcategory || subcategory.parent_id !== categoryId) {
+    return { error: "Invalid sub-category for this category.", subcategoryId: null };
+  }
+
+  return { subcategoryId };
 }
 
 export async function createArticle(
@@ -297,6 +447,13 @@ export async function createArticle(
     if (categoryError) return { error: categoryError.message };
     if (!category) return { error: "Category not found." };
 
+    const subcategoryCheck = await validateSubcategoryForCategory(
+      supabase,
+      parsed.data.categoryId,
+      parsed.data.subcategoryId,
+    );
+    if (subcategoryCheck.error) return { error: subcategoryCheck.error };
+
     const initialBlocks: KbBlock[] = [
       { id: randomUUID(), type: "html", content: "<p></p>" },
     ];
@@ -305,6 +462,7 @@ export async function createArticle(
       .from("kb_articles")
       .insert({
         category_id: parsed.data.categoryId,
+        subcategory_id: subcategoryCheck.subcategoryId,
         title: parsed.data.title,
         slug,
         content: serializeKbBlocks(initialBlocks),
@@ -341,7 +499,7 @@ export async function updateArticle(
     const { data: existing, error: fetchError } = await pm(supabase)
       .from("kb_articles")
       .select(
-        "id, title, slug, content, category_id, kb_categories!inner(slug)",
+        "id, title, slug, content, category_id, kb_categories!kb_articles_category_id_fkey!inner(slug)",
       )
       .eq("id", parsed.data.id)
       .maybeSingle();
@@ -373,6 +531,20 @@ export async function updateArticle(
     if (parsed.data.categoryId !== undefined) {
       payload.category_id = parsed.data.categoryId;
     }
+    if (parsed.data.subcategoryId !== undefined) {
+      const categoryId =
+        parsed.data.categoryId ?? existing.category_id ?? undefined;
+      if (!categoryId) {
+        return { error: "Category is required when setting a sub-category." };
+      }
+      const subcategoryCheck = await validateSubcategoryForCategory(
+        supabase,
+        categoryId,
+        parsed.data.subcategoryId,
+      );
+      if (subcategoryCheck.error) return { error: subcategoryCheck.error };
+      payload.subcategory_id = subcategoryCheck.subcategoryId;
+    }
     if (parsed.data.isPublished !== undefined) {
       payload.is_published = parsed.data.isPublished;
     }
@@ -392,7 +564,7 @@ export async function updateArticle(
       .from("kb_articles")
       .update(payload)
       .eq("id", parsed.data.id)
-      .select("slug, kb_categories!inner(slug)")
+      .select("slug, kb_categories!kb_articles_category_id_fkey!inner(slug)")
       .single();
 
     if (error) return { error: error.message };
@@ -417,7 +589,7 @@ export async function deleteArticle(id: string): Promise<{ error?: string }> {
     const supabase = createServiceClient();
     const { data: existing } = await pm(supabase)
       .from("kb_articles")
-      .select("slug, kb_categories!inner(slug)")
+      .select("slug, kb_categories!kb_articles_category_id_fkey!inner(slug)")
       .eq("id", id)
       .maybeSingle();
 

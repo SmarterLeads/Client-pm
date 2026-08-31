@@ -12,6 +12,7 @@ import {
   type KbArticleVersionRow,
   type KbCategoryRow,
   type KbSearchResult,
+  type KbSubcategoryRow,
 } from "@/lib/knowledge-base/types";
 import type { AppSupabaseClient } from "@/lib/supabase/pm";
 
@@ -21,6 +22,7 @@ function mapCategory(row: {
   slug: string;
   description: string | null;
   sort_order: number;
+  parent_id?: string | null;
 }): KbCategoryRow {
   return {
     id: row.id,
@@ -28,6 +30,37 @@ function mapCategory(row: {
     slug: row.slug,
     description: row.description,
     sort_order: row.sort_order,
+    parent_id: row.parent_id ?? null,
+  };
+}
+
+function mapArticleListRow(row: {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  updated_at: string;
+  subcategory_id?: string | null;
+  kb_categories: { slug: string; name: string };
+  subcategory?: { slug: string; name: string } | null;
+  updated_by: { name: string; avatar_url: string | null } | null;
+}): KbArticleListRow {
+  const cat = row.kb_categories;
+  const sub = row.subcategory ?? null;
+
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    excerpt: row.excerpt,
+    updated_at: row.updated_at,
+    category_slug: cat.slug,
+    category_name: cat.name,
+    subcategory_id: row.subcategory_id ?? null,
+    subcategory_slug: sub?.slug ?? null,
+    subcategory_name: sub?.name ?? null,
+    updated_by_name: row.updated_by?.name ?? null,
+    updated_by_avatar_url: row.updated_by?.avatar_url ?? null,
   };
 }
 
@@ -35,7 +68,8 @@ export async function getKbCategories(): Promise<KbCategoryRow[]> {
   const supabase = await createClient();
   const { data: categories, error } = await pm(supabase)
     .from("kb_categories")
-    .select("id, name, slug, description, sort_order")
+    .select("id, name, slug, description, sort_order, parent_id")
+    .is("parent_id", null)
     .order("sort_order", { ascending: true });
 
   if (error) {
@@ -70,12 +104,59 @@ export async function getKbCategoryBySlug(
   const supabase = await createClient();
   const { data, error } = await pm(supabase)
     .from("kb_categories")
-    .select("id, name, slug, description, sort_order")
+    .select("id, name, slug, description, sort_order, parent_id")
     .eq("slug", slug)
+    .is("parent_id", null)
     .maybeSingle();
 
   if (error || !data) return null;
   return mapCategory(data);
+}
+
+export async function getKbSubcategories(
+  parentCategoryId: string,
+): Promise<KbSubcategoryRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await pm(supabase)
+    .from("kb_categories")
+    .select("id, name, slug, parent_id, sort_order")
+    .eq("parent_id", parentCategoryId)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("[getKbSubcategories]", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    parent_id: row.parent_id as string,
+    sort_order: row.sort_order,
+  }));
+}
+
+export async function getKbAllSubcategories(): Promise<KbSubcategoryRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await pm(supabase)
+    .from("kb_categories")
+    .select("id, name, slug, parent_id, sort_order")
+    .not("parent_id", "is", null)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("[getKbAllSubcategories]", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    parent_id: row.parent_id as string,
+    sort_order: row.sort_order,
+  }));
 }
 
 const KB_ARTICLE_DETAIL_SELECT = `
@@ -88,7 +169,8 @@ const KB_ARTICLE_DETAIL_SELECT = `
   updated_at,
   created_at,
   category_id,
-  kb_categories!inner(slug, name),
+  subcategory_id,
+  kb_categories!kb_articles_category_id_fkey!inner(slug, name),
   updated_by:team_members!kb_articles_updated_by_fkey(name)
 `;
 
@@ -102,6 +184,7 @@ function mapKbArticleDetailRow(data: {
   updated_at: string;
   created_at: string;
   category_id: string | null;
+  subcategory_id?: string | null;
   kb_categories: { slug: string; name: string };
   updated_by: { name: string } | null;
 }): KbArticleDetail {
@@ -117,6 +200,7 @@ function mapKbArticleDetailRow(data: {
     updated_at: data.updated_at,
     created_at: data.created_at,
     category_id: data.category_id,
+    subcategory_id: data.subcategory_id ?? null,
     category_slug: category.slug,
     category_name: category.name,
     updated_by_name: data.updated_by?.name ?? null,
@@ -161,44 +245,50 @@ export async function getKbArticleBySlug(
 
 export async function getKbArticlesByCategory(
   categorySlug: string,
-): Promise<{ category: KbCategoryRow; articles: KbArticleListRow[] } | null> {
+): Promise<{
+  category: KbCategoryRow;
+  subcategories: KbSubcategoryRow[];
+  articles: KbArticleListRow[];
+} | null> {
   const category = await getKbCategoryBySlug(categorySlug);
   if (!category) return null;
 
   const supabase = await createClient();
-  const { data, error } = await pm(supabase)
-    .from("kb_articles")
-    .select(
-      `id, title, slug, excerpt, updated_at,
-      kb_categories!inner(slug, name),
-      updated_by:team_members!kb_articles_updated_by_fkey(name, avatar_url)`,
-    )
-    .eq("category_id", category.id)
-    .eq("is_published", true)
-    .order("updated_at", { ascending: false });
+  const [subcategories, articlesResult] = await Promise.all([
+    getKbSubcategories(category.id),
+    pm(supabase)
+      .from("kb_articles")
+      .select(
+        `id, title, slug, excerpt, updated_at, subcategory_id,
+        kb_categories!kb_articles_category_id_fkey!inner(slug, name),
+        subcategory:kb_categories!kb_articles_subcategory_id_fkey(slug, name),
+        updated_by:team_members!kb_articles_updated_by_fkey(name, avatar_url)`,
+      )
+      .eq("category_id", category.id)
+      .eq("is_published", true)
+      .order("updated_at", { ascending: false }),
+  ]);
+
+  const { data, error } = articlesResult;
 
   if (error) {
     console.error("[getKbArticlesByCategory]", error.message);
-    return { category, articles: [] };
+    return { category, subcategories, articles: [] };
   }
 
-  const articles: KbArticleListRow[] = (data ?? []).map((row) => {
-    const cat = row.kb_categories as { slug: string; name: string };
-    const updatedBy = row.updated_by as { name: string; avatar_url: string | null } | null;
-    return {
-      id: row.id,
-      title: row.title,
-      slug: row.slug,
-      excerpt: row.excerpt,
-      updated_at: row.updated_at,
-      category_slug: cat.slug,
-      category_name: cat.name,
-      updated_by_name: updatedBy?.name ?? null,
-      updated_by_avatar_url: updatedBy?.avatar_url ?? null,
-    };
-  });
+  const articles = (data ?? []).map((row) =>
+    mapArticleListRow({
+      ...row,
+      kb_categories: row.kb_categories as { slug: string; name: string },
+      subcategory: row.subcategory as { slug: string; name: string } | null,
+      updated_by: row.updated_by as {
+        name: string;
+        avatar_url: string | null;
+      } | null,
+    }),
+  );
 
-  return { category, articles };
+  return { category, subcategories, articles };
 }
 
 export async function getKbRecentArticles(
@@ -209,7 +299,7 @@ export async function getKbRecentArticles(
     .from("kb_articles")
     .select(
       `id, title, slug, excerpt, updated_at,
-      kb_categories!inner(slug, name),
+      kb_categories!kb_articles_category_id_fkey!inner(slug, name),
       updated_by:team_members!kb_articles_updated_by_fkey(name, avatar_url)`,
     )
     .eq("is_published", true)
@@ -221,21 +311,16 @@ export async function getKbRecentArticles(
     return [];
   }
 
-  return (data ?? []).map((row) => {
-    const cat = row.kb_categories as { slug: string; name: string };
-    const updatedBy = row.updated_by as { name: string; avatar_url: string | null } | null;
-    return {
-      id: row.id,
-      title: row.title,
-      slug: row.slug,
-      excerpt: row.excerpt,
-      updated_at: row.updated_at,
-      category_slug: cat.slug,
-      category_name: cat.name,
-      updated_by_name: updatedBy?.name ?? null,
-      updated_by_avatar_url: updatedBy?.avatar_url ?? null,
-    };
-  });
+  return (data ?? []).map((row) =>
+    mapArticleListRow({
+      ...row,
+      kb_categories: row.kb_categories as { slug: string; name: string },
+      updated_by: row.updated_by as {
+        name: string;
+        avatar_url: string | null;
+      } | null,
+    }),
+  );
 }
 
 export async function getKbArticleBySlugs(
@@ -314,7 +399,7 @@ export async function searchKbArticles(query: string): Promise<KbSearchResult[]>
   const { data, error } = await pm(supabase)
     .from("kb_articles")
     .select(
-      "id, title, slug, excerpt, content, kb_categories!inner(slug, name)",
+      "id, title, slug, excerpt, content, kb_categories!kb_articles_category_id_fkey!inner(slug, name)",
     )
     .eq("is_published", true);
 

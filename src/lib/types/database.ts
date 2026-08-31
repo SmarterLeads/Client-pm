@@ -988,6 +988,7 @@ export type Database = {
           id: string
           is_published: boolean
           slug: string
+          subcategory_id: string | null
           title: string
           updated_at: string
           updated_by: string | null
@@ -1001,6 +1002,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           slug: string
+          subcategory_id?: string | null
           title: string
           updated_at?: string
           updated_by?: string | null
@@ -1014,6 +1016,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           slug?: string
+          subcategory_id?: string | null
           title?: string
           updated_at?: string
           updated_by?: string | null
@@ -1022,6 +1025,13 @@ export type Database = {
           {
             foreignKeyName: "kb_articles_category_id_fkey"
             columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "kb_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kb_articles_subcategory_id_fkey"
+            columns: ["subcategory_id"]
             isOneToOne: false
             referencedRelation: "kb_categories"
             referencedColumns: ["id"]
@@ -1048,6 +1058,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          parent_id: string | null
           slug: string
           sort_order: number
           updated_at: string
@@ -1057,6 +1068,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          parent_id?: string | null
           slug: string
           sort_order?: number
           updated_at?: string
@@ -1066,11 +1078,20 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          parent_id?: string | null
           slug?: string
           sort_order?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "kb_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "kb_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       meeting_participants: {
         Row: {

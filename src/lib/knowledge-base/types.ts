@@ -41,7 +41,16 @@ export type KbCategoryRow = {
   slug: string;
   description: string | null;
   sort_order: number;
+  parent_id?: string | null;
   article_count?: number;
+};
+
+export type KbSubcategoryRow = {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string;
+  sort_order: number;
 };
 
 export type KbArticleListRow = {
@@ -52,6 +61,9 @@ export type KbArticleListRow = {
   updated_at: string;
   category_slug: string;
   category_name: string;
+  subcategory_id: string | null;
+  subcategory_slug: string | null;
+  subcategory_name: string | null;
   updated_by_name: string | null;
   updated_by_avatar_url: string | null;
 };
@@ -66,6 +78,7 @@ export type KbArticleDetail = {
   updated_at: string;
   created_at: string;
   category_id: string | null;
+  subcategory_id: string | null;
   category_slug: string;
   category_name: string;
   updated_by_name: string | null;
