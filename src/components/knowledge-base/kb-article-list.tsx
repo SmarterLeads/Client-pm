@@ -2,11 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { ChevronRight, GripVertical } from "lucide-react";
+import {
+  ChevronDown,
+  GripVertical,
+  Pencil,
+} from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { reorderArticles } from "@/lib/actions/knowledge-base";
 import type { KbArticleListRow } from "@/lib/knowledge-base/types";
+import { cn } from "@/lib/utils";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 type KbArticleListProps = {
@@ -28,37 +34,70 @@ function initials(name: string | null | undefined): string {
     .toUpperCase();
 }
 
-function ArticleCard({
+function ArticleRow({
   article,
   categorySlug,
   sortable,
+  canEdit,
 }: {
   article: KbArticleListRow;
   categorySlug: string;
   sortable: boolean;
+  canEdit: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const articleHref = `/knowledge-base/${categorySlug}/${article.slug}`;
+  const editHref = `${articleHref}/edit`;
+
   return (
-    <div className="flex items-stretch gap-2">
+    <div className="relative flex items-stretch gap-2">
       {sortable ? (
-        <div className="flex shrink-0 items-center pt-5 text-muted-foreground">
+        <div className="flex shrink-0 items-center text-muted-foreground">
           <GripVertical className="size-4 cursor-grab active:cursor-grabbing" />
         </div>
       ) : null}
-      <Link
-        href={`/knowledge-base/${categorySlug}/${article.slug}`}
-        className="group block min-w-0 flex-1 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/30 hover:shadow-md"
+
+      <div
+        className={cn(
+          "relative min-w-0 flex-1 rounded-xl border border-border bg-card shadow-sm",
+          canEdit && "pb-9",
+        )}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1 space-y-2">
-            <h2 className="text-lg font-semibold group-hover:text-primary">
-              {article.title}
-            </h2>
+        <div className="flex items-center gap-2 py-3 pl-4 pr-3">
+          <Link
+            href={articleHref}
+            className="min-w-0 flex-1 truncate text-base font-medium hover:text-primary"
+          >
+            {article.title}
+          </Link>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-expanded={expanded}
+            aria-label={expanded ? "Collapse details" : "Expand details"}
+            onClick={() => setExpanded((open) => !open)}
+            className="shrink-0 text-muted-foreground"
+          >
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform duration-200",
+                expanded && "rotate-180",
+              )}
+            />
+          </Button>
+        </div>
+
+        {expanded ? (
+          <div className="space-y-3 border-t border-border px-4 py-3 pr-12">
             {article.excerpt ? (
-              <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 {article.excerpt}
               </p>
-            ) : null}
-            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
+            ) : (
+              <p className="text-sm text-muted-foreground">No preview available.</p>
+            )}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               {article.updated_by_name ? (
                 <span className="flex items-center gap-1.5">
                   <Avatar size="sm">
@@ -72,7 +111,7 @@ function ArticleCard({
                   {article.updated_by_name}
                 </span>
               ) : null}
-              <span aria-hidden>·</span>
+              {article.updated_by_name ? <span aria-hidden>·</span> : null}
               <time dateTime={article.updated_at}>
                 Updated{" "}
                 {new Date(article.updated_at).toLocaleDateString(undefined, {
@@ -82,10 +121,27 @@ function ArticleCard({
                 })}
               </time>
             </div>
+            <Link
+              href={articleHref}
+              className="inline-block text-sm font-medium text-primary hover:underline"
+            >
+              Read article
+            </Link>
           </div>
-          <ChevronRight className="size-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-        </div>
-      </Link>
+        ) : null}
+
+        {canEdit ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="absolute bottom-2 right-2 text-muted-foreground hover:text-foreground"
+            render={<Link href={editHref} aria-label={`Edit ${article.title}`} />}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -150,7 +206,7 @@ export function KbArticleList({
           Drag articles to reorder{isPending ? "…" : ""}.
         </p>
       ) : null}
-      <ul className="grid gap-4">
+      <ul className="grid gap-2">
         {items.map((article) => (
           <li
             key={article.id}
@@ -158,12 +214,12 @@ export function KbArticleList({
             onDragStart={() => setDragId(article.id)}
             onDragOver={(event) => event.preventDefault()}
             onDrop={() => handleDrop(article.id)}
-            className={sortable ? "rounded-lg" : undefined}
           >
-            <ArticleCard
+            <ArticleRow
               article={article}
               categorySlug={categorySlug}
               sortable={sortable}
+              canEdit={canEdit}
             />
           </li>
         ))}
