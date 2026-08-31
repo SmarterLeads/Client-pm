@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { updateTaskRecurrence } from "@/lib/actions/tasks";
 import { toastError, toastSuccess } from "@/lib/toast";
-import type { Task } from "@/lib/types";
 import {
   WEEKDAY_OPTIONS,
   calculateNextOccurrence,
@@ -25,16 +24,32 @@ const FREQUENCIES: { value: RecurrenceFrequency; label: string }[] = [
   { value: "custom", label: "Custom" },
 ];
 
+type RecurrenceTaskFields = {
+  id: string;
+  is_recurring: boolean;
+  recurrence_rule: string | null;
+  due_date: string | null;
+};
+
+type PersistRecurrence = (
+  taskId: string,
+  projectId: string,
+  isRecurring: boolean,
+  rule: RecurrenceRule | null,
+) => Promise<{ error?: string }>;
+
 type RecurrenceSectionProps = {
-  task: Task;
+  task: RecurrenceTaskFields;
   projectId: string;
   onUpdated: () => void;
+  onPersistRecurrence?: PersistRecurrence;
 };
 
 export function RecurrenceSection({
   task,
   projectId,
   onUpdated,
+  onPersistRecurrence = updateTaskRecurrence,
 }: RecurrenceSectionProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -75,7 +90,7 @@ export function RecurrenceSection({
 
   function persist(recurring: boolean, nextRule: RecurrenceRule | null) {
     startTransition(async () => {
-      const result = await updateTaskRecurrence(
+      const result = await onPersistRecurrence(
         task.id,
         projectId,
         recurring,

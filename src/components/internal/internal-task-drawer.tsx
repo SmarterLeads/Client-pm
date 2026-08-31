@@ -9,11 +9,13 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { TaskPriorityBadge } from "@/components/projects/task-priority-badge";
+import { RecurrenceSection } from "@/components/tasks/recurrence-section";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
   deleteInternalTask,
   loadInternalTaskDetail,
   updateInternalTask,
+  updateInternalTaskRecurrence,
 } from "@/lib/actions/internal";
 import type { InternalTaskDetail } from "@/lib/queries/internal";
 import { toastError, toastSuccess } from "@/lib/toast";
@@ -300,6 +302,13 @@ export function InternalTaskDrawer({
                   />
                 </div>
               </div>
+
+              <RecurrenceSection
+                task={detail.task}
+                projectId={detail.task.project_id}
+                onUpdated={() => refreshDetail(detail.task.id)}
+                onPersistRecurrence={updateInternalTaskRecurrence}
+              />
 
               <div className="flex items-center gap-2">
                 <TaskPriorityBadge priority={detail.task.priority} />

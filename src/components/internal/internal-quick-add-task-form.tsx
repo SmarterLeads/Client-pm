@@ -7,9 +7,11 @@ import {
   type InternalFormState,
 } from "@/lib/actions/internal";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { TaskRecurrenceFormFields } from "@/components/tasks/task-recurrence-form-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TeamMember } from "@/lib/types";
+import { defaultRecurrenceRule, type RecurrenceRule } from "@/lib/tasks/recurrence";
 import { PmEnumValues } from "@/lib/types/enums";
 
 const initialState: InternalFormState = {};
@@ -30,6 +32,10 @@ export function InternalQuickAddTaskForm({
 }: InternalQuickAddTaskFormProps) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>(() =>
+    defaultRecurrenceRule(),
+  );
   const [state, formAction, pending] = useActionState(
     createInternalTask,
     initialState,
@@ -47,6 +53,8 @@ export function InternalQuickAddTaskForm({
 
     handledTaskIdRef.current = state.id;
     setExpanded(false);
+    setIsRecurring(false);
+    setRecurrenceRule(defaultRecurrenceRule());
     router.refresh();
     onCreatedRef.current?.(state.id);
   }, [state.success, state.id, router]);
@@ -111,6 +119,14 @@ export function InternalQuickAddTaskForm({
       </div>
 
       <Input name="due_date" type="date" className="h-8" />
+
+      <TaskRecurrenceFormFields
+        isRecurring={isRecurring}
+        rule={recurrenceRule}
+        onRecurringChange={setIsRecurring}
+        onRuleChange={setRecurrenceRule}
+        disabled={pending}
+      />
 
       {state.error ? (
         <p className="text-xs text-destructive">{state.error}</p>

@@ -258,6 +258,21 @@ export async function updateInternalTask(
   }
 }
 
+export async function updateInternalTaskRecurrence(
+  taskId: string,
+  projectId: string,
+  isRecurring: boolean,
+  rule: Record<string, unknown> | null,
+): Promise<{ error?: string }> {
+  const recurrence_rule =
+    isRecurring && rule ? JSON.stringify(rule) : null;
+
+  return updateInternalTask(taskId, projectId, {
+    is_recurring: isRecurring,
+    recurrence_rule,
+  });
+}
+
 export async function deleteInternalTask(
   taskId: string,
   projectId: string,
