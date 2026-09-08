@@ -127,67 +127,23 @@ export function calculateNextOccurrence(
   }
 }
 
-export function calculateOccurrenceDates(
+export function calculateNextOccurrenceAfterToday(
   rule: RecurrenceRule,
   referenceDate: Date = new Date(),
-  horizonDays = 28,
-): string[] {
-  if (rule.frequency === "monthly") {
-    return calculateMonthlyOccurrenceDates(rule, referenceDate, 3, 3);
-  }
+): string | null {
+  const today = new Date(referenceDate);
+  today.setHours(0, 0, 0, 0);
+  const todayIso = toIsoDate(today);
 
-  const dates: string[] = [];
-  let cursor = new Date(referenceDate);
-  cursor.setHours(0, 0, 0, 0);
-  const end = new Date(cursor);
-  end.setDate(end.getDate() + horizonDays);
-
-  for (let i = 0; i < 52; i++) {
+  let cursor = today;
+  for (let i = 0; i < 366; i++) {
     const next = calculateNextOccurrence(rule, cursor);
-    if (!next) break;
-
-    const nextDate = parseIsoDate(next);
-    if (nextDate > end) break;
-
-    if (!dates.includes(next)) {
-      dates.push(next);
-    }
-
-    cursor = new Date(nextDate);
+    if (!next) return null;
+    if (next > todayIso) return next;
+    cursor = parseIsoDate(next);
   }
 
-  return dates.sort();
-}
-
-export function calculateMonthlyOccurrenceDates(
-  rule: RecurrenceRule,
-  anchorDate: Date = new Date(),
-  monthsBack = 3,
-  monthsForward = 3,
-): string[] {
-  const anchor = new Date(anchorDate);
-  anchor.setHours(0, 0, 0, 0);
-  const day = rule.dayOfMonth ?? anchor.getDate();
-  const dates: string[] = [];
-
-  for (let offset = -monthsBack; offset <= monthsForward; offset++) {
-    const monthDate = new Date(anchor.getFullYear(), anchor.getMonth() + offset, 1);
-    const lastDay = new Date(
-      monthDate.getFullYear(),
-      monthDate.getMonth() + 1,
-      0,
-    ).getDate();
-    monthDate.setDate(Math.min(day, lastDay));
-
-    if (isPastUntil(rule.until, monthDate)) continue;
-
-    const iso = toIsoDate(monthDate);
-    if (!dates.includes(iso)) {
-      dates.push(iso);
-    }
-  }
-
-  return dates.sort();
+  return null;
 }
 
 function getWeekStart(date: Date): Date {

@@ -3,14 +3,11 @@
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
 import { insertTaskWithTeamMemberContext } from "@/lib/supabase/with-team-member-context";
+import { findTodoSectionId } from "@/lib/tasks/done-section";
 import {
-  ensureDoneSectionId,
-  findTodoSectionId,
-} from "@/lib/tasks/done-section";
-import {
-  calculateOccurrenceDates,
-  parseRecurrenceRule,
   calculateNextOccurrence,
+  calculateNextOccurrenceAfterToday,
+  parseRecurrenceRule,
 } from "@/lib/tasks/recurrence";
 
 type RecurringParentTask = {
@@ -25,11 +22,11 @@ type RecurringParentTask = {
   recurrence_rule: string | null;
 };
 
-function todayIsoDate(): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today.toISOString().slice(0, 10);
-}
+type RecurringInstanceRow = {
+  id: string;
+  due_date: string | null;
+  status: string;
+};
 
 async function loadRecurringParent(
   parentTaskId: string,
@@ -67,23 +64,49 @@ async function loadProjectSections(projectId: string) {
   return data ?? [];
 }
 
-async function existingInstances(parentTaskId: string) {
+async function loadInstances(parentTaskId: string): Promise<RecurringInstanceRow[]> {
   const supabase = createServiceClient();
   const { data, error } = await pm(supabase)
     .from("tasks")
-    .select("id, due_date")
+    .select("id, due_date, status")
     .eq("recurring_parent_id", parentTaskId)
     .eq("is_recurring_instance", true);
 
   if (error) {
-    console.error("[existingInstances]", error.message);
-    return new Map<string, string>();
+    console.error("[loadInstances]", error.message);
+    return [];
   }
 
-  return new Map(
-    (data ?? [])
-      .filter((row): row is { id: string; due_date: string } => Boolean(row.due_date))
-      .map((row) => [row.due_date, row.id]),
+  return data ?? [];
+}
+
+function isClosedStatus(status: string): boolean {
+  return status === "done" || status === "cancelled";
+}
+
+function resolveNextInstanceDueDate(
+  rule: NonNullable<ReturnType<typeof parseRecurrenceRule>>,
+  instances: RecurringInstanceRow[],
+): string | null {
+  const openInstance = instances.find((row) => !isClosedStatus(row.status));
+  if (openInstance) return null;
+
+  const datedInstances = instances.filter(
+    (row): row is RecurringInstanceRow & { due_date: string } =>
+      Boolean(row.due_date),
+  );
+
+  if (datedInstances.length === 0) {
+    return calculateNextOccurrenceAfterToday(rule);
+  }
+
+  const latest = datedInstances.sort((a, b) =>
+    b.due_date.localeCompare(a.due_date),
+  )[0];
+
+  return calculateNextOccurrence(
+    rule,
+    new Date(`${latest.due_date}T00:00:00`),
   );
 }
 
@@ -92,7 +115,6 @@ async function createInstance(
   parent: RecurringParentTask,
   dueDate: string,
   sectionId: string | null,
-  status: "todo" | "done",
 ): Promise<void> {
   await insertTaskWithTeamMemberContext(teamMemberId, {
     project_id: parent.project_id,
@@ -101,22 +123,11 @@ async function createInstance(
     priority: parent.priority,
     assignee_id: parent.assignee_id,
     due_date: dueDate,
-    status,
+    status: "todo",
     is_recurring: false,
     recurring_parent_id: parent.id,
     is_recurring_instance: true,
   });
-}
-
-function resolveOccurrenceDates(
-  parent: RecurringParentTask,
-  rule: NonNullable<ReturnType<typeof parseRecurrenceRule>>,
-): string[] {
-  const anchor = parent.due_date
-    ? new Date(`${parent.due_date}T00:00:00`)
-    : new Date();
-
-  return calculateOccurrenceDates(rule, anchor);
 }
 
 export async function generateRecurringInstances(
@@ -137,34 +148,22 @@ export async function generateRecurringInstances(
     return;
   }
 
-  const targetDates = resolveOccurrenceDates(parent, rule);
-  if (targetDates.length === 0) {
-    console.log("[recurring] no occurrence dates calculated for:", parentTaskId);
+  const instances = await loadInstances(parent.id);
+  const nextDueDate = resolveNextInstanceDueDate(rule, instances);
+  if (!nextDueDate) {
+    console.log("[recurring] open instance already exists or no next date:", parentTaskId);
     return;
   }
 
-  const supabase = createServiceClient();
+  if (instances.some((row) => row.due_date === nextDueDate)) {
+    console.log("[recurring] instance already exists for date:", nextDueDate);
+    return;
+  }
+
   const sections = await loadProjectSections(parent.project_id);
   const todoSectionId = findTodoSectionId(sections) ?? parent.section_id;
-  const doneSectionId = await ensureDoneSectionId(supabase, parent.project_id);
-  const existing = await existingInstances(parent.id);
-  const today = todayIsoDate();
 
-  for (const dueDate of targetDates) {
-    if (existing.has(dueDate)) continue;
-
-    const isPast = dueDate < today;
-    const sectionId = isPast ? doneSectionId ?? todoSectionId : todoSectionId;
-    const status = isPast ? "done" : "todo";
-
-    await createInstance(
-      teamMemberId,
-      parent,
-      dueDate,
-      sectionId,
-      status,
-    );
-  }
+  await createInstance(teamMemberId, parent, nextDueDate, todoSectionId);
 }
 
 /** @deprecated Use generateRecurringInstances */
@@ -195,12 +194,17 @@ export async function completeRecurringInstance(
   const nextDate = calculateNextOccurrence(rule, reference);
   if (!nextDate) return;
 
-  const existing = await existingInstances(parent.id);
-  if (existing.has(nextDate)) return;
+  const instances = await loadInstances(parent.id);
+  if (instances.some((row) => row.due_date === nextDate)) return;
+
+  const openInstance = instances.find(
+    (row) => row.id !== instanceTaskId && !isClosedStatus(row.status),
+  );
+  if (openInstance) return;
 
   const sections = await loadProjectSections(parent.project_id);
   const todoSectionId = findTodoSectionId(sections) ?? parent.section_id;
 
   console.log("[recurring] generating instances for:", parent.id);
-  await createInstance(teamMemberId, parent, nextDate, todoSectionId, "todo");
+  await createInstance(teamMemberId, parent, nextDate, todoSectionId);
 }
