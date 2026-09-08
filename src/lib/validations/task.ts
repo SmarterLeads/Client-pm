@@ -88,7 +88,12 @@ export const updateTaskSchema = z.object({
       z.union([z.string().max(10000), z.null()]).optional(),
     )
     .optional(),
-  status: z.enum(taskStatuses).optional(),
+  status: z
+    .preprocess(
+      (value) => (value === "completed" ? "done" : value),
+      z.enum(taskStatuses),
+    )
+    .optional(),
   priority: z.enum(taskPriorities).optional(),
   assignee_id: z
     .preprocess(

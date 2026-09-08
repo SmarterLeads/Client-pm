@@ -12,12 +12,13 @@ import {
 import { handleTaskMarkedDone } from "@/lib/tasks/handle-task-marked-done";
 import {
   completeRecurringInstance,
-  syncRecurringInstances,
+  generateRecurringInstances,
 } from "@/lib/actions/recurring-tasks";
-import { findDoneSectionId } from "@/lib/tasks/done-section";
+import { ensureDoneSectionId } from "@/lib/tasks/done-section";
 import {
   isTransitionToDone,
   mergeDoneReviewFields,
+  normalizeTaskStatus,
 } from "@/lib/tasks/task-done-workflow";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -155,7 +156,7 @@ export async function createTask(
     revalidateTaskPaths(data.project_id);
 
     if (isRecurring) {
-      await syncRecurringInstances(teamMember.id, taskId);
+      await generateRecurringInstances(teamMember.id, taskId);
     }
 
     return { success: true, taskId };
@@ -204,25 +205,33 @@ export async function updateTask(
     }
 
     if ("status" in parsed.data || "section_id" in parsed.data) {
-      const { data } = await pm(service)
+      const { data, error } = await pm(service)
         .from("tasks")
         .select("status, title, assignee_id, is_recurring_instance")
         .eq("id", taskId)
         .maybeSingle();
+      if (error) {
+        console.error("[updateTask] failed to load task before status update:", error.message);
+      }
       taskBeforeStatusUpdate = data;
     }
 
     let payload = { ...parsed.data } as Record<string, unknown>;
-    if (
-      isTransitionToDone(
-        taskBeforeStatusUpdate?.status,
-        typeof payload.status === "string" ? payload.status : undefined,
-      )
-    ) {
+    if (typeof payload.status === "string") {
+      payload.status = normalizeTaskStatus(payload.status);
+    }
+
+    const nextStatus =
+      typeof payload.status === "string" ? payload.status : undefined;
+
+    if (nextStatus === "done") {
       payload = mergeDoneReviewFields(teamMember, payload);
-      const doneSectionId = await findDoneSectionId(service, projectId);
+      const doneSectionId = await ensureDoneSectionId(service, projectId);
       if (doneSectionId) {
         payload.section_id = doneSectionId;
+        console.log("[tasks] moving completed task to Done section:", taskId);
+      } else {
+        console.error("[updateTask] could not resolve Done section for project:", projectId);
       }
     }
 
@@ -233,10 +242,7 @@ export async function updateTask(
     );
 
     if (
-      isTransitionToDone(
-        taskBeforeStatusUpdate?.status,
-        typeof payload.status === "string" ? payload.status : undefined,
-      ) &&
+      isTransitionToDone(taskBeforeStatusUpdate?.status, nextStatus) &&
       taskBeforeStatusUpdate
     ) {
       await handleTaskMarkedDone({
@@ -256,7 +262,7 @@ export async function updateTask(
       "is_recurring" in parsed.data ||
       "recurrence_rule" in parsed.data
     ) {
-      await syncRecurringInstances(teamMember.id, taskId);
+      await generateRecurringInstances(teamMember.id, taskId);
     }
 
     if (
@@ -308,10 +314,12 @@ export async function updateTaskRecurrence(
   const recurrence_rule =
     isRecurring && rule ? JSON.stringify(rule) : null;
 
-  return updateTask(taskId, projectId, {
+  const result = await updateTask(taskId, projectId, {
     is_recurring: isRecurring,
     recurrence_rule,
   });
+
+  return result;
 }
 
 export async function createTaskDirect(input: {

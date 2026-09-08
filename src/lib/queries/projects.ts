@@ -356,6 +356,7 @@ export async function getProjectTasks(
       )
       .eq("project_id", projectId)
       .is("parent_task_id", null)
+      .or("is_recurring.eq.false,is_recurring_instance.eq.true")
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
     pm(supabase)

@@ -5,7 +5,7 @@ export function mergeDoneReviewFields(
   teamMember: Pick<TeamMember, "id" | "email">,
   payload: Record<string, unknown>,
 ): Record<string, unknown> {
-  if (payload.status !== "done") return payload;
+  if (normalizeTaskStatus(String(payload.status ?? "")) !== "done") return payload;
 
   if (isTaskReviewerEmail(teamMember.email)) {
     return {
@@ -22,9 +22,18 @@ export function mergeDoneReviewFields(
   };
 }
 
+export function normalizeTaskStatus(
+  status: string | null | undefined,
+): string | null | undefined {
+  if (status === "completed") return "done";
+  return status;
+}
+
 export function isTransitionToDone(
   previousStatus: string | null | undefined,
   nextStatus: string | null | undefined,
 ): boolean {
-  return nextStatus === "done" && previousStatus !== "done";
+  const normalizedNext = normalizeTaskStatus(nextStatus);
+  const normalizedPrevious = normalizeTaskStatus(previousStatus);
+  return normalizedNext === "done" && normalizedPrevious !== "done";
 }
