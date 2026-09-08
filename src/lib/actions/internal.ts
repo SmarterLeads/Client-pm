@@ -18,6 +18,9 @@ import {
   updateInternalTaskWithTeamMemberContext,
   updateMeetingWithTeamMemberContext,
 } from "@/lib/supabase/with-team-member-context";
+import { createServiceClient } from "@/lib/supabase/service";
+import { ensureDoneSectionId } from "@/lib/tasks/done-section";
+import { normalizeTaskStatus } from "@/lib/tasks/task-done-workflow";
 import {
   createInternalProjectSchema,
   createInternalSectionSchema,
@@ -243,10 +246,36 @@ export async function updateInternalTask(
       return { error: parsed.error.issues[0]?.message ?? "Invalid task data." };
     }
 
+    if (Object.keys(parsed.data).length === 0) {
+      return { error: "No fields to update." };
+    }
+
+    let payload = { ...parsed.data } as Record<string, unknown>;
+    if (typeof payload.status === "string") {
+      payload.status = normalizeTaskStatus(payload.status);
+    }
+
+    const nextStatus =
+      typeof payload.status === "string" ? payload.status : undefined;
+
+    if (nextStatus === "done") {
+      const service = createServiceClient();
+      const doneSectionId = await ensureDoneSectionId(service, projectId);
+      if (doneSectionId) {
+        payload.section_id = doneSectionId;
+        console.log("[tasks] moving completed task to Done section:", taskId);
+      } else {
+        console.error(
+          "[updateInternalTask] could not resolve Done section for project:",
+          projectId,
+        );
+      }
+    }
+
     await updateInternalTaskWithTeamMemberContext(
       teamMember.id,
       taskId,
-      parsed.data,
+      payload,
     );
     revalidateInternalProject(projectId);
     revalidatePath("/tasks");
