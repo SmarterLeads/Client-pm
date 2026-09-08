@@ -1,11 +1,23 @@
-﻿export type TaskDrawerStoreState = {
+﻿export type TaskCreateDraft = {
+  projectId: string;
+  sectionId: string;
+  assigneeId: string;
+  sections: Array<{ id: string; name: string; display_order: number; project_id: string; created_at: string }>;
+};
+
+export type TaskDrawerStoreState = {
   taskId: string | null;
   isOpen: boolean;
+  createDraft: TaskCreateDraft | null;
 };
 
 const CLOSE_ANIMATION_MS = 300;
 
-let state: TaskDrawerStoreState = { taskId: null, isOpen: false };
+let state: TaskDrawerStoreState = {
+  taskId: null,
+  isOpen: false,
+  createDraft: null,
+};
 let clearTaskIdTimeoutId: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
 
@@ -27,10 +39,19 @@ export function openTaskDrawer(taskId: string) {
     clearTimeout(clearTaskIdTimeoutId);
     clearTaskIdTimeoutId = null;
   }
-  if (state.taskId === taskId && state.isOpen) {
+  if (state.taskId === taskId && state.isOpen && !state.createDraft) {
     return;
   }
-  state = { taskId, isOpen: true };
+  state = { taskId, isOpen: true, createDraft: null };
+  notify();
+}
+
+export function openTaskCreateDrawer(draft: TaskCreateDraft) {
+  if (clearTaskIdTimeoutId) {
+    clearTimeout(clearTaskIdTimeoutId);
+    clearTaskIdTimeoutId = null;
+  }
+  state = { taskId: null, isOpen: true, createDraft: draft };
   notify();
 }
 
@@ -43,8 +64,12 @@ export function closeTaskDrawer() {
   }
 
   clearTaskIdTimeoutId = setTimeout(() => {
-    state = { taskId: null, isOpen: false };
+    state = { taskId: null, isOpen: false, createDraft: null };
     clearTaskIdTimeoutId = null;
     notify();
   }, CLOSE_ANIMATION_MS);
+}
+
+export function closeTaskCreateDrawer() {
+  closeTaskDrawer();
 }

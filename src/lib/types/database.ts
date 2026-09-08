@@ -1697,11 +1697,13 @@ export type Database = {
           estimated_hours: number | null
           id: string
           is_recurring: boolean
+          is_recurring_instance: boolean
           notes: string | null
           parent_task_id: string | null
           priority: Database["pm"]["Enums"]["task_priority"]
           project_id: string
           recurrence_rule: string | null
+          recurring_parent_id: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           section_id: string | null
@@ -1717,11 +1719,13 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           is_recurring?: boolean
+          is_recurring_instance?: boolean
           notes?: string | null
           parent_task_id?: string | null
           priority?: Database["pm"]["Enums"]["task_priority"]
           project_id: string
           recurrence_rule?: string | null
+          recurring_parent_id?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           section_id?: string | null
@@ -1748,8 +1752,17 @@ export type Database = {
           status?: Database["pm"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
+          recurring_parent_id?: string | null
+          is_recurring_instance?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_recurring_parent_id_fkey"
+            columns: ["recurring_parent_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_assignee_id_fkey"
             columns: ["assignee_id"]
@@ -1948,6 +1961,7 @@ export type Database = {
           is_available: boolean
           name: string
           role: Database["pm"]["Enums"]["team_member_role"]
+          task_view_preference: string
           updated_at: string
         }
         Insert: {
@@ -1963,6 +1977,7 @@ export type Database = {
           is_available?: boolean
           name: string
           role?: Database["pm"]["Enums"]["team_member_role"]
+          task_view_preference?: string
           updated_at?: string
         }
         Update: {
@@ -1978,6 +1993,7 @@ export type Database = {
           is_available?: boolean
           name?: string
           role?: Database["pm"]["Enums"]["team_member_role"]
+          task_view_preference?: string
           updated_at?: string
         }
         Relationships: []

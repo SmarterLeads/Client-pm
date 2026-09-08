@@ -8,17 +8,23 @@ import {
   useMemo,
   useSyncExternalStore,
 } from "react";
+
+import { TaskCreateDrawer } from "@/components/tasks/task-create-drawer";
 import { TaskDrawer } from "@/components/tasks/task-drawer";
 import {
+  closeTaskCreateDrawer,
   closeTaskDrawer,
   getTaskDrawerState,
+  openTaskCreateDrawer,
   openTaskDrawer,
   subscribeTaskDrawer,
+  type TaskCreateDraft,
 } from "@/lib/stores/task-drawer-store";
-import type { TeamMember } from "@/lib/types";
+import type { ProjectSection, TeamMember } from "@/lib/types";
 
 type TaskDrawerContextValue = {
   openTask: (taskId: string) => void;
+  openCreateTask: (draft: TaskCreateDraft) => void;
   closeTask: () => void;
   taskId: string | null;
 };
@@ -41,7 +47,7 @@ export function TaskDrawerProvider({
   teamMembers: Pick<TeamMember, "id" | "name" | "email" | "avatar_url">[];
 }) {
   const router = useRouter();
-  const { taskId, isOpen } = useSyncExternalStore(
+  const { taskId, isOpen, createDraft } = useSyncExternalStore(
     subscribeTaskDrawer,
     getTaskDrawerState,
     getTaskDrawerState,
@@ -51,18 +57,27 @@ export function TaskDrawerProvider({
     openTaskDrawer(id);
   }, []);
 
+  const openCreateTask = useCallback((draft: TaskCreateDraft) => {
+    openTaskCreateDrawer(draft);
+  }, []);
+
   const closeTask = useCallback(() => {
     closeTaskDrawer();
     window.setTimeout(() => router.refresh(), 350);
   }, [router]);
 
+  const closeCreateTask = useCallback(() => {
+    closeTaskCreateDrawer();
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       taskId,
       openTask,
+      openCreateTask,
       closeTask,
     }),
-    [taskId, openTask, closeTask],
+    [taskId, openTask, openCreateTask, closeTask],
   );
 
   return (
@@ -71,8 +86,15 @@ export function TaskDrawerProvider({
       <TaskDrawer
         taskId={taskId}
         teamMembers={teamMembers}
-        isOpen={isOpen}
+        isOpen={isOpen && !createDraft}
         onClose={closeTask}
+      />
+      <TaskCreateDrawer
+        draft={createDraft}
+        sections={(createDraft?.sections ?? []) as ProjectSection[]}
+        teamMembers={teamMembers}
+        isOpen={isOpen && Boolean(createDraft)}
+        onClose={closeCreateTask}
       />
     </TaskDrawerContext.Provider>
   );

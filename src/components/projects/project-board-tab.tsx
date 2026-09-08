@@ -15,7 +15,6 @@ import {
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { TaskCard } from "@/components/projects/task-card";
 import { QuickAddTaskForm } from "@/components/tasks/quick-add-task-form";
-import { useTaskDrawer } from "@/components/tasks/task-drawer-provider";
 import { moveTaskSection } from "@/lib/actions/projects";
 import type { ProjectTaskRow } from "@/lib/queries/projects";
 import { toastError } from "@/lib/toast";
@@ -26,6 +25,7 @@ type ProjectBoardTabProps = {
   sections: ProjectSection[];
   tasks: ProjectTaskRow[];
   teamMembers: Pick<TeamMember, "id" | "name">[];
+  currentTeamMemberId: string;
 };
 
 const COLUMN_TYPE = "column";
@@ -57,18 +57,21 @@ function BoardColumn({
   section,
   tasks,
   projectId,
+  sections,
   teamMembers,
+  currentTeamMemberId,
 }: {
   section: ProjectSection;
   tasks: ProjectTaskRow[];
   projectId: string;
+  sections: ProjectSection[];
   teamMembers: Pick<TeamMember, "id" | "name">[];
+  currentTeamMemberId: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: section.id,
     data: { type: COLUMN_TYPE, sectionId: section.id },
   });
-  const { openTask } = useTaskDrawer();
 
   return (
     <div className="flex w-72 shrink-0 flex-col">
@@ -88,8 +91,9 @@ function BoardColumn({
         <QuickAddTaskForm
           projectId={projectId}
           sectionId={section.id}
+          sections={sections}
           teamMembers={teamMembers}
-          onCreated={openTask}
+          currentTeamMemberId={currentTeamMemberId}
         />
       </div>
     </div>
@@ -101,6 +105,7 @@ export function ProjectBoardTab({
   sections,
   tasks: initialTasks,
   teamMembers,
+  currentTeamMemberId,
 }: ProjectBoardTabProps) {
   const [, startTransition] = useTransition();
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -131,6 +136,17 @@ export function ProjectBoardTab({
       } else if (sections[0]) {
         map.get(sections[0].id)!.push(task);
       }
+    }
+    for (const [key, sectionTasks] of map.entries()) {
+      sectionTasks.sort((a, b) => {
+        if (a.due_date && b.due_date) {
+          return a.due_date.localeCompare(b.due_date);
+        }
+        if (a.due_date) return -1;
+        if (b.due_date) return 1;
+        return 0;
+      });
+      map.set(key, sectionTasks);
     }
     return map;
   }, [optimisticTasks, sections]);
@@ -191,7 +207,9 @@ export function ProjectBoardTab({
             section={section}
             tasks={tasksBySection.get(section.id) ?? []}
             projectId={projectId}
+            sections={sections}
             teamMembers={teamMembers}
+            currentTeamMemberId={currentTeamMemberId}
           />
         ))}
       </div>

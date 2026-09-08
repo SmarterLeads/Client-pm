@@ -11,6 +11,11 @@ import {
 } from "@/lib/notifications/notify";
 import { handleTaskMarkedDone } from "@/lib/tasks/handle-task-marked-done";
 import {
+  completeRecurringInstance,
+  syncRecurringInstances,
+} from "@/lib/actions/recurring-tasks";
+import { findDoneSectionId } from "@/lib/tasks/done-section";
+import {
   isTransitionToDone,
   mergeDoneReviewFields,
 } from "@/lib/tasks/task-done-workflow";
@@ -148,6 +153,11 @@ export async function createTask(
     }
 
     revalidateTaskPaths(data.project_id);
+
+    if (isRecurring) {
+      await syncRecurringInstances(teamMember.id, taskId);
+    }
+
     return { success: true, taskId };
   } catch (err) {
     const message =
@@ -181,6 +191,7 @@ export async function updateTask(
       status: string;
       title: string;
       assignee_id: string | null;
+      is_recurring_instance: boolean;
     } | null = null;
 
     if ("assignee_id" in parsed.data) {
@@ -195,7 +206,7 @@ export async function updateTask(
     if ("status" in parsed.data || "section_id" in parsed.data) {
       const { data } = await pm(service)
         .from("tasks")
-        .select("status, title, assignee_id")
+        .select("status, title, assignee_id, is_recurring_instance")
         .eq("id", taskId)
         .maybeSingle();
       taskBeforeStatusUpdate = data;
@@ -209,6 +220,10 @@ export async function updateTask(
       )
     ) {
       payload = mergeDoneReviewFields(teamMember, payload);
+      const doneSectionId = await findDoneSectionId(service, projectId);
+      if (doneSectionId) {
+        payload.section_id = doneSectionId;
+      }
     }
 
     await updateTaskWithTeamMemberContext(
@@ -231,6 +246,17 @@ export async function updateTask(
         taskTitle: taskBeforeStatusUpdate.title,
         assigneeId: taskBeforeStatusUpdate.assignee_id,
       });
+
+      if (taskBeforeStatusUpdate.is_recurring_instance) {
+        await completeRecurringInstance(teamMember.id, taskId);
+      }
+    }
+
+    if (
+      "is_recurring" in parsed.data ||
+      "recurrence_rule" in parsed.data
+    ) {
+      await syncRecurringInstances(teamMember.id, taskId);
     }
 
     if (
@@ -286,6 +312,57 @@ export async function updateTaskRecurrence(
     is_recurring: isRecurring,
     recurrence_rule,
   });
+}
+
+export async function createTaskDirect(input: {
+  project_id: string;
+  section_id?: string | null;
+  title: string;
+  description?: string | null;
+  priority?: string;
+  assignee_id?: string | null;
+  due_date?: string | null;
+  status?: string;
+}): Promise<{ error?: string; taskId?: string }> {
+  try {
+    const teamMember = await requireTeamMember();
+    const parsed = createTaskSchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        error: parsed.error.issues[0]?.message ?? "Invalid task details.",
+      };
+    }
+
+    const data = parsed.data;
+    const taskId = await insertTaskWithTeamMemberContext(teamMember.id, {
+      project_id: data.project_id,
+      section_id: data.section_id ?? null,
+      title: data.title,
+      description: data.description ?? null,
+      priority: data.priority ?? "medium",
+      assignee_id: data.assignee_id ?? null,
+      due_date: data.due_date ?? null,
+      status: data.status ?? "todo",
+    });
+
+    if (data.assignee_id) {
+      await notifyTaskAssigned({
+        assigneeId: data.assignee_id,
+        actorId: teamMember.id,
+        actorName: teamMember.name,
+        taskId,
+        taskTitle: data.title,
+      });
+    }
+
+    revalidateTaskPaths(data.project_id);
+    return { taskId };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Failed to create task.",
+    };
+  }
 }
 
 export async function deleteTask(

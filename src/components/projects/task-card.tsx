@@ -123,11 +123,11 @@ export const TaskCard = memo(function TaskCard({
           <p className="text-sm font-medium leading-snug">{task.title}</p>
           <div className="mt-2 flex items-center gap-2">
             <TaskPriorityBadge priority={task.priority} />
-            {task.is_recurring ? (
-              <Repeat
-                className="size-3.5 text-muted-foreground"
-                aria-label="Recurring task"
-              />
+            {task.is_recurring || task.is_recurring_instance ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <Repeat className="size-3" aria-hidden />
+                Recurring
+              </span>
             ) : null}
           </div>
           <div className="mt-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">

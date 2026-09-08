@@ -127,6 +127,34 @@ export function calculateNextOccurrence(
   }
 }
 
+export function calculateOccurrenceDates(
+  rule: RecurrenceRule,
+  referenceDate: Date = new Date(),
+  horizonDays = 28,
+): string[] {
+  const dates: string[] = [];
+  let cursor = new Date(referenceDate);
+  cursor.setHours(0, 0, 0, 0);
+  const end = new Date(cursor);
+  end.setDate(end.getDate() + horizonDays);
+
+  for (let i = 0; i < 52; i++) {
+    const next = calculateNextOccurrence(rule, cursor);
+    if (!next) break;
+
+    const nextDate = parseIsoDate(next);
+    if (nextDate > end) break;
+
+    if (!dates.includes(next)) {
+      dates.push(next);
+    }
+
+    cursor = new Date(nextDate);
+  }
+
+  return dates.sort();
+}
+
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
   const day = d.getDay();

@@ -13,6 +13,7 @@ type ProjectListTabProps = {
   sections: ProjectSection[];
   tasks: ProjectTaskRow[];
   teamMembers: Pick<TeamMember, "id" | "name">[];
+  currentTeamMemberId: string;
 };
 
 function formatDueDate(iso: string | null) {
@@ -29,6 +30,7 @@ export function ProjectListTab({
   sections,
   tasks,
   teamMembers,
+  currentTeamMemberId,
 }: ProjectListTabProps) {
   const { openTask } = useTaskDrawer();
 
@@ -43,7 +45,16 @@ export function ProjectListTab({
   return (
     <div className="space-y-6">
       {sections.map((section) => {
-        const sectionTasks = tasks.filter((t) => t.section_id === section.id);
+        const sectionTasks = tasks
+          .filter((t) => t.section_id === section.id)
+          .sort((a, b) => {
+            if (a.due_date && b.due_date) {
+              return a.due_date.localeCompare(b.due_date);
+            }
+            if (a.due_date) return -1;
+            if (b.due_date) return 1;
+            return 0;
+          });
 
         return (
           <section key={section.id}>
@@ -63,11 +74,11 @@ export function ProjectListTab({
                       <span className="flex min-w-0 items-center gap-2 font-medium">
                         <TaskStatusBadge status={task.status} />
                         <span className="truncate">{task.title}</span>
-                        {task.is_recurring ? (
-                          <Repeat
-                            className="size-3.5 shrink-0 text-muted-foreground"
-                            aria-label="Recurring task"
-                          />
+                        {task.is_recurring || task.is_recurring_instance ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            <Repeat className="size-3" aria-hidden />
+                            Recurring
+                          </span>
                         ) : null}
                       </span>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -88,8 +99,9 @@ export function ProjectListTab({
               <QuickAddTaskForm
                 projectId={projectId}
                 sectionId={section.id}
+                sections={sections}
                 teamMembers={teamMembers}
-                onCreated={openTask}
+                currentTeamMemberId={currentTeamMemberId}
               />
             </div>
           </section>

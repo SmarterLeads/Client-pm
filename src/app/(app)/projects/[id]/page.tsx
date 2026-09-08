@@ -14,6 +14,8 @@ import {
   getProjectTasks,
   getTeamMembersForSelect,
 } from "@/lib/queries/projects";
+import { getTeamMember } from "@/lib/auth/session";
+import type { TaskViewPreference } from "@/lib/actions/team-preferences";
 
 type ProjectDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -23,6 +25,11 @@ export default async function ProjectDetailPage({
   params,
 }: ProjectDetailPageProps) {
   const { id } = await params;
+
+  const teamMember = await getTeamMember();
+  if (!teamMember) {
+    notFound();
+  }
 
   const result = await getProjectById(id);
   if (!result) {
@@ -49,6 +56,10 @@ export default async function ProjectDetailPage({
     getAttachmentsForEntity("project", project.id),
   ]);
 
+  const taskViewPreference = (teamMember.task_view_preference === "board"
+    ? "board"
+    : "list") as TaskViewPreference;
+
   return (
     <div className="space-y-4">
       <Link
@@ -74,6 +85,8 @@ export default async function ProjectDetailPage({
           }
           teamMembers={teamMembers}
           attachments={attachments}
+          taskViewPreference={taskViewPreference}
+          currentTeamMemberId={teamMember.id}
         />
       </Suspense>
     </div>

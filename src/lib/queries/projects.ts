@@ -57,6 +57,8 @@ export type ProjectTaskRow = {
   subtask_count: number;
   comment_count: number;
   is_recurring: boolean;
+  is_recurring_instance: boolean;
+  recurring_parent_id: string | null;
 };
 
 export type ProjectDetail = {
@@ -346,12 +348,15 @@ export async function getProjectTasks(
         due_date,
         assignee_id,
         is_recurring,
+        is_recurring_instance,
+        recurring_parent_id,
         assignee:team_members!assignee_id(name, avatar_url),
         comments:task_comments(id)
       `,
       )
       .eq("project_id", projectId)
       .is("parent_task_id", null)
+      .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
     pm(supabase)
       .from("tasks")
@@ -385,6 +390,8 @@ export async function getProjectTasks(
     subtask_count: subtaskCountByParent.get(task.id) ?? 0,
     comment_count: task.comments?.length ?? 0,
     is_recurring: task.is_recurring,
+    is_recurring_instance: task.is_recurring_instance ?? false,
+    recurring_parent_id: task.recurring_parent_id ?? null,
   }));
 }
 
