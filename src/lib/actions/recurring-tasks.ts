@@ -3,7 +3,7 @@
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
 import { insertTaskWithTeamMemberContext } from "@/lib/supabase/with-team-member-context";
-import { findTodoSectionId } from "@/lib/tasks/done-section";
+import { findTodoSectionId, loadProjectSections } from "@/lib/tasks/done-section";
 import {
   calculateNextOccurrence,
   calculateNextOccurrenceAfterToday,
@@ -48,20 +48,9 @@ async function loadRecurringParent(
   return data;
 }
 
-async function loadProjectSections(projectId: string) {
+async function loadProjectSectionsForTask(projectId: string) {
   const supabase = createServiceClient();
-  const { data, error } = await pm(supabase)
-    .from("project_sections")
-    .select("id, name, display_order")
-    .eq("project_id", projectId)
-    .order("display_order", { ascending: true });
-
-  if (error) {
-    console.error("[loadProjectSections]", error.message);
-    return [];
-  }
-
-  return data ?? [];
+  return loadProjectSections(supabase, projectId);
 }
 
 async function loadInstances(parentTaskId: string): Promise<RecurringInstanceRow[]> {
@@ -160,7 +149,7 @@ export async function generateRecurringInstances(
     return;
   }
 
-  const sections = await loadProjectSections(parent.project_id);
+  const sections = await loadProjectSectionsForTask(parent.project_id);
   const todoSectionId = findTodoSectionId(sections) ?? parent.section_id;
 
   await createInstance(teamMemberId, parent, nextDueDate, todoSectionId);
@@ -202,7 +191,7 @@ export async function completeRecurringInstance(
   );
   if (openInstance) return;
 
-  const sections = await loadProjectSections(parent.project_id);
+  const sections = await loadProjectSectionsForTask(parent.project_id);
   const todoSectionId = findTodoSectionId(sections) ?? parent.section_id;
 
   console.log("[recurring] generating instances for:", parent.id);
