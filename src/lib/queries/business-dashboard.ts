@@ -125,6 +125,9 @@ export async function getMonthlyBusinessResults(): Promise<
 
   const clients = data ?? [];
   const currentMonthStart = startOfMonth(new Date());
+  const currentActiveClientCount = clients.filter(
+    (client) => client.status === "active",
+  ).length;
   const currentActiveMrrCadCents = clients.reduce((sum, client) => {
     if (client.status !== "active") return sum;
     return (
@@ -172,11 +175,16 @@ export async function getMonthlyBusinessResults(): Promise<
         churnedClients += 1;
       }
 
-      if (
-        createdAt <= monthEnd &&
-        (client.status === "active" || updatedAt > monthEnd)
-      ) {
-        activeClients += 1;
+    }
+
+    if (monthStart.getTime() === currentMonthStart.getTime()) {
+      activeClients = currentActiveClientCount;
+    } else {
+      for (const client of clients) {
+        const createdAt = new Date(client.created_at);
+        if (createdAt <= monthEnd && client.status === "active") {
+          activeClients += 1;
+        }
       }
     }
 

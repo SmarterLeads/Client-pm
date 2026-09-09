@@ -195,6 +195,7 @@ export function formatMrr(
 /** Overview status labels (maps to public.clients.status string values). */
 export const OVERVIEW_STATUS_OPTIONS = [
   { value: "active", label: "Active" },
+  { value: "setup", label: "Setup" },
   { value: "prospect", label: "Lead" },
   { value: "on_hold", label: "Paused" },
   { value: "churned", label: "Churned" },
@@ -206,6 +207,7 @@ export function normalizeOverviewStatus(
   value: string | null | undefined,
 ): OverviewStatus {
   if (value === "active") return "active";
+  if (value === "setup") return "setup";
   if (value === "on_hold") return "on_hold";
   if (value === "churned") return "churned";
   return "prospect";

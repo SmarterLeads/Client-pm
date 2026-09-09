@@ -2739,6 +2739,7 @@ export type Database = {
           show_ecommerce_hero_row: boolean | null
           show_in_dashboard: boolean
           show_prior_year_ytd: boolean | null
+          /** active | setup | inactive | prospect | on_hold | churned */
           status: string
           tracking_setup: string | null
           updated_at: string
@@ -2783,6 +2784,7 @@ export type Database = {
           show_ecommerce_hero_row?: boolean | null
           show_in_dashboard?: boolean
           show_prior_year_ytd?: boolean | null
+          /** active | setup | inactive | prospect | on_hold | churned */
           status?: string
           tracking_setup?: string | null
           updated_at?: string

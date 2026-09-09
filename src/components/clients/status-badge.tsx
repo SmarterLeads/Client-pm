@@ -1,16 +1,12 @@
 ﻿import { Badge } from "@/components/ui/badge";
-import type { ClientStatus } from "@/lib/pm/constants";
-
-const statusLabels: Record<string, string> = {
-  active: "Active",
-  inactive: "Inactive",
-  prospect: "Lead",
-  on_hold: "Paused",
-  churned: "Churned",
-};
+import {
+  CLIENT_STATUS_LABELS,
+  type ClientStatus,
+} from "@/lib/pm/constants";
 
 function statusVariant(status: string) {
   if (status === "active") return "default" as const;
+  if (status === "setup") return "secondary" as const;
   if (status === "prospect") return "secondary" as const;
   if (status === "on_hold") return "outline" as const;
   if (status === "churned") return "destructive" as const;
@@ -27,17 +23,19 @@ export function StatusBadge({
   }
 
   const label =
-    status in statusLabels
-      ? statusLabels[status as ClientStatus]
+    status in CLIENT_STATUS_LABELS
+      ? CLIENT_STATUS_LABELS[status as ClientStatus]
       : status;
 
   return (
     <Badge
       variant={statusVariant(status)}
       className={
-        status === "on_hold"
-          ? "border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-          : undefined
+        status === "setup"
+          ? "border-teal-300 bg-teal-100 text-teal-800 dark:border-teal-700 dark:bg-teal-950 dark:text-teal-300"
+          : status === "on_hold"
+            ? "border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+            : undefined
       }
     >
       {label}

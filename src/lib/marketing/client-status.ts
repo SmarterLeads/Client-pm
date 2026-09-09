@@ -2,6 +2,7 @@
 export const MARKETING_CHURNED_STATUS = "churned";
 export const MARKETING_PAUSED_STATUS = "on_hold";
 export const MARKETING_ACTIVE_STATUS = "active";
+export const MARKETING_SETUP_STATUS = "setup";
 
 /** Dashboard list statuses when "Show paused clients" is off. */
 export const MARKETING_DASHBOARD_ACTIVE_STATUSES = [

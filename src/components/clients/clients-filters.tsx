@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { CLIENT_SERVICE_FILTER_OPTIONS } from "@/lib/clients/overview-fields";
-import { CLIENT_STATUSES } from "@/lib/pm/constants";
+import { CLIENT_STATUSES, CLIENT_STATUS_LABELS } from "@/lib/pm/constants";
 import type { AgencyListRow } from "@/lib/queries/agencies";
 import type { ClientServiceFilterCounts } from "@/lib/queries/clients";
 import { PmEnumValues } from "@/lib/types/enums";
@@ -70,7 +70,7 @@ export function ClientsFilters({ agencies, serviceCounts }: ClientsFiltersProps)
         <option value="">All statuses</option>
         {statuses.map((s) => (
           <option key={s} value={s}>
-            {s.charAt(0).toUpperCase() + s.slice(1)}
+            {CLIENT_STATUS_LABELS[s]}
           </option>
         ))}
       </select>

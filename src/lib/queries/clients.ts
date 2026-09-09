@@ -93,7 +93,7 @@ export type ClientsListPage = {
 };
 
 /** Shown on /clients when "Include inactive" is off. */
-export const CLIENT_LIST_ACTIVE_STATUSES = ["active", "prospect"] as const;
+export const CLIENT_LIST_ACTIVE_STATUSES = ["active", "setup", "prospect"] as const;
 
 export type ClientDetail = {
   client: Client;

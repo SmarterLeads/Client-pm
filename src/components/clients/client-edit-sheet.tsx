@@ -16,7 +16,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { CLIENT_STATUSES } from "@/lib/pm/constants";
+import { CLIENT_STATUSES, CLIENT_STATUS_LABELS } from "@/lib/pm/constants";
 import { PmEnumValues } from "@/lib/types/enums";
 import { useActionToast } from "@/hooks/use-action-toast";
 import type { Client, TeamMember } from "@/lib/types";
@@ -75,7 +75,7 @@ export function ClientEditSheet({
             >
               {statuses.map((s) => (
                 <option key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                  {CLIENT_STATUS_LABELS[s]}
                 </option>
               ))}
             </select>

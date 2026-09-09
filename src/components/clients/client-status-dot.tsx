@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 
 const statusStyles: Record<string, string> = {
   active: "bg-emerald-500",
+  setup: "bg-teal-500",
   prospect: "bg-blue-500",
   on_hold: "bg-zinc-400 dark:bg-zinc-500",
   churned: "bg-red-500",

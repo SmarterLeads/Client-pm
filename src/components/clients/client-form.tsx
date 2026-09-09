@@ -21,7 +21,7 @@ import {
   sheetTextareaClassName,
 } from "@/components/ui/sheet-form";
 import { Textarea } from "@/components/ui/textarea";
-import { CLIENT_STATUSES } from "@/lib/pm/constants";
+import { CLIENT_STATUSES, CLIENT_STATUS_LABELS } from "@/lib/pm/constants";
 import {
   CREATE_CLIENT_PLATFORM_FIELDS,
   CREATE_CLIENT_TYPE_OPTIONS,
@@ -151,7 +151,7 @@ export function ClientForm({
           <Field id="status" label="Status" required sheetMode error={state.fieldErrors?.status?.[0]}>
             <select id="status" name="status" required defaultValue="prospect" className={selectClass}>
               {statuses.map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                <option key={s} value={s}>{CLIENT_STATUS_LABELS[s]}</option>
               ))}
             </select>
           </Field>
@@ -232,7 +232,7 @@ export function ClientForm({
               <Field id="status" label="Status" required error={state.fieldErrors?.status?.[0]}>
                 <select id="status" name="status" required defaultValue="prospect" className={selectClass}>
                   {statuses.map((s) => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    <option key={s} value={s}>{CLIENT_STATUS_LABELS[s]}</option>
                   ))}
                 </select>
               </Field>
