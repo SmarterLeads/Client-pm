@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { canReviewTasks, getTeamMember } from "@/lib/auth/session";
-import { getTaskDetail } from "@/lib/queries/tasks";
+import { getTaskCreateContext, getTaskDetail } from "@/lib/queries/tasks";
 import {
   notifyTaskAssigned,
   notifyTaskComment,
@@ -77,6 +77,10 @@ function revalidateTaskPaths(projectId: string) {
 
 export async function loadTaskDetail(taskId: string) {
   return getTaskDetail(taskId);
+}
+
+export async function loadTaskCreateContext(projectId: string) {
+  return getTaskCreateContext(projectId);
 }
 
 export async function createTask(
@@ -331,6 +335,11 @@ export async function createTaskDirect(input: {
   assignee_id?: string | null;
   due_date?: string | null;
   status?: string;
+  estimated_hours?: number | null;
+  is_recurring?: boolean;
+  recurrence_rule?: string | null;
+  subtask_titles?: string[];
+  dependency_task_ids?: string[];
 }): Promise<{ error?: string; taskId?: string }> {
   try {
     const teamMember = await requireTeamMember();
@@ -343,6 +352,7 @@ export async function createTaskDirect(input: {
     }
 
     const data = parsed.data;
+    const isRecurring = data.is_recurring ?? false;
     const taskId = await insertTaskWithTeamMemberContext(teamMember.id, {
       project_id: data.project_id,
       section_id: data.section_id ?? null,
@@ -351,8 +361,31 @@ export async function createTaskDirect(input: {
       priority: data.priority ?? "medium",
       assignee_id: data.assignee_id ?? null,
       due_date: data.due_date ?? null,
+      estimated_hours: data.estimated_hours ?? null,
       status: data.status ?? "todo",
+      is_recurring: isRecurring,
+      recurrence_rule:
+        isRecurring && data.recurrence_rule ? data.recurrence_rule : null,
     });
+
+    for (const subtaskTitle of input.subtask_titles ?? []) {
+      const trimmed = subtaskTitle.trim();
+      if (!trimmed) continue;
+      await insertTaskWithTeamMemberContext(teamMember.id, {
+        project_id: data.project_id,
+        parent_task_id: taskId,
+        title: trimmed,
+        priority: data.priority ?? "medium",
+        status: "todo",
+      });
+    }
+
+    for (const dependsOnTaskId of input.dependency_task_ids ?? []) {
+      await insertTaskDependencyWithTeamMemberContext(teamMember.id, {
+        task_id: taskId,
+        depends_on_task_id: dependsOnTaskId,
+      });
+    }
 
     if (data.assignee_id) {
       await notifyTaskAssigned({
@@ -362,6 +395,10 @@ export async function createTaskDirect(input: {
         taskId,
         taskTitle: data.title,
       });
+    }
+
+    if (isRecurring) {
+      await generateRecurringInstances(teamMember.id, taskId);
     }
 
     revalidateTaskPaths(data.project_id);

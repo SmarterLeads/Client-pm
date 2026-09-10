@@ -52,6 +52,13 @@ export type TaskDetail = {
   attachments: AttachmentListItem[];
 };
 
+export type TaskCreateContext = {
+  project_name: string;
+  client_name: string;
+  sections: ProjectSection[];
+  project_tasks: TaskPickerOption[];
+};
+
 export type MyTaskRow = {
   id: string;
   title: string;
@@ -534,6 +541,47 @@ export async function getTaskDetail(taskId: string): Promise<TaskDetail | null> 
     subtask_count: subtaskCountRes.count ?? 0,
     comment_count: commentCountRes.count ?? 0,
     attachments,
+  };
+}
+
+export async function getTaskCreateContext(
+  projectId: string,
+): Promise<TaskCreateContext | null> {
+  const supabase = await createClient();
+
+  const { data: project, error: projectError } = await pm(supabase)
+    .from("projects")
+    .select("name, client_id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (projectError || !project) return null;
+
+  const clientNameMap = await loadClientNameMap(supabase, [project.client_id]);
+  const clientName = clientNameFromMap(project.client_id, clientNameMap);
+
+  const [sectionsRes, projectTasksRes] = await Promise.all([
+    pm(supabase)
+      .from("project_sections")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("display_order"),
+    pm(supabase)
+      .from("tasks")
+      .select("id, title")
+      .eq("project_id", projectId)
+      .is("parent_task_id", null)
+      .order("title"),
+  ]);
+
+  if (sectionsRes.error) throw new Error(sectionsRes.error.message);
+  if (projectTasksRes.error) throw new Error(projectTasksRes.error.message);
+
+  return {
+    project_name: project.name,
+    client_name: clientName,
+    sections: sectionsRes.data ?? [],
+    project_tasks: projectTasksRes.data ?? [],
   };
 }
 

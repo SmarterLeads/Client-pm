@@ -5,6 +5,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -17,9 +18,11 @@ import {
   addDependency,
   createComment,
   createTask,
+  createTaskDirect,
   deleteComment,
   deleteTask,
   deleteTimeEntry,
+  loadTaskCreateContext,
   loadTaskDetail,
   logTime,
   removeDependency,
@@ -27,7 +30,7 @@ import {
   type TaskFormState,
 } from "@/lib/actions/tasks";
 import { useActionToast } from "@/hooks/use-action-toast";
-import type { TaskDetail } from "@/lib/queries/tasks";
+import type { TaskCreateContext, TaskDetail } from "@/lib/queries/tasks";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,11 +39,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { TeamMember } from "@/lib/types";
 import { normalizeRichTextHtml } from "@/lib/rich-text";
-import { closeTaskDrawer } from "@/lib/stores/task-drawer-store";
+import {
+  closeTaskDrawer,
+  openTaskDrawer,
+  type TaskCreateDraft,
+} from "@/lib/stores/task-drawer-store";
 import { cn } from "@/lib/utils";
 import { DELETE_TASK_CONFIRM_MESSAGE } from "@/lib/tasks/constants";
 import { getTaskStatusSelectOptions } from "@/lib/tasks/status-options";
 import { PmEnumValues } from "@/lib/types/enums";
+import { TaskRecurrenceFormFields } from "@/components/tasks/task-recurrence-form-fields";
+import {
+  defaultRecurrenceRule,
+  serializeRecurrenceRule,
+  type RecurrenceRule,
+} from "@/lib/tasks/recurrence";
 import { XIcon } from "lucide-react";
 
 const priorities = PmEnumValues.task_priority;
@@ -51,6 +64,7 @@ const subtaskInitial: TaskFormState = {};
 
 type TaskDrawerProps = {
   taskId: string | null;
+  createDraft: TaskCreateDraft | null;
   teamMembers: Pick<TeamMember, "id" | "name" | "email" | "avatar_url">[];
   isOpen: boolean;
   onClose: () => void;
@@ -74,11 +88,13 @@ function formatMinutes(total: number) {
 
 export function TaskDrawer({
   taskId,
+  createDraft,
   teamMembers,
   isOpen,
   onClose,
 }: TaskDrawerProps) {
   const router = useRouter();
+  const isCreateMode = Boolean(createDraft);
   const [detail, setDetail] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +102,29 @@ export function TaskDrawer({
   const [showLogTime, setShowLogTime] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [description, setDescription] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const [createContext, setCreateContext] = useState<TaskCreateContext | null>(
+    null,
+  );
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createTitle, setCreateTitle] = useState("");
+  const [createDescription, setCreateDescription] = useState("");
+  const [createStatus, setCreateStatus] = useState("todo");
+  const [createPriority, setCreatePriority] = useState("medium");
+  const [createAssigneeId, setCreateAssigneeId] = useState("");
+  const [createSectionId, setCreateSectionId] = useState("");
+  const [createDueDate, setCreateDueDate] = useState("");
+  const [createEstimatedHours, setCreateEstimatedHours] = useState("");
+  const [createIsRecurring, setCreateIsRecurring] = useState(false);
+  const [createRecurrenceRule, setCreateRecurrenceRule] =
+    useState<RecurrenceRule>(defaultRecurrenceRule);
+  const [createSubtasks, setCreateSubtasks] = useState<string[]>([]);
+  const [createSubtaskInput, setCreateSubtaskInput] = useState("");
+  const [createDependencies, setCreateDependencies] = useState<
+    Array<{ id: string; title: string }>
+  >([]);
+  const [createDependencySelect, setCreateDependencySelect] = useState("");
+  const [isCreating, startCreateTransition] = useTransition();
 
   useEffect(() => {
     setMounted(true);
@@ -107,10 +146,12 @@ export function TaskDrawer({
   }, []);
 
   useEffect(() => {
-    if (!taskId) {
-      setDetail(null);
-      setError(null);
-      setShowLogTime(false);
+    if (isCreateMode || !taskId) {
+      if (!taskId) {
+        setDetail(null);
+        setError(null);
+        setShowLogTime(false);
+      }
       return;
     }
 
@@ -137,11 +178,104 @@ export function TaskDrawer({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, taskId]);
+  }, [isCreateMode, isOpen, taskId]);
 
   useEffect(() => {
     setDescription(detail?.task.description ?? "");
   }, [detail?.task.id, detail?.task.description]);
+
+  useEffect(() => {
+    if (!createDraft) return;
+    setCreateTitle("");
+    setCreateDescription("");
+    setCreateStatus("todo");
+    setCreatePriority("medium");
+    setCreateAssigneeId(createDraft.assigneeId);
+    setCreateSectionId(createDraft.sectionId);
+    setCreateDueDate("");
+    setCreateEstimatedHours("");
+    setCreateIsRecurring(false);
+    setCreateRecurrenceRule(defaultRecurrenceRule());
+    setCreateSubtasks([]);
+    setCreateSubtaskInput("");
+    setCreateDependencies([]);
+    setCreateDependencySelect("");
+    setError(null);
+  }, [createDraft]);
+
+  useEffect(() => {
+    if (!isCreateMode || !isOpen || !createDraft) {
+      setCreateContext(null);
+      return;
+    }
+
+    let cancelled = false;
+    setCreateLoading(true);
+    loadTaskCreateContext(createDraft.projectId)
+      .then((data) => {
+        if (!cancelled) {
+          setCreateContext(data);
+          if (!data) setError("Project not found.");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError("Failed to load project.");
+      })
+      .finally(() => {
+        if (!cancelled) setCreateLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCreateMode, isOpen, createDraft]);
+
+  useEffect(() => {
+    if (!isCreateMode || !isOpen || createLoading) return;
+    titleInputRef.current?.focus();
+  }, [isCreateMode, isOpen, createLoading, createDraft?.projectId]);
+
+  function handleCreateTask() {
+    if (!createDraft || !createTitle.trim()) return;
+
+    startCreateTransition(async () => {
+      const result = await createTaskDirect({
+        project_id: createDraft.projectId,
+        section_id: createSectionId || createDraft.sectionId,
+        title: createTitle.trim(),
+        description: normalizeRichTextHtml(createDescription) || null,
+        status: createStatus,
+        priority: createPriority,
+        assignee_id: createAssigneeId || null,
+        due_date: createDueDate || null,
+        estimated_hours: createEstimatedHours
+          ? Number(createEstimatedHours)
+          : null,
+        is_recurring: createIsRecurring,
+        recurrence_rule: createIsRecurring
+          ? serializeRecurrenceRule(createRecurrenceRule)
+          : null,
+        subtask_titles: createSubtasks,
+        dependency_task_ids: createDependencies.map((dep) => dep.id),
+      });
+
+      if (result.error) {
+        setError(result.error);
+        toastError(result.error);
+        return;
+      }
+
+      toastSuccess("Task created");
+      setError(null);
+      router.refresh();
+      if (result.taskId) {
+        openTaskDrawer(result.taskId);
+      } else {
+        closeTaskDrawer();
+        onClose();
+      }
+    });
+  }
 
   function saveField(updates: Record<string, unknown>) {
     if (!detail) return;
@@ -205,13 +339,19 @@ export function TaskDrawer({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Task details"
+        aria-label={isCreateMode ? "New task" : "Task details"}
         className="absolute top-0 right-0 flex h-full w-full flex-col overflow-hidden border-l border-border bg-popover text-popover-foreground shadow-xl sm:w-[480px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative shrink-0 border-b border-border px-6 pb-4 pt-6 pr-14">
-          <h2 className="text-lg font-semibold tracking-tight">Task details</h2>
-          {detail ? (
+          <h2 className="text-lg font-semibold tracking-tight">
+            {isCreateMode ? "New task" : "Task details"}
+          </h2>
+          {isCreateMode && createContext ? (
+            <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
+              {createContext.project_name} · {createContext.client_name}
+            </p>
+          ) : detail ? (
             <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
               {detail.project_name} · {detail.client_name}
             </p>
@@ -229,7 +369,292 @@ export function TaskDrawer({
           </button>
         </div>
         <div className="flex min-h-0 flex-1 flex-col px-6 pb-6">
-        {loading ? (
+        {isCreateMode ? (
+          createLoading ? (
+            <p className="py-6 text-sm text-muted-foreground">Loading…</p>
+          ) : !createContext ? (
+            <p className="py-6 text-sm text-destructive">
+              {error ?? "Project not found."}
+            </p>
+          ) : (
+            <>
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto py-6">
+                <Input
+                  ref={titleInputRef}
+                  value={createTitle}
+                  onChange={(e) => setCreateTitle(e.target.value)}
+                  className="text-lg font-semibold"
+                  aria-label="Task title"
+                  placeholder="Task title"
+                  autoFocus
+                />
+                {error ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+
+                <div>
+                  <label
+                    className={sheetFieldLabelClassName}
+                    htmlFor="create_task_description"
+                  >
+                    Description
+                  </label>
+                  <RichTextEditor
+                    value={createDescription}
+                    onChange={setCreateDescription}
+                    placeholder="Add a description…"
+                    className="mt-0"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FieldSelect
+                    label="Status"
+                    value={createStatus}
+                    options={getTaskStatusSelectOptions()}
+                    onChange={setCreateStatus}
+                  />
+                  <FieldSelect
+                    label="Priority"
+                    value={createPriority}
+                    options={priorities.map((p) => ({
+                      value: p,
+                      label: p.charAt(0).toUpperCase() + p.slice(1),
+                    }))}
+                    onChange={setCreatePriority}
+                  />
+                  <FieldSelect
+                    label="Assignee"
+                    value={createAssigneeId}
+                    options={[
+                      { value: "", label: "Unassigned" },
+                      ...teamMembers.map((m) => ({
+                        value: m.id,
+                        label: m.name,
+                      })),
+                    ]}
+                    onChange={setCreateAssigneeId}
+                  />
+                  <div>
+                    <label
+                      className={sheetFieldLabelClassName}
+                      htmlFor="create_due_date"
+                    >
+                      Due date
+                    </label>
+                    <Input
+                      id="create_due_date"
+                      type="date"
+                      value={createDueDate}
+                      onChange={(e) => setCreateDueDate(e.target.value)}
+                      className={sheetInputClassName}
+                    />
+                  </div>
+                  <FieldSelect
+                    label="Section"
+                    value={createSectionId}
+                    options={createContext.sections.map((s) => ({
+                      value: s.id,
+                      label: s.name,
+                    }))}
+                    onChange={setCreateSectionId}
+                  />
+                  <div>
+                    <label
+                      className={sheetFieldLabelClassName}
+                      htmlFor="create_estimated_hours"
+                    >
+                      Est. hours
+                    </label>
+                    <Input
+                      id="create_estimated_hours"
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={createEstimatedHours}
+                      onChange={(e) => setCreateEstimatedHours(e.target.value)}
+                      className={sheetInputClassName}
+                    />
+                  </div>
+                </div>
+
+                <TaskRecurrenceFormFields
+                  isRecurring={createIsRecurring}
+                  rule={createRecurrenceRule}
+                  onRecurringChange={setCreateIsRecurring}
+                  onRuleChange={setCreateRecurrenceRule}
+                />
+
+                <section className="space-y-2">
+                  <h3 className="text-sm font-medium">Subtasks</h3>
+                  {createSubtasks.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No subtasks yet.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {createSubtasks.map((subtask, index) => (
+                        <li
+                          key={`${subtask}-${index}`}
+                          className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
+                        >
+                          <span>{subtask}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setCreateSubtasks((current) =>
+                                current.filter((_, i) => i !== index),
+                              )
+                            }
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      value={createSubtaskInput}
+                      onChange={(e) => setCreateSubtaskInput(e.target.value)}
+                      placeholder="Add subtask…"
+                      className="h-8 flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const trimmed = createSubtaskInput.trim();
+                        if (!trimmed) return;
+                        setCreateSubtasks((current) => [...current, trimmed]);
+                        setCreateSubtaskInput("");
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        const trimmed = createSubtaskInput.trim();
+                        if (!trimmed) return;
+                        setCreateSubtasks((current) => [...current, trimmed]);
+                        setCreateSubtaskInput("");
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </section>
+
+                <section className="space-y-2">
+                  <h3 className="text-sm font-medium">Blocked by</h3>
+                  {createDependencies.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No dependencies.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {createDependencies.map((dep) => (
+                        <li
+                          key={dep.id}
+                          className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
+                        >
+                          <span>{dep.title}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setCreateDependencies((current) =>
+                                current.filter((row) => row.id !== dep.id),
+                              )
+                            }
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="flex gap-2">
+                    <select
+                      value={createDependencySelect}
+                      onChange={(e) => setCreateDependencySelect(e.target.value)}
+                      className="h-8 flex-1 rounded-lg border border-input px-2.5 text-sm dark:bg-input/30"
+                    >
+                      <option value="">Select task…</option>
+                      {createContext.project_tasks
+                        .filter(
+                          (task) =>
+                            !createDependencies.some((dep) => dep.id === task.id),
+                        )
+                        .map((task) => (
+                          <option key={task.id} value={task.id}>
+                            {task.title}
+                          </option>
+                        ))}
+                    </select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!createDependencySelect}
+                      onClick={() => {
+                        const selected = createContext.project_tasks.find(
+                          (task) => task.id === createDependencySelect,
+                        );
+                        if (!selected) return;
+                        setCreateDependencies((current) => [
+                          ...current,
+                          { id: selected.id, title: selected.title },
+                        ]);
+                        setCreateDependencySelect("");
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </section>
+
+                <Tabs defaultValue="comments">
+                  <TabsList variant="line" className="w-full">
+                    <TabsTrigger value="comments">Comments (0)</TabsTrigger>
+                    <TabsTrigger value="time">Time (0m)</TabsTrigger>
+                    <TabsTrigger value="files">Files (0)</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="comments" className="mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Create the task to add comments.
+                    </p>
+                  </TabsContent>
+                  <TabsContent value="time" className="mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Create the task to log time.
+                    </p>
+                  </TabsContent>
+                  <TabsContent value="files" className="mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Create the task to upload files.
+                    </p>
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              <div className="flex shrink-0 gap-2 border-t border-border pt-4">
+                <Button
+                  type="button"
+                  disabled={isCreating || !createTitle.trim()}
+                  onClick={handleCreateTask}
+                >
+                  {isCreating ? "Creating…" : "Create task"}
+                </Button>
+                <Button type="button" variant="outline" onClick={handleClose}>
+                  Cancel
+                </Button>
+              </div>
+            </>
+          )
+        ) : loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : !detail ? (
           <p className="text-sm text-destructive">{error ?? "Task not found."}</p>

@@ -9,10 +9,8 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { TaskCreateDrawer } from "@/components/tasks/task-create-drawer";
 import { TaskDrawer } from "@/components/tasks/task-drawer";
 import {
-  closeTaskCreateDrawer,
   closeTaskDrawer,
   getTaskDrawerState,
   openTaskCreateDrawer,
@@ -20,7 +18,7 @@ import {
   subscribeTaskDrawer,
   type TaskCreateDraft,
 } from "@/lib/stores/task-drawer-store";
-import type { ProjectSection, TeamMember } from "@/lib/types";
+import type { TeamMember } from "@/lib/types";
 
 type TaskDrawerContextValue = {
   openTask: (taskId: string) => void;
@@ -66,10 +64,6 @@ export function TaskDrawerProvider({
     window.setTimeout(() => router.refresh(), 350);
   }, [router]);
 
-  const closeCreateTask = useCallback(() => {
-    closeTaskCreateDrawer();
-  }, []);
-
   const contextValue = useMemo(
     () => ({
       taskId,
@@ -85,16 +79,10 @@ export function TaskDrawerProvider({
       {children}
       <TaskDrawer
         taskId={taskId}
+        createDraft={createDraft}
         teamMembers={teamMembers}
-        isOpen={isOpen && !createDraft}
+        isOpen={isOpen}
         onClose={closeTask}
-      />
-      <TaskCreateDrawer
-        draft={createDraft}
-        sections={(createDraft?.sections ?? []) as ProjectSection[]}
-        teamMembers={teamMembers}
-        isOpen={isOpen && Boolean(createDraft)}
-        onClose={closeCreateTask}
       />
     </TaskDrawerContext.Provider>
   );
