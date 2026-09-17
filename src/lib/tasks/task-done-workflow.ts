@@ -1,18 +1,8 @@
-import { isTaskReviewerEmail } from "@/lib/tasks/reviewers";
-import type { TeamMember } from "@/lib/types";
-
 export function mergeDoneReviewFields(
-  teamMember: Pick<TeamMember, "id" | "email">,
   payload: Record<string, unknown>,
 ): Record<string, unknown> {
-  if (normalizeTaskStatus(String(payload.status ?? "")) !== "done") return payload;
-
-  if (isTaskReviewerEmail(teamMember.email)) {
-    return {
-      ...payload,
-      reviewed_by: teamMember.id,
-      reviewed_at: new Date().toISOString(),
-    };
+  if (normalizeTaskStatus(String(payload.status ?? "")) !== "done") {
+    return payload;
   }
 
   return {

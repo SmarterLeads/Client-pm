@@ -4,7 +4,6 @@ import {
 } from "@/lib/notifications/notify";
 import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
-import { isTaskReviewerEmail } from "@/lib/tasks/reviewers";
 import type { TeamMember } from "@/lib/types";
 
 export async function handleTaskMarkedDone(params: {
@@ -13,6 +12,8 @@ export async function handleTaskMarkedDone(params: {
   projectId: string;
   taskTitle: string;
   assigneeId: string | null;
+  requiresReview: boolean;
+  reviewRequestedBy: string | null;
 }) {
   const service = createServiceClient();
   let assigneeName = params.teamMember.name;
@@ -36,13 +37,14 @@ export async function handleTaskMarkedDone(params: {
     actorName: params.teamMember.name,
   });
 
-  if (!isTaskReviewerEmail(params.teamMember.email)) {
+  if (params.requiresReview && params.reviewRequestedBy) {
     await notifyTaskCompletedNeedsReview({
       taskId: params.taskId,
       taskTitle: params.taskTitle,
       projectId: params.projectId,
       assigneeName,
       actorId: params.teamMember.id,
+      reviewerId: params.reviewRequestedBy,
     });
   }
 }

@@ -6,7 +6,7 @@ import { DashboardKpiCards } from "@/components/dashboard/dashboard-kpi-cards";
 import { DashboardMyTasksWidget } from "@/components/dashboard/dashboard-my-tasks-widget";
 import { DashboardTeamWorkloadPanel } from "@/components/dashboard/dashboard-team-workload";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { canReviewTasks, getTeamMember } from "@/lib/auth/session";
+import { getTeamMember } from "@/lib/auth/session";
 import {
   getDashboardBillableHoursByClient,
   getDashboardClientHealth,
@@ -25,8 +25,6 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const showReviewQueue = canReviewTasks(teamMember);
-
   const [kpis, clients, teamWorkload, billableByClient, myTasks, pendingEmails, clientOptions, tasksToReview] =
     await Promise.all([
       getDashboardKpis(),
@@ -36,7 +34,7 @@ export default async function DashboardPage() {
       getDashboardMyTasks(teamMember.id),
       getPendingEmailLogs(),
       getClientsForSelect(),
-      showReviewQueue ? getTasksToReview() : Promise.resolve([]),
+      getTasksToReview(teamMember.id),
     ]);
 
   return (
@@ -82,16 +80,14 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {showReviewQueue ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Tasks to Review</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TasksToReviewSection tasks={tasksToReview} />
-          </CardContent>
-        </Card>
-      ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tasks to Review</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TasksToReviewSection tasks={tasksToReview} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

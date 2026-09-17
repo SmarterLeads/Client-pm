@@ -1,7 +1,7 @@
 ﻿"use server";
 
 import { revalidatePath } from "next/cache";
-import { canReviewTasks, getTeamMember } from "@/lib/auth/session";
+import { getTeamMember } from "@/lib/auth/session";
 import { getTaskCreateContext, getTaskDetail } from "@/lib/queries/tasks";
 import {
   notifyTaskAssigned,
@@ -126,6 +126,8 @@ export async function createTask(
     const data = parsed.data;
 
     const isRecurring = "is_recurring" in data ? Boolean(data.is_recurring) : false;
+    const requiresReview =
+      "requires_review" in data ? Boolean(data.requires_review) : false;
 
     const taskId = await insertTaskWithTeamMemberContext(teamMember.id, {
       project_id: data.project_id,
@@ -145,6 +147,13 @@ export async function createTask(
         isRecurring && "recurrence_rule" in data
           ? (data.recurrence_rule ?? null)
           : null,
+      requires_review: requiresReview,
+      review_requested_by:
+        requiresReview && "review_requested_by" in data
+          ? (data.review_requested_by ?? teamMember.id)
+          : requiresReview
+            ? teamMember.id
+            : null,
     });
 
     if (data.assignee_id) {
@@ -197,6 +206,8 @@ export async function updateTask(
       title: string;
       assignee_id: string | null;
       is_recurring_instance: boolean;
+      requires_review: boolean;
+      review_requested_by: string | null;
     } | null = null;
 
     if ("assignee_id" in parsed.data) {
@@ -211,7 +222,9 @@ export async function updateTask(
     if ("status" in parsed.data || "section_id" in parsed.data) {
       const { data, error } = await pm(service)
         .from("tasks")
-        .select("status, title, assignee_id, is_recurring_instance")
+        .select(
+          "status, title, assignee_id, is_recurring_instance, requires_review, review_requested_by",
+        )
         .eq("id", taskId)
         .maybeSingle();
       if (error) {
@@ -229,7 +242,7 @@ export async function updateTask(
       typeof payload.status === "string" ? payload.status : undefined;
 
     if (nextStatus === "done") {
-      payload = mergeDoneReviewFields(teamMember, payload);
+      payload = mergeDoneReviewFields(payload);
       const doneSectionId = await ensureDoneSectionId(service, projectId);
       if (doneSectionId) {
         payload.section_id = doneSectionId;
@@ -255,6 +268,8 @@ export async function updateTask(
         projectId,
         taskTitle: taskBeforeStatusUpdate.title,
         assigneeId: taskBeforeStatusUpdate.assignee_id,
+        requiresReview: taskBeforeStatusUpdate.requires_review,
+        reviewRequestedBy: taskBeforeStatusUpdate.review_requested_by,
       });
 
       if (taskBeforeStatusUpdate.is_recurring_instance) {
@@ -338,6 +353,8 @@ export async function createTaskDirect(input: {
   estimated_hours?: number | null;
   is_recurring?: boolean;
   recurrence_rule?: string | null;
+  requires_review?: boolean;
+  review_requested_by?: string | null;
   subtask_titles?: string[];
   dependency_task_ids?: string[];
 }): Promise<{ error?: string; taskId?: string }> {
@@ -353,6 +370,7 @@ export async function createTaskDirect(input: {
 
     const data = parsed.data;
     const isRecurring = data.is_recurring ?? false;
+    const requiresReview = data.requires_review ?? false;
     const taskId = await insertTaskWithTeamMemberContext(teamMember.id, {
       project_id: data.project_id,
       section_id: data.section_id ?? null,
@@ -366,6 +384,10 @@ export async function createTaskDirect(input: {
       is_recurring: isRecurring,
       recurrence_rule:
         isRecurring && data.recurrence_rule ? data.recurrence_rule : null,
+      requires_review: requiresReview,
+      review_requested_by: requiresReview
+        ? (data.review_requested_by ?? teamMember.id)
+        : null,
     });
 
     for (const subtaskTitle of input.subtask_titles ?? []) {
@@ -603,14 +625,13 @@ export async function markTaskReviewed(
 ): Promise<{ error?: string }> {
   try {
     const teamMember = await requireTeamMember();
-    if (!canReviewTasks(teamMember)) {
-      return { error: "You are not authorized to review tasks." };
-    }
 
     const service = createServiceClient();
     const { data: task, error: taskError } = await pm(service)
       .from("tasks")
-      .select("id, title, status, assignee_id, reviewed_by")
+      .select(
+        "id, title, status, assignee_id, reviewed_by, requires_review, review_requested_by",
+      )
       .eq("id", taskId)
       .maybeSingle();
 
@@ -618,8 +639,16 @@ export async function markTaskReviewed(
       return { error: "Task not found." };
     }
 
+    if (!task.requires_review) {
+      return { error: "This task does not require review." };
+    }
+
     if (task.status !== "done") {
       return { error: "Only completed tasks can be reviewed." };
+    }
+
+    if (task.review_requested_by !== teamMember.id) {
+      return { error: "You are not assigned to review this task." };
     }
 
     if (task.reviewed_by) {

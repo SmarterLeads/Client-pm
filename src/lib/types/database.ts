@@ -1704,6 +1704,8 @@ export type Database = {
           project_id: string
           recurrence_rule: string | null
           recurring_parent_id: string | null
+          requires_review: boolean
+          review_requested_by: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           section_id: string | null
@@ -1726,6 +1728,8 @@ export type Database = {
           project_id: string
           recurrence_rule?: string | null
           recurring_parent_id?: string | null
+          requires_review?: boolean
+          review_requested_by?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           section_id?: string | null
@@ -1746,6 +1750,8 @@ export type Database = {
           priority?: Database["pm"]["Enums"]["task_priority"]
           project_id?: string
           recurrence_rule?: string | null
+          requires_review?: boolean
+          review_requested_by?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           section_id?: string | null

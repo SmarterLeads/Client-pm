@@ -40,9 +40,11 @@ export function useTaskDrawer() {
 export function TaskDrawerProvider({
   children,
   teamMembers,
+  currentTeamMemberId,
 }: {
   children: React.ReactNode;
   teamMembers: Pick<TeamMember, "id" | "name" | "email" | "avatar_url">[];
+  currentTeamMemberId: string;
 }) {
   const router = useRouter();
   const { taskId, isOpen, createDraft } = useSyncExternalStore(
@@ -81,6 +83,7 @@ export function TaskDrawerProvider({
         taskId={taskId}
         createDraft={createDraft}
         teamMembers={teamMembers}
+        currentTeamMemberId={currentTeamMemberId}
         isOpen={isOpen}
         onClose={closeTask}
       />

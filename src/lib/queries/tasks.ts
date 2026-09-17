@@ -621,7 +621,9 @@ type TaskToReviewQueryRow = {
   project: { name: string | null; client_id: string | null } | null;
 };
 
-export async function getTasksToReview(): Promise<TaskToReviewRow[]> {
+export async function getTasksToReview(
+  teamMemberId: string,
+): Promise<TaskToReviewRow[]> {
   const supabase = await createClient();
 
   const { data, error } = await pm(supabase)
@@ -637,8 +639,10 @@ export async function getTasksToReview(): Promise<TaskToReviewRow[]> {
       project:projects(name, client_id)
     `,
     )
+    .eq("requires_review", true)
     .eq("status", "done")
     .is("reviewed_by", null)
+    .eq("review_requested_by", teamMemberId)
     .is("parent_task_id", null)
     .order("updated_at", { ascending: false });
 

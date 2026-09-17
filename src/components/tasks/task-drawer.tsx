@@ -66,6 +66,7 @@ type TaskDrawerProps = {
   taskId: string | null;
   createDraft: TaskCreateDraft | null;
   teamMembers: Pick<TeamMember, "id" | "name" | "email" | "avatar_url">[];
+  currentTeamMemberId: string;
   isOpen: boolean;
   onClose: () => void;
 };
@@ -90,6 +91,7 @@ export function TaskDrawer({
   taskId,
   createDraft,
   teamMembers,
+  currentTeamMemberId,
   isOpen,
   onClose,
 }: TaskDrawerProps) {
@@ -124,6 +126,8 @@ export function TaskDrawer({
     Array<{ id: string; title: string }>
   >([]);
   const [createDependencySelect, setCreateDependencySelect] = useState("");
+  const [createRequiresReview, setCreateRequiresReview] = useState(false);
+  const [createReviewRequestedBy, setCreateReviewRequestedBy] = useState("");
   const [isCreating, startCreateTransition] = useTransition();
 
   useEffect(() => {
@@ -200,8 +204,10 @@ export function TaskDrawer({
     setCreateSubtaskInput("");
     setCreateDependencies([]);
     setCreateDependencySelect("");
+    setCreateRequiresReview(false);
+    setCreateReviewRequestedBy(currentTeamMemberId);
     setError(null);
-  }, [createDraft]);
+  }, [createDraft, currentTeamMemberId]);
 
   useEffect(() => {
     if (!isCreateMode || !isOpen || !createDraft) {
@@ -257,6 +263,10 @@ export function TaskDrawer({
           : null,
         subtask_titles: createSubtasks,
         dependency_task_ids: createDependencies.map((dep) => dep.id),
+        requires_review: createRequiresReview,
+        review_requested_by: createRequiresReview
+          ? createReviewRequestedBy || currentTeamMemberId
+          : null,
       });
 
       if (result.error) {
@@ -485,6 +495,21 @@ export function TaskDrawer({
                   rule={createRecurrenceRule}
                   onRecurringChange={setCreateIsRecurring}
                   onRuleChange={setCreateRecurrenceRule}
+                />
+
+                <TaskReviewFields
+                  requiresReview={createRequiresReview}
+                  reviewRequestedBy={
+                    createReviewRequestedBy || currentTeamMemberId
+                  }
+                  teamMembers={teamMembers}
+                  onRequiresReviewChange={(checked) => {
+                    setCreateRequiresReview(checked);
+                    if (checked && !createReviewRequestedBy) {
+                      setCreateReviewRequestedBy(currentTeamMemberId);
+                    }
+                  }}
+                  onReviewRequestedByChange={setCreateReviewRequestedBy}
                 />
 
                 <section className="space-y-2">
@@ -774,6 +799,28 @@ export function TaskDrawer({
                 onUpdated={() => refreshDetail(detail.task.id)}
               />
 
+              <TaskReviewFields
+                requiresReview={detail.task.requires_review ?? false}
+                reviewRequestedBy={
+                  detail.task.review_requested_by ?? currentTeamMemberId
+                }
+                teamMembers={teamMembers}
+                onRequiresReviewChange={(checked) => {
+                  saveField({
+                    requires_review: checked,
+                    review_requested_by: checked
+                      ? detail.task.review_requested_by ?? currentTeamMemberId
+                      : null,
+                  });
+                }}
+                onReviewRequestedByChange={(reviewerId) => {
+                  saveField({
+                    requires_review: true,
+                    review_requested_by: reviewerId || null,
+                  });
+                }}
+              />
+
               <SubtasksSection
                 detail={detail}
                 onRefresh={() => refreshDetail(detail.task.id)}
@@ -873,6 +920,49 @@ function FieldSelect({
         ))}
       </select>
     </div>
+  );
+}
+
+function TaskReviewFields({
+  requiresReview,
+  reviewRequestedBy,
+  teamMembers,
+  onRequiresReviewChange,
+  onReviewRequestedByChange,
+}: {
+  requiresReview: boolean;
+  reviewRequestedBy: string;
+  teamMembers: Pick<TeamMember, "id" | "name">[];
+  onRequiresReviewChange: (checked: boolean) => void;
+  onReviewRequestedByChange: (reviewerId: string) => void;
+}) {
+  return (
+    <section className="space-y-3 rounded-lg border border-border p-4">
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={requiresReview}
+          onChange={(event) => onRequiresReviewChange(event.target.checked)}
+          className="size-4 rounded border-input"
+        />
+        Requires review
+      </label>
+      <p className="text-xs text-muted-foreground">
+        When enabled, this task appears in Tasks to Review after it is marked
+        completed.
+      </p>
+      {requiresReview ? (
+        <FieldSelect
+          label="Reviewer"
+          value={reviewRequestedBy}
+          options={teamMembers.map((member) => ({
+            value: member.id,
+            label: member.name,
+          }))}
+          onChange={onReviewRequestedByChange}
+        />
+      ) : null}
+    </section>
   );
 }
 

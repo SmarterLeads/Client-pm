@@ -194,7 +194,9 @@ export async function moveTaskSection(
     const service = createServiceClient();
     const { data: taskBefore } = await pm(service)
       .from("tasks")
-      .select("status, title, assignee_id")
+      .select(
+        "status, title, assignee_id, requires_review, review_requested_by",
+      )
       .eq("id", parsed.data.task_id)
       .maybeSingle();
 
@@ -215,7 +217,7 @@ export async function moveTaskSection(
       taskAfter &&
       isTransitionToDone(taskBefore.status, taskAfter.status)
     ) {
-      const reviewPayload = mergeDoneReviewFields(teamMember, { status: "done" });
+      const reviewPayload = mergeDoneReviewFields({ status: "done" });
       await updateTaskWithTeamMemberContext(
         teamMember.id,
         parsed.data.task_id,
@@ -228,6 +230,8 @@ export async function moveTaskSection(
         projectId,
         taskTitle: taskAfter.title,
         assigneeId: taskAfter.assignee_id,
+        requiresReview: taskBefore.requires_review,
+        reviewRequestedBy: taskBefore.review_requested_by,
       });
     }
 

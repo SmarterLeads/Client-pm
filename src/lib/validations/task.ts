@@ -59,6 +59,13 @@ export const createTaskSchema = z.object({
       z.union([z.string().max(2000), z.null()]).optional(),
     )
     .optional(),
+  requires_review: z.boolean().optional(),
+  review_requested_by: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string().uuid(), z.null()]).optional(),
+    )
+    .optional(),
 });
 
 export const quickAddTaskSchema = z.object({
@@ -136,6 +143,13 @@ export const updateTaskSchema = z.object({
     .preprocess(
       emptyToNull,
       z.union([z.string().datetime(), z.null()]).optional(),
+    )
+    .optional(),
+  requires_review: z.boolean().optional(),
+  review_requested_by: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string().uuid(), z.null()]).optional(),
     )
     .optional(),
 });

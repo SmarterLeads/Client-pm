@@ -281,16 +281,16 @@ export async function notifyTaskCompletedNeedsReview(params: {
   projectId: string;
   assigneeName: string;
   actorId: string;
+  reviewerId: string;
 }) {
   const context = await getProjectNotificationContext(params.projectId);
   if (!context) return;
 
-  const reviewerIds = await loadTaskReviewerIds();
   const title = `Task completed - needs review: ${params.taskTitle}`;
   const body = `${params.assigneeName} completed '${params.taskTitle}' in ${context.projectName} for ${context.clientName}`;
 
   const sent = await notifyUniqueRecipients({
-    recipientIds: reviewerIds,
+    recipientIds: [params.reviewerId],
     actorId: params.actorId,
     type: "task_review",
     entityType: "task",

@@ -59,7 +59,10 @@ export default async function AppLayout({
         notifications={notifications}
         reportClientGroups={reportClientGroups}
       >
-        <TaskDrawerProvider teamMembers={teamMembers}>
+        <TaskDrawerProvider
+          teamMembers={teamMembers}
+          currentTeamMemberId={teamMember.id}
+        >
           {children}
         </TaskDrawerProvider>
       </AppShell>
