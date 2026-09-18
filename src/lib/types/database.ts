@@ -2736,6 +2736,7 @@ export type Database = {
           marketing_brief: string | null
           marketing_channels: string[]
           meta_attribution_window: string | null
+          meta_pixel_id: string | null
           mrr_breakdown: Json
           mrr_cents: number
           name: string
@@ -2781,6 +2782,7 @@ export type Database = {
           marketing_brief?: string | null
           marketing_channels?: string[]
           meta_attribution_window?: string | null
+          meta_pixel_id?: string | null
           mrr_breakdown?: Json
           mrr_cents?: number
           name: string
@@ -2826,6 +2828,7 @@ export type Database = {
           marketing_brief?: string | null
           marketing_channels?: string[]
           meta_attribution_window?: string | null
+          meta_pixel_id?: string | null
           mrr_breakdown?: Json
           mrr_cents?: number
           name?: string

@@ -1,9 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 
-import { OverviewCard, OverviewSectionDivider, OverviewSubsection } from "@/components/clients/overview-ui";
+import { InlineTextField } from "@/components/clients/inline-text-field";
+import {
+  OverviewCard,
+  OverviewFieldRow,
+  OverviewSectionDivider,
+  OverviewSubsection,
+} from "@/components/clients/overview-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,6 +80,7 @@ export function ClientOverviewMarketingConfigSection({
   const [draftChannels, setDraftChannels] = useState<string[]>([]);
   const [draftTracking, setDraftTracking] = useState("");
   const [draftPlatformIds, setDraftPlatformIds] = useState<DraftPlatformIds>({});
+  const [draftMetaPixelId, setDraftMetaPixelId] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const connectionMap = useMemo(
@@ -93,6 +100,7 @@ export function ClientOverviewMarketingConfigSection({
     setDraftChannels(client.marketing_channels ?? []);
     setDraftTracking(client.tracking_setup ?? "");
     setDraftPlatformIds(buildPlatformDraftValues(client, connectionMap));
+    setDraftMetaPixelId(client.meta_pixel_id?.trim() ?? "");
   }
 
   useEffect(() => {
@@ -102,6 +110,7 @@ export function ClientOverviewMarketingConfigSection({
     client.marketing_channels,
     client.tracking_setup,
     client.ga4_id,
+    client.meta_pixel_id,
     connections,
     isEditing,
   ]);
@@ -219,6 +228,18 @@ export function ClientOverviewMarketingConfigSection({
         }
       }
 
+      const nextMetaPixelId = draftMetaPixelId.trim();
+      const currentMetaPixelId = client.meta_pixel_id?.trim() ?? "";
+      if (nextMetaPixelId !== currentMetaPixelId) {
+        const pixelResult = await updateClientOverviewFields(client.id, {
+          meta_pixel_id: nextMetaPixelId || null,
+        });
+        if (pixelResult.error) {
+          toastError(pixelResult.error);
+          return;
+        }
+      }
+
       toastSuccess("Marketing configuration saved");
       setIsEditing(false);
       router.refresh();
@@ -249,37 +270,59 @@ export function ClientOverviewMarketingConfigSection({
                   : null;
 
                 return (
-                  <li
-                    key={option.value}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5",
-                      isPending && "opacity-60",
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={isPending}
-                      aria-label={`Enable ${option.label}`}
-                      onChange={(event) =>
-                        toggleDraftChannel(option.value, event.target.checked)
-                      }
-                      className="size-4 shrink-0 rounded border-input"
-                    />
-                    <span className="min-w-0 flex-1 text-sm">{option.label}</span>
-                    {checked && platformKey ? (
-                      <Input
-                        value={draftPlatformIds[platformKey] ?? ""}
+                  <Fragment key={option.value}>
+                    <li
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5",
+                        isPending && "opacity-60",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
                         disabled={isPending}
-                        placeholder="Platform ID"
-                        aria-label={`${option.label} platform ID`}
+                        aria-label={`Enable ${option.label}`}
                         onChange={(event) =>
-                          setDraftPlatformId(platformKey, event.target.value)
+                          toggleDraftChannel(option.value, event.target.checked)
                         }
-                        className="h-8 max-w-[14rem] shrink-0 text-sm tabular-nums"
+                        className="size-4 shrink-0 rounded border-input"
                       />
+                      <span className="min-w-0 flex-1 text-sm">{option.label}</span>
+                      {checked && platformKey ? (
+                        <Input
+                          value={draftPlatformIds[platformKey] ?? ""}
+                          disabled={isPending}
+                          placeholder="Platform ID"
+                          aria-label={`${option.label} platform ID`}
+                          onChange={(event) =>
+                            setDraftPlatformId(platformKey, event.target.value)
+                          }
+                          className="h-8 max-w-[14rem] shrink-0 text-sm tabular-nums"
+                        />
+                      ) : null}
+                    </li>
+                    {checked && option.value === "meta_ads" ? (
+                      <li
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5",
+                          isPending && "opacity-60",
+                        )}
+                      >
+                        <span className="size-4 shrink-0" aria-hidden />
+                        <span className="min-w-0 flex-1 text-sm">Meta Pixel ID</span>
+                        <Input
+                          value={draftMetaPixelId}
+                          disabled={isPending}
+                          placeholder="Pixel ID"
+                          aria-label="Meta Pixel ID"
+                          onChange={(event) =>
+                            setDraftMetaPixelId(event.target.value)
+                          }
+                          className="h-8 max-w-[14rem] shrink-0 text-sm tabular-nums"
+                        />
+                      </li>
                     ) : null}
-                  </li>
+                  </Fragment>
                 );
               })}
             </ul>
@@ -361,17 +404,33 @@ export function ClientOverviewMarketingConfigSection({
                   : null;
 
                 return (
-                  <li
-                    key={channel}
-                    className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
-                  >
-                    <span>{label}</span>
-                    {platformConfig ? (
-                      <span className="font-medium tabular-nums text-muted-foreground">
-                        {platformId || "—"}
-                      </span>
+                  <Fragment key={channel}>
+                    <li className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                      <span>{label}</span>
+                      {platformConfig ? (
+                        <span className="font-medium tabular-nums text-muted-foreground">
+                          {platformId || "—"}
+                        </span>
+                      ) : null}
+                    </li>
+                    {channel === "meta_ads" ? (
+                      <li className="px-1 py-1.5">
+                        <OverviewFieldRow editable label="Meta Pixel ID">
+                          <InlineTextField
+                            value={client.meta_pixel_id}
+                            aria-label="Meta Pixel ID"
+                            inputClassName="font-mono tabular-nums"
+                            placeholder="Pixel ID"
+                            onSave={(value) =>
+                              updateClientOverviewFields(client.id, {
+                                meta_pixel_id: value,
+                              })
+                            }
+                          />
+                        </OverviewFieldRow>
+                      </li>
                     ) : null}
-                  </li>
+                  </Fragment>
                 );
               })}
             </ul>

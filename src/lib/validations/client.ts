@@ -308,6 +308,7 @@ export const updateClientOverviewFieldsSchema = z
       )
       .optional(),
     ga4_id: optionalText(100),
+    meta_pixel_id: optionalText(100),
     mrr_cents: z
       .preprocess(
         (v) => (v === null || v === "" ? null : v),
