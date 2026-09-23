@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 
 import { useTaskDrawer } from "@/components/tasks/task-drawer-provider";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { ProjectSection, TeamMember } from "@/lib/types";
 
 type QuickAddTaskFormProps = {
@@ -12,6 +13,7 @@ type QuickAddTaskFormProps = {
   sections: ProjectSection[];
   teamMembers: Pick<TeamMember, "id" | "name">[];
   currentTeamMemberId: string;
+  className?: string;
 };
 
 export function QuickAddTaskForm({
@@ -19,6 +21,7 @@ export function QuickAddTaskForm({
   sectionId,
   sections,
   currentTeamMemberId,
+  className,
 }: QuickAddTaskFormProps) {
   const { openCreateTask } = useTaskDrawer();
 
@@ -27,7 +30,10 @@ export function QuickAddTaskForm({
       type="button"
       variant="ghost"
       size="sm"
-      className="w-full justify-start text-muted-foreground"
+      className={cn(
+        "w-full justify-start text-muted-foreground",
+        className,
+      )}
       onClick={() =>
         openCreateTask({
           projectId,

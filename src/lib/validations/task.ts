@@ -68,6 +68,17 @@ export const createTaskSchema = z.object({
     .optional(),
 });
 
+export const addTaskFromTemplateSchema = z.object({
+  project_id: z.string().uuid(),
+  template_task_id: z.string().uuid(),
+  section_id: z
+    .preprocess(
+      emptyToNull,
+      z.union([z.string().uuid(), z.null()]).optional(),
+    )
+    .optional(),
+});
+
 export const quickAddTaskSchema = z.object({
   project_id: z.string().uuid(),
   section_id: z.string().uuid(),

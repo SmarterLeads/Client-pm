@@ -2,7 +2,7 @@
 
 import { Repeat } from "lucide-react";
 import { TaskPriorityBadge } from "@/components/projects/task-priority-badge";
-import { QuickAddTaskForm } from "@/components/tasks/quick-add-task-form";
+import { ProjectSectionAddTaskRow } from "@/components/tasks/project-section-add-task-row";
 import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import { useTaskDrawer } from "@/components/tasks/task-drawer-provider";
 import type { ProjectTaskRow } from "@/lib/queries/projects";
@@ -96,7 +96,7 @@ export function ProjectListTab({
               </p>
             )}
             <div className="mt-2">
-              <QuickAddTaskForm
+              <ProjectSectionAddTaskRow
                 projectId={projectId}
                 sectionId={section.id}
                 sections={sections}

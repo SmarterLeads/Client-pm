@@ -48,6 +48,7 @@ import { cn } from "@/lib/utils";
 import { DELETE_TASK_CONFIRM_MESSAGE } from "@/lib/tasks/constants";
 import { getTaskStatusSelectOptions } from "@/lib/tasks/status-options";
 import { PmEnumValues } from "@/lib/types/enums";
+import { AddTaskFromTemplateSheet } from "@/components/tasks/add-task-from-template-sheet";
 import { TaskRecurrenceFormFields } from "@/components/tasks/task-recurrence-form-fields";
 import {
   defaultRecurrenceRule,
@@ -126,6 +127,7 @@ export function TaskDrawer({
     Array<{ id: string; title: string }>
   >([]);
   const [createDependencySelect, setCreateDependencySelect] = useState("");
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [createRequiresReview, setCreateRequiresReview] = useState(false);
   const [createReviewRequestedBy, setCreateReviewRequestedBy] = useState("");
   const [isCreating, startCreateTransition] = useTransition();
@@ -665,7 +667,7 @@ export function TaskDrawer({
                 </Tabs>
               </div>
 
-              <div className="flex shrink-0 gap-2 border-t border-border pt-4">
+              <div className="flex shrink-0 flex-wrap gap-2 border-t border-border pt-4">
                 <Button
                   type="button"
                   disabled={isCreating || !createTitle.trim()}
@@ -673,10 +675,31 @@ export function TaskDrawer({
                 >
                   {isCreating ? "Creating…" : "Create task"}
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isCreating}
+                  onClick={() => setTemplatePickerOpen(true)}
+                >
+                  From template
+                </Button>
                 <Button type="button" variant="outline" onClick={handleClose}>
                   Cancel
                 </Button>
               </div>
+              {createDraft ? (
+                <AddTaskFromTemplateSheet
+                  open={templatePickerOpen}
+                  onOpenChange={setTemplatePickerOpen}
+                  projectId={createDraft.projectId}
+                  sectionId={createSectionId || createDraft.sectionId}
+                  onTaskCreated={(newTaskId) => {
+                    setTemplatePickerOpen(false);
+                    openTaskDrawer(newTaskId);
+                    router.refresh();
+                  }}
+                />
+              ) : null}
             </>
           )
         ) : loading ? (

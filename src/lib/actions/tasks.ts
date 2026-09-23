@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { getTeamMember } from "@/lib/auth/session";
 import { getTaskCreateContext, getTaskDetail } from "@/lib/queries/tasks";
+import { getTemplateTaskPickerGroups } from "@/lib/queries/templates";
+import { dueDateFromDaysFromStart } from "@/lib/templates/due-date-from-offset";
 import {
   notifyTaskAssigned,
   notifyTaskComment,
@@ -35,6 +37,7 @@ import {
 } from "@/lib/supabase/with-team-member-context";
 import {
   addDependencySchema,
+  addTaskFromTemplateSchema,
   createCommentSchema,
   createTaskSchema,
   logTimeSchema,
@@ -81,6 +84,152 @@ export async function loadTaskDetail(taskId: string) {
 
 export async function loadTaskCreateContext(projectId: string) {
   return getTaskCreateContext(projectId);
+}
+
+export async function loadTemplateTaskPickerGroups() {
+  return getTemplateTaskPickerGroups();
+}
+
+export async function addTaskFromTemplate(
+  projectId: string,
+  templateTaskId: string,
+  sectionId?: string | null,
+): Promise<{ error?: string; taskId?: string }> {
+  try {
+    const teamMember = await requireTeamMember();
+    const parsed = addTaskFromTemplateSchema.safeParse({
+      project_id: projectId,
+      template_task_id: templateTaskId,
+      section_id: sectionId ?? null,
+    });
+
+    if (!parsed.success) {
+      return {
+        error: parsed.error.issues[0]?.message ?? "Invalid request.",
+      };
+    }
+
+    const supabase = createServiceClient();
+
+    const { data: templateTask, error: templateTaskError } = await pm(supabase)
+      .from("project_template_tasks")
+      .select("*")
+      .eq("id", parsed.data.template_task_id)
+      .maybeSingle();
+
+    if (templateTaskError) {
+      return { error: templateTaskError.message };
+    }
+    if (!templateTask) {
+      return { error: "Template task not found." };
+    }
+    if (templateTask.parent_task_id) {
+      return { error: "Choose a top-level template task, not a subtask." };
+    }
+
+    const { data: templateMeta, error: templateMetaError } = await pm(supabase)
+      .from("project_templates")
+      .select("is_active")
+      .eq("id", templateTask.template_id)
+      .maybeSingle();
+
+    if (templateMetaError) {
+      return { error: templateMetaError.message };
+    }
+    if (!templateMeta?.is_active) {
+      return { error: "That template is not active." };
+    }
+
+    const { data: project, error: projectError } = await pm(supabase)
+      .from("projects")
+      .select("id")
+      .eq("id", parsed.data.project_id)
+      .maybeSingle();
+
+    if (projectError) {
+      return { error: projectError.message };
+    }
+    if (!project) {
+      return { error: "Project not found." };
+    }
+
+    let resolvedSectionId = parsed.data.section_id ?? null;
+    if (!resolvedSectionId) {
+      const { data: sections, error: sectionsError } = await pm(supabase)
+        .from("project_sections")
+        .select("id")
+        .eq("project_id", parsed.data.project_id)
+        .order("display_order", { ascending: true })
+        .limit(1);
+
+      if (sectionsError) {
+        return { error: sectionsError.message };
+      }
+      resolvedSectionId = sections?.[0]?.id ?? null;
+    }
+
+    const { data: templateSubtasks, error: subtasksError } = await pm(supabase)
+      .from("project_template_tasks")
+      .select("*")
+      .eq("parent_task_id", templateTask.id)
+      .order("display_order", { ascending: true });
+
+    if (subtasksError) {
+      return { error: subtasksError.message };
+    }
+
+    const parentDueDate =
+      templateTask.days_from_start != null
+        ? dueDateFromDaysFromStart(templateTask.days_from_start)
+        : null;
+
+    const taskId = await insertTaskWithTeamMemberContext(teamMember.id, {
+      project_id: parsed.data.project_id,
+      section_id: resolvedSectionId,
+      title: templateTask.title,
+      description: templateTask.description,
+      priority: templateTask.priority,
+      estimated_hours: templateTask.estimated_hours,
+      due_date: parentDueDate,
+      status: "todo",
+      is_recurring: templateTask.is_recurring ?? false,
+      recurrence_rule: templateTask.is_recurring
+        ? templateTask.recurrence_rule
+        : null,
+    });
+
+    for (const subtask of templateSubtasks ?? []) {
+      const subtaskDueDate =
+        subtask.days_from_start != null
+          ? dueDateFromDaysFromStart(subtask.days_from_start)
+          : null;
+
+      await insertTaskWithTeamMemberContext(teamMember.id, {
+        project_id: parsed.data.project_id,
+        parent_task_id: taskId,
+        title: subtask.title,
+        description: subtask.description,
+        priority: subtask.priority ?? templateTask.priority,
+        estimated_hours: subtask.estimated_hours,
+        due_date: subtaskDueDate,
+        status: "todo",
+      });
+    }
+
+    if (templateTask.is_recurring) {
+      await generateRecurringInstances(teamMember.id, taskId);
+    }
+
+    revalidateTaskPaths(parsed.data.project_id);
+    return { taskId };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Failed to add task from template.",
+    };
+  }
 }
 
 export async function createTask(

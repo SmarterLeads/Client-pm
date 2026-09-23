@@ -5,7 +5,10 @@ import type {
   TemplateListRow,
   TemplatePreview,
   TemplateSelectOption,
+  TemplateTaskPickerGroup,
+  TemplateTaskPickerItem,
 } from "@/lib/templates/types";
+import type { TaskPriority } from "@/lib/types";
 
 export async function getTemplates(): Promise<TemplateListRow[]> {
   const supabase = await createClient();
@@ -169,6 +172,87 @@ export async function getTemplatePreview(
       })),
     })),
   };
+}
+
+export async function getTemplateTaskPickerGroups(): Promise<
+  TemplateTaskPickerGroup[]
+> {
+  const supabase = await createClient();
+
+  const { data: templates, error } = await pm(supabase)
+    .from("project_templates")
+    .select("id, name")
+    .eq("is_active", true)
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  if (!templates?.length) return [];
+
+  const templateIds = templates.map((row) => row.id);
+
+  const [
+    { data: rootTasks, error: rootTasksError },
+    { data: allTasks, error: allTasksError },
+    { data: sections, error: sectionsError },
+  ] = await Promise.all([
+    pm(supabase)
+      .from("project_template_tasks")
+      .select(
+        "id, template_id, title, priority, section_id, display_order, parent_task_id",
+      )
+      .in("template_id", templateIds)
+      .is("parent_task_id", null)
+      .order("display_order", { ascending: true }),
+    pm(supabase)
+      .from("project_template_tasks")
+      .select("id, parent_task_id")
+      .in("template_id", templateIds)
+      .not("parent_task_id", "is", null),
+    pm(supabase)
+      .from("project_template_sections")
+      .select("id, name")
+      .in("template_id", templateIds),
+  ]);
+
+  if (rootTasksError) throw new Error(rootTasksError.message);
+  if (allTasksError) throw new Error(allTasksError.message);
+  if (sectionsError) throw new Error(sectionsError.message);
+
+  const sectionNameById = new Map(
+    (sections ?? []).map((section) => [section.id, section.name]),
+  );
+
+  const subtaskCountByParent = new Map<string, number>();
+  for (const task of allTasks ?? []) {
+    if (!task.parent_task_id) continue;
+    subtaskCountByParent.set(
+      task.parent_task_id,
+      (subtaskCountByParent.get(task.parent_task_id) ?? 0) + 1,
+    );
+  }
+
+  const tasksByTemplate = new Map<string, TemplateTaskPickerItem[]>();
+  for (const task of rootTasks ?? []) {
+    const list = tasksByTemplate.get(task.template_id) ?? [];
+    list.push({
+      id: task.id,
+      title: task.title,
+      priority: task.priority as TaskPriority,
+      sectionName: task.section_id
+        ? (sectionNameById.get(task.section_id) ?? null)
+        : null,
+      subtaskCount: subtaskCountByParent.get(task.id) ?? 0,
+    });
+    tasksByTemplate.set(task.template_id, list);
+  }
+
+  return templates
+    .map((template) => ({
+      templateId: template.id,
+      templateName: template.name,
+      tasks: tasksByTemplate.get(template.id) ?? [],
+    }))
+    .filter((group) => group.tasks.length > 0);
 }
 
 export async function getProjectTemplateName(

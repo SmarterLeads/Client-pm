@@ -76,3 +76,17 @@ export type TemplateSelectOption = {
   id: string;
   name: string;
 };
+
+export type TemplateTaskPickerItem = {
+  id: string;
+  title: string;
+  priority: TaskPriority;
+  sectionName: string | null;
+  subtaskCount: number;
+};
+
+export type TemplateTaskPickerGroup = {
+  templateId: string;
+  templateName: string;
+  tasks: TemplateTaskPickerItem[];
+};
