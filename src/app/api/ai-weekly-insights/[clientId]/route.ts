@@ -39,6 +39,54 @@ export async function GET(request: NextRequest, context: RouteContext) {
   return NextResponse.json(data);
 }
 
+type PatchBody = {
+  id: string;
+  artifact_url?: string | null;
+  report_markdown?: string | null;
+  status?: string;
+};
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const { clientId } = await context.params;
+  let body: PatchBody;
+  try {
+    body = (await request.json()) as PatchBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  if (!body.id) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+
+  const patch: {
+    updated_at: string;
+    artifact_url?: string | null;
+    report_markdown?: string | null;
+    status?: string;
+  } = { updated_at: new Date().toISOString() };
+  if (body.artifact_url !== undefined) patch.artifact_url = body.artifact_url;
+  if (body.report_markdown !== undefined) {
+    patch.report_markdown = body.report_markdown;
+  }
+  if (body.status !== undefined) patch.status = body.status;
+
+  const { data, error } = await supabasePM
+    .from("client_ai_weekly_insights")
+    .update(patch as never)
+    .eq("client_id", clientId)
+    .eq("id", body.id)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!data) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  return NextResponse.json(data);
+}
+
 export async function DELETE(request: NextRequest, context: RouteContext) {
   const { clientId } = await context.params;
   const id = request.nextUrl.searchParams.get("id");

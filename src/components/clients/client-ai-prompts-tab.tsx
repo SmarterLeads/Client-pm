@@ -34,9 +34,13 @@ const PLATFORM_SUGGESTIONS = [
   "tiktok",
 ] as const;
 
-const DEFAULT_CLIENT_PROMPT = `Where to find data for this client:
-- Google Ads daily metrics: synced to PM tables (campaign_daily_performance, search_term_performance, conversion_events) for this client's client_id.
-- Use the Google Ads customer ID from platform connections when referencing the ad account externally.
+const DEFAULT_CLIENT_PROMPT = `Where to find data for this client (browser pulls — PM sync is supplemental only):
+- Google Ads: {{GOOGLE_ADS_URL}} (customer ID from platform connections)
+- GoHighLevel: location {{GHL_LOCATION_ID}}, pipeline "{{GHL_PIPELINE_NAME}}"
+- Website / landing pages: list URLs to check (forms, tags, mobile)
+
+Known events this period:
+- (budget changes, new LP, tracking edits, seasonality — or "none known")
 
 Business context:
 - Target CPA / ROAS:

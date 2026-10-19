@@ -6,11 +6,17 @@ import {
 } from "@/lib/ai/google-ads-data-markdown";
 import { assembleWeeklyInsightsPrompt } from "@/lib/ai/assemble-weekly-insights-prompt";
 import { buildClientAiInstructionsMarkdown } from "@/lib/ai/build-client-ai-instructions";
+import {
+  buildPerformanceAuditContext,
+  defaultAuditDateRange,
+} from "@/lib/ai/build-performance-audit-context";
+import { isLiveBrowserAuditPrompt } from "@/lib/ai/smarterleads-audit-prompt";
 import { getDefaultClientAiPrompt } from "@/lib/ai/client-ai-prompts-db";
 import {
   getDefaultWeekRangesUtc,
   type WeekRange,
 } from "@/lib/ai/weekly-insights-weeks";
+import { pm } from "@/lib/supabase/pm";
 import { createServiceClient } from "@/lib/supabase/service";
 import { supabasePM } from "@/lib/supabase-pm";
 
@@ -117,7 +123,9 @@ export async function POST(request: NextRequest) {
 
   const { data: client, error: clientError } = await publicDb
     .from("clients")
-    .select("id, name, website_url, industry, marketing_brief")
+    .select(
+      "id, name, website_url, industry, marketing_brief, currency, ghl_pipeline_config",
+    )
     .eq("id", clientId)
     .maybeSingle();
 
@@ -178,7 +186,12 @@ export async function POST(request: NextRequest) {
     promptText = defaultPrompt.prompt_text;
   }
 
-  const [campaignRes, searchRes, conversionRes, campaignsRes] =
+  const browserAudit = isLiveBrowserAuditPrompt(promptText);
+  const auditRange = defaultAuditDateRange();
+  const dataStart = browserAudit ? auditRange.dateStart : trendStart;
+  const dataEnd = browserAudit ? auditRange.dateEnd : weekEnd;
+
+  const [campaignRes, searchRes, conversionRes, campaignsRes, ghlLocRes, credRes] =
     await Promise.all([
       publicDb
         .from("campaign_daily_performance")
@@ -186,8 +199,8 @@ export async function POST(request: NextRequest) {
           "report_date, campaign_id, spend_cents, clicks, impressions, conversions",
         )
         .eq("client_id", clientId)
-        .gte("report_date", trendStart)
-        .lte("report_date", weekEnd)
+        .gte("report_date", dataStart)
+        .lte("report_date", dataEnd)
         .or(`platform.eq.${GOOGLE_PLATFORM},platform.eq.google_ads`),
       publicDb
         .from("search_term_performance")
@@ -195,21 +208,32 @@ export async function POST(request: NextRequest) {
           "search_term, report_date, spend_cents, clicks, impressions, conversions, campaign_name",
         )
         .eq("client_id", clientId)
-        .gte("report_date", trendStart)
-        .lte("report_date", weekEnd)
+        .gte("report_date", dataStart)
+        .lte("report_date", dataEnd)
         .or(`platform.eq.${GOOGLE_PLATFORM},platform.eq.google_ads`),
       publicDb
         .from("conversion_events")
         .select("occurred_on, event_name, event_count")
         .eq("client_id", clientId)
-        .gte("occurred_on", trendStart)
-        .lte("occurred_on", weekEnd)
+        .gte("occurred_on", dataStart)
+        .lte("occurred_on", dataEnd)
         .or(`platform.eq.${GOOGLE_PLATFORM},platform.eq.google_ads`),
       publicDb
         .from("campaigns")
         .select("id, campaign_name")
         .eq("client_id", clientId)
         .or(`platform.eq.${GOOGLE_PLATFORM},platform.eq.google_ads`),
+      publicDb
+        .from("ghl_location_keys")
+        .select("location_id")
+        .eq("client_id", clientId)
+        .limit(1),
+      pm(publicDb)
+        .from("client_credentials")
+        .select("url")
+        .eq("client_id", clientId)
+        .eq("platform", "google_ads")
+        .maybeSingle(),
     ]);
 
   if (campaignRes.error) {
@@ -225,7 +249,23 @@ export async function POST(request: NextRequest) {
   const clientAiInstructions = buildClientAiInstructionsMarkdown(
     clientAiPrompt?.prompt_text,
     platformConnections ?? [],
+    { browserAudit },
   );
+
+  const auditContext = browserAudit
+    ? buildPerformanceAuditContext({
+        name: client.name,
+        industry: client.industry,
+        website_url: client.website_url,
+        currency: client.currency,
+        googleAdsCustomerId,
+        googleAdsUrlOverride: credRes.data?.url ?? null,
+        ghlLocationId: ghlLocRes.data?.[0]?.location_id ?? null,
+        ghl_pipeline_config: client.ghl_pipeline_config,
+        dateStart: auditRange.dateStart,
+        dateEnd: auditRange.dateEnd,
+      })
+    : undefined;
 
   const accountContext = buildAccountContextMarkdown({
     ...client,
@@ -245,6 +285,7 @@ export async function POST(request: NextRequest) {
     googleAdsMarkdown,
     weeks,
     clientAiInstructions,
+    auditContext,
   );
 
   const { data: insight, error: insertError } = await supabasePM
@@ -258,7 +299,7 @@ export async function POST(request: NextRequest) {
       prev_week_end: prevWeekEnd,
       google_ads_customer_id: googleAdsCustomerId,
       assembled_prompt: userContent,
-      status: "generating",
+      status: browserAudit ? "prompt_ready" : "generating",
       generated_by: body.triggered_by ?? null,
       updated_at: new Date().toISOString(),
     })
@@ -269,12 +310,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  after(() =>
-    runGeneration({
-      insightId: insight.id,
-      userContent,
-    }),
-  );
+  if (!browserAudit) {
+    after(() =>
+      runGeneration({
+        insightId: insight.id,
+        userContent,
+      }),
+    );
+  }
 
   return NextResponse.json(insight, { status: 201 });
 }

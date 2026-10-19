@@ -6,6 +6,7 @@ export function buildClientAiInstructionsMarkdown(
     ClientPlatformConnection,
     "platform" | "external_account_id"
   >[],
+  options?: { browserAudit?: boolean },
 ): string {
   const lines: string[] = ["## Client-specific AI instructions", ""];
 
@@ -27,10 +28,17 @@ export function buildClientAiInstructionsMarkdown(
         `- **${c.platform}**${c.external_account_id ? `: account ID \`${c.external_account_id}\`` : ""}`,
       );
     }
-    lines.push(
-      "",
-      "Performance metrics in this report are loaded from `public.campaign_daily_performance`, `public.search_term_performance`, and `public.conversion_events` filtered by this client's `client_id` and Google platform.",
-    );
+    if (options?.browserAudit) {
+      lines.push(
+        "",
+        "For the performance diagnosis artifact, use **live browser pulls** from Google Ads and GoHighLevel as specified in the main prompt. PM tables are supplemental only.",
+      );
+    } else {
+      lines.push(
+        "",
+        "Performance metrics in this report are loaded from `public.campaign_daily_performance`, `public.search_term_performance`, and `public.conversion_events` filtered by this client's `client_id` and Google platform.",
+      );
+    }
   }
 
   return lines.join("\n");

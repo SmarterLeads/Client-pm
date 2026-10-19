@@ -109,6 +109,29 @@ export default function AiPromptsPage() {
     : (selected?.prompt_text.length ?? 0);
   const estTokens = Math.ceil(charCount / 4);
 
+  async function startBrowserAuditTemplate() {
+    setError(null);
+    try {
+      const res = await fetch("/api/ai-prompts/performance-audit-template");
+      if (!res.ok) throw new Error("Failed to load template");
+      const body = (await res.json()) as {
+        name: string;
+        platform: string;
+        prompt_text: string;
+      };
+      setSelectedId(null);
+      setForm({
+        name: body.name,
+        platform: body.platform,
+        prompt_text: body.prompt_text,
+        is_default: true,
+      });
+      setMode("create");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load template");
+    }
+  }
+
   function startCreate() {
     setSelectedId(null);
     setForm(emptyForm());
@@ -239,7 +262,12 @@ export default function AiPromptsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">AI prompts</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Global templates for weekly insights. Placeholders:{" "}
+          Global templates for AI insights. Include{" "}
+          <code className="rounded bg-muted px-1 py-0.5">
+            {"{{USE_LIVE_BROWSER_PULLS}}"}
+          </code>{" "}
+          at the top to require Claude browser pulls + Dashboard artifact (PM
+          skips API generation). Placeholders:{" "}
           <code className="rounded bg-muted px-1 py-0.5">
             {"{{CLIENT_AI_INSTRUCTIONS}}"}
           </code>
@@ -249,9 +277,9 @@ export default function AiPromptsPage() {
           </code>
           ,{" "}
           <code className="rounded bg-muted px-1 py-0.5">
-            {"{{GOOGLE_ADS_DATA}}"}
+            {"{{PM_SUPPLEMENTAL_DATA}}"}
           </code>
-          . Per-client instructions are edited on each client&apos;s{" "}
+          . Per-client instructions are on each client&apos;s{" "}
           <strong>AI Prompts</strong> tab.
         </p>
       </div>
@@ -262,10 +290,15 @@ export default function AiPromptsPage() {
         <div className="rounded-lg border border-border p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">Prompts</h2>
-            <Button type="button" size="sm" onClick={startCreate}>
-              <Plus className="mr-1 size-4" />
-              New
-            </Button>
+            <div className="flex flex-wrap gap-1">
+              <Button type="button" size="sm" variant="outline" onClick={() => void startBrowserAuditTemplate()}>
+                Browser audit
+              </Button>
+              <Button type="button" size="sm" onClick={startCreate}>
+                <Plus className="mr-1 size-4" />
+                New
+              </Button>
+            </div>
           </div>
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
