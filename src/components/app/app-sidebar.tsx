@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ClientReportsNav } from "@/components/app/client-reports-nav";
 import {
   adminNavItems,
+  aiPromptsNavItem,
   clientNavItems,
   deliveryNavItems,
   getWorkspaceNavItems,
@@ -114,6 +115,10 @@ export function AppSidebar({
                       </span>
                     </Link>
                     <ClientReportsNav groups={reportClientGroups} />
+                    <NavLink
+                      item={aiPromptsNavItem}
+                      pathname={pathname}
+                    />
                   </div>
                 );
               }

@@ -1,6 +1,7 @@
 ﻿import {
   BarChart3,
   BookOpen,
+  Bot,
   Building2,
   CheckSquare,
   FolderKanban,
@@ -32,6 +33,14 @@ export const businessDashboardNavItem: AppNavItem = {
   href: "/business-dashboard",
   label: "Business Dashboard",
   icon: BarChart3,
+  matchPrefix: true,
+};
+
+/** Rendered under Marketing / Client Reports in AppSidebar. */
+export const aiPromptsNavItem: AppNavItem = {
+  href: "/ai-prompts",
+  label: "AI Prompts",
+  icon: Bot,
   matchPrefix: true,
 };
 

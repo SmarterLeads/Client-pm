@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutTemplate, Settings, User, Users } from "lucide-react";
+import { Bot, LayoutTemplate, Settings, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/settings", label: "Overview", icon: Settings, exact: true },
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/templates", label: "Templates", icon: LayoutTemplate },
+  { href: "/ai-prompts", label: "AI Prompts", icon: Bot },
   { href: "/settings/account", label: "Account", icon: User },
 ] as const;
 
