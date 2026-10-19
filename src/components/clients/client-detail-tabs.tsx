@@ -7,6 +7,7 @@ import { ClientActionsMenu } from "@/components/clients/client-actions-menu";
 import { ClientUpdatesTab } from "@/components/clients/client-updates-tab";
 import { ClientInteractionsTab } from "@/components/clients/client-interactions-tab";
 import { ClientConversionsTab } from "@/components/clients/client-conversions-tab";
+import { ClientAiPromptsTab } from "@/components/clients/client-ai-prompts-tab";
 import { ClientMarketingBriefTab } from "@/components/clients/client-marketing-brief-tab";
 import { ClientMarketingSubTabs } from "@/components/clients/client-marketing-sub-tabs";
 import { ClientOverviewTab } from "@/components/clients/client-overview-tab";
@@ -40,6 +41,7 @@ const tabs = [
   { id: "marketing-brief", label: "Marketing Brief" },
   { id: "conversions", label: "Conversions" },
   { id: "marketing", label: "Marketing" },
+  { id: "ai-prompts", label: "AI Prompts" },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -226,6 +228,14 @@ export function ClientDetailTabs({
           <ClientMarketingSubTabs />
           {marketingPanel}
         </div>
+      ) : null}
+
+      {activeTab === "ai-prompts" ? (
+        <ClientAiPromptsTab
+          clientId={client.id}
+          clientName={client.name}
+          platformConnections={platformConnections ?? []}
+        />
       ) : null}
 
       {activeTab === "files" ? (

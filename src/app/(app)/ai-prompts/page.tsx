@@ -239,15 +239,20 @@ export default function AiPromptsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">AI prompts</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create and edit prompt templates for weekly insights generation. Use{" "}
+          Global templates for weekly insights. Placeholders:{" "}
+          <code className="rounded bg-muted px-1 py-0.5">
+            {"{{CLIENT_AI_INSTRUCTIONS}}"}
+          </code>
+          ,{" "}
           <code className="rounded bg-muted px-1 py-0.5">
             {"{{ACCOUNT_CONTEXT}}"}
-          </code>{" "}
-          and{" "}
+          </code>
+          ,{" "}
           <code className="rounded bg-muted px-1 py-0.5">
             {"{{GOOGLE_ADS_DATA}}"}
-          </code>{" "}
-          where data should be injected.
+          </code>
+          . Per-client instructions are edited on each client&apos;s{" "}
+          <strong>AI Prompts</strong> tab.
         </p>
       </div>
 

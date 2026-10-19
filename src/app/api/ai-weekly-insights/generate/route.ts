@@ -4,6 +4,9 @@ import {
   buildAccountContextMarkdown,
   buildGoogleAdsDataMarkdown,
 } from "@/lib/ai/google-ads-data-markdown";
+import { assembleWeeklyInsightsPrompt } from "@/lib/ai/assemble-weekly-insights-prompt";
+import { buildClientAiInstructionsMarkdown } from "@/lib/ai/build-client-ai-instructions";
+import { getDefaultClientAiPrompt } from "@/lib/ai/client-ai-prompts-db";
 import {
   getDefaultWeekRangesUtc,
   type WeekRange,
@@ -23,9 +26,7 @@ type GenerateBody = {
 
 async function runGeneration(params: {
   insightId: string;
-  promptText: string;
-  accountContext: string;
-  googleAdsMarkdown: string;
+  userContent: string;
 }) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -42,14 +43,11 @@ async function runGeneration(params: {
 
   try {
     const anthropic = new Anthropic({ apiKey });
-    const userContent = params.promptText
-      .replace(/\{\{ACCOUNT_CONTEXT\}\}/g, params.accountContext)
-      .replace(/\{\{GOOGLE_ADS_DATA\}\}/g, params.googleAdsMarkdown);
 
     const message = await anthropic.messages.create({
       model: "claude-opus-4-5",
       max_tokens: 8192,
-      messages: [{ role: "user", content: userContent }],
+      messages: [{ role: "user", content: params.userContent }],
     });
 
     const text = message.content
@@ -130,16 +128,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Client not found" }, { status: 404 });
   }
 
-  const { data: googleConnection } = await publicDb
+  const { data: platformConnections } = await publicDb
     .from("platform_connections")
-    .select("external_account_id")
-    .eq("client_id", clientId)
-    .or("platform.eq.google,platform.eq.google_ads")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .select("platform, external_account_id")
+    .eq("client_id", clientId);
+
+  const googleConnection = (platformConnections ?? []).find((c) =>
+    ["google", "google_ads"].includes(c.platform),
+  );
 
   const googleAdsCustomerId = googleConnection?.external_account_id ?? null;
+
+  const clientAiPrompt = await getDefaultClientAiPrompt(clientId, "google_ads");
 
   let promptId = body.prompt_id;
   let promptText: string | undefined;
@@ -222,6 +222,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: conversionRes.error.message }, { status: 500 });
   }
 
+  const clientAiInstructions = buildClientAiInstructionsMarkdown(
+    clientAiPrompt?.prompt_text,
+    platformConnections ?? [],
+  );
+
   const accountContext = buildAccountContextMarkdown({
     ...client,
     google_ads_customer_id: googleAdsCustomerId,
@@ -234,6 +239,14 @@ export async function POST(request: NextRequest) {
     campaignsRes.data ?? [],
   );
 
+  const userContent = assembleWeeklyInsightsPrompt(
+    promptText!,
+    accountContext,
+    googleAdsMarkdown,
+    weeks,
+    clientAiInstructions,
+  );
+
   const { data: insight, error: insertError } = await supabasePM
     .from("client_ai_weekly_insights")
     .insert({
@@ -244,6 +257,7 @@ export async function POST(request: NextRequest) {
       prev_week_start: prevWeekStart,
       prev_week_end: prevWeekEnd,
       google_ads_customer_id: googleAdsCustomerId,
+      assembled_prompt: userContent,
       status: "generating",
       generated_by: body.triggered_by ?? null,
       updated_at: new Date().toISOString(),
@@ -258,9 +272,7 @@ export async function POST(request: NextRequest) {
   after(() =>
     runGeneration({
       insightId: insight.id,
-      promptText: promptText!,
-      accountContext,
-      googleAdsMarkdown,
+      userContent,
     }),
   );
 
