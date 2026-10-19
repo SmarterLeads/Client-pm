@@ -10,7 +10,10 @@ import {
   buildPerformanceAuditContext,
   defaultAuditDateRange,
 } from "@/lib/ai/build-performance-audit-context";
-import { isLiveBrowserAuditPrompt } from "@/lib/ai/smarterleads-audit-prompt";
+import {
+  isLiveBrowserAuditPrompt,
+  SMARTERLEADS_PERFORMANCE_AUDIT_PROMPT,
+} from "@/lib/ai/smarterleads-audit-prompt";
 import { getDefaultClientAiPrompt } from "@/lib/ai/client-ai-prompts-db";
 import {
   getDefaultWeekRangesUtc,
@@ -28,6 +31,8 @@ type GenerateBody = {
   week_start?: string;
   week_end?: string;
   triggered_by?: string;
+  /** From AI Insights tab: SmarterLeads browser audit + artifact (no API markdown). */
+  performance_audit?: boolean;
 };
 
 async function runGeneration(params: {
@@ -186,7 +191,13 @@ export async function POST(request: NextRequest) {
     promptText = defaultPrompt.prompt_text;
   }
 
-  const browserAudit = isLiveBrowserAuditPrompt(promptText);
+  const forcePerformanceAudit = body.performance_audit === true;
+  if (forcePerformanceAudit) {
+    promptText = SMARTERLEADS_PERFORMANCE_AUDIT_PROMPT;
+  }
+
+  const browserAudit =
+    forcePerformanceAudit || isLiveBrowserAuditPrompt(promptText);
   const auditRange = defaultAuditDateRange();
   const dataStart = browserAudit ? auditRange.dateStart : trendStart;
   const dataEnd = browserAudit ? auditRange.dateEnd : weekEnd;

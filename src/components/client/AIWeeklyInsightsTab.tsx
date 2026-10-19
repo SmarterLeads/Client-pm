@@ -159,10 +159,14 @@ export function AIWeeklyInsightsTab({
     setGenerating(true);
     setError(null);
     try {
+      setView("reports");
       const res = await fetch("/api/ai-weekly-insights/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ client_id: clientId }),
+        body: JSON.stringify({
+          client_id: clientId,
+          performance_audit: true,
+        }),
       });
       const body = (await res.json().catch(() => ({}))) as InsightListItem & {
         error?: string;
@@ -290,7 +294,7 @@ export function AIWeeklyInsightsTab({
             {generating ? (
               <Loader2 className="mr-1 size-4 animate-spin" />
             ) : null}
-            + Generate
+            Prepare Claude audit
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -450,18 +454,35 @@ export function AIWeeklyInsightsTab({
           </div>
         ) : detail?.report_markdown || detail?.artifact_url ? (
           <div className="space-y-4">
+            {detail.report_markdown && !detail.artifact_url ? (
+              <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">
+                This run is a <strong>text report from the PM API</strong>, not the
+                interactive Dashboard artifact. Use{" "}
+                <strong>Prepare Claude audit</strong>, copy the prompt into Claude
+                (with browser), then save the published artifact link. The PM{" "}
+                <strong>Performance dashboard</strong> tab shows synced metrics only.
+              </p>
+            ) : null}
             {detail.artifact_url ? (
-              <div className="rounded-lg border border-border p-4">
+              <div className="rounded-lg border border-border p-4 space-y-3">
                 <p className="text-sm font-medium">Performance dashboard artifact</p>
                 <a
                   href={detail.artifact_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-1 inline-flex items-center gap-1 text-sm text-primary underline"
+                  className="inline-flex items-center gap-1 text-sm text-primary underline"
                 >
-                  Open dashboard
+                  Open dashboard in Claude
                   <ExternalLink className="size-3.5" />
                 </a>
+                <iframe
+                  title="Claude performance dashboard"
+                  src={detail.artifact_url}
+                  className="h-[min(70vh,720px)] w-full rounded-md border border-border bg-background"
+                />
+                <p className="text-xs text-muted-foreground">
+                  If the embed is blank, Claude may block iframes — use the link above.
+                </p>
               </div>
             ) : null}
             {detail.report_markdown ? (
