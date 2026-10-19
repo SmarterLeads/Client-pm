@@ -2,56 +2,42 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-
 import { cn } from "@/lib/utils";
 
 const subTabs = [
-  { id: "internal", label: "Internal Dashboard" },
-  { id: "client", label: "Client Dashboard" },
+  { id: "internal", label: "Internal" },
+  { id: "client", label: "Client report" },
+  { id: "ai-insights", label: "🤖 AI Insights" },
 ] as const;
-
-export type ClientMarketingSubTabId = (typeof subTabs)[number]["id"];
 
 export function ClientMarketingSubTabs() {
   const pathname = usePathname() ?? "";
-  const searchParams = useSearchParams() ?? new URLSearchParams();
-  const activeSub =
-    (searchParams.get("marketingSub") as ClientMarketingSubTabId) || "internal";
+  const searchParams = useSearchParams();
+  const current = searchParams?.get("marketingSub") ?? "internal";
 
-  const preservedKeys = ["range", "start", "end", "view"] as const;
+  function hrefFor(sub: string) {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.set("tab", "marketing");
+    params.set("marketingSub", sub);
+    return `${pathname}?${params.toString()}`;
+  }
 
   return (
-    <nav
-      className="flex gap-1 overflow-x-auto border-b border-border"
-      aria-label="Marketing views"
-    >
-      {subTabs.map((tab) => {
-        const params = new URLSearchParams();
-        params.set("tab", "marketing");
-        params.set("marketingSub", tab.id);
-
-        for (const key of preservedKeys) {
-          const value = searchParams.get(key);
-          if (value) params.set(key, value);
-        }
-
-        const href = `${pathname}?${params.toString()}`;
-
-        return (
-          <Link
-            key={tab.id}
-            href={href}
-            className={cn(
-              "shrink-0 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-              activeSub === tab.id
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
+    <nav className="flex flex-wrap gap-1 border-b border-border pb-2">
+      {subTabs.map((tab) => (
+        <Link
+          key={tab.id}
+          href={hrefFor(tab.id)}
+          className={cn(
+            "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            current === tab.id
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+          )}
+        >
+          {tab.label}
+        </Link>
+      ))}
     </nav>
   );
 }

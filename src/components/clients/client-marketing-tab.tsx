@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { AIWeeklyInsightsTab } from "@/components/client/AIWeeklyInsightsTab";
 import { ClientInternalMarketingView } from "@/components/clients/client-internal-marketing-view";
 import { ClientMarketingReportView } from "@/components/marketing/report/client-marketing-report-view";
 import type { ClientMarketingReportSearchParams } from "@/components/marketing/report/client-marketing-report-view";
@@ -22,6 +23,18 @@ export async function ClientMarketingTab({
 }: ClientMarketingTabProps) {
   const profile = await getClientMarketingProfile(client.id);
 
+  const marketingSub = searchParams.marketingSub ?? "internal";
+
+  if (marketingSub === "ai-insights") {
+    return (
+      <AIWeeklyInsightsTab
+        clientId={client.id}
+        clientName={client.name}
+        googleAdsCustomerId={undefined}
+      />
+    );
+  }
+
   if (!profile?.reportSlug) {
     return (
       <div className="rounded-lg border border-dashed border-border px-4 py-12 text-center">
@@ -36,9 +49,6 @@ export async function ClientMarketingTab({
       </div>
     );
   }
-
-  const marketingSub =
-    searchParams.marketingSub === "client" ? "client" : "internal";
 
   if (marketingSub === "client") {
     return (

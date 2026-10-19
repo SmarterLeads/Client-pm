@@ -41,7 +41,7 @@ function mapArticleListRow(row: {
   excerpt: string | null;
   content?: unknown;
   sort_order?: number;
-  updated_at: string;
+  updated_at: string | null;
   subcategory_id?: string | null;
   kb_categories: { slug: string; name: string };
   subcategory?: { slug: string; name: string } | null;
@@ -59,7 +59,7 @@ function mapArticleListRow(row: {
       ? { content: parseKbBlocks(row.content as never) }
       : {}),
     sort_order: row.sort_order ?? 0,
-    updated_at: row.updated_at,
+    updated_at: row.updated_at ?? new Date(0).toISOString(),
     category_slug: cat.slug,
     category_name: cat.name,
     subcategory_id: row.subcategory_id ?? null,
@@ -186,9 +186,9 @@ function mapKbArticleDetailRow(data: {
   slug: string;
   content: unknown;
   excerpt: string | null;
-  is_published: boolean;
-  updated_at: string;
-  created_at: string;
+  is_published: boolean | null;
+  updated_at: string | null;
+  created_at: string | null;
   category_id: string | null;
   subcategory_id?: string | null;
   kb_categories: { slug: string; name: string };
@@ -202,9 +202,9 @@ function mapKbArticleDetailRow(data: {
     slug: data.slug,
     content: parseKbBlocks(data.content as never),
     excerpt: data.excerpt,
-    is_published: data.is_published,
-    updated_at: data.updated_at,
-    created_at: data.created_at,
+    is_published: data.is_published ?? false,
+    updated_at: data.updated_at ?? new Date(0).toISOString(),
+    created_at: data.created_at ?? new Date(0).toISOString(),
     category_id: data.category_id,
     subcategory_id: data.subcategory_id ?? null,
     category_slug: category.slug,
@@ -393,7 +393,7 @@ export async function getKbArticleVersions(
   return (data ?? []).map((row) => ({
     id: row.id,
     title: row.title,
-    created_at: row.created_at,
+    created_at: row.created_at ?? new Date(0).toISOString(),
     changed_by_name: (row.changed_by as { name: string } | null)?.name ?? null,
   }));
 }

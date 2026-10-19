@@ -223,7 +223,7 @@ export function ClientDetailTabs({
 
       {activeTab === "marketing" ? (
         <div className="space-y-4">
-          {client.report_slug?.trim() ? <ClientMarketingSubTabs /> : null}
+          <ClientMarketingSubTabs />
           {marketingPanel}
         </div>
       ) : null}

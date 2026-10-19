@@ -230,7 +230,7 @@ export async function moveTaskSection(
         projectId,
         taskTitle: taskAfter.title,
         assigneeId: taskAfter.assignee_id,
-        requiresReview: taskBefore.requires_review,
+        requiresReview: taskBefore.requires_review ?? false,
         reviewRequestedBy: taskBefore.review_requested_by,
       });
     }

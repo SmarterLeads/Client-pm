@@ -379,7 +379,13 @@ export async function updateTask(
       if (error) {
         console.error("[updateTask] failed to load task before status update:", error.message);
       }
-      taskBeforeStatusUpdate = data;
+      taskBeforeStatusUpdate = data
+        ? {
+            ...data,
+            is_recurring_instance: data.is_recurring_instance ?? false,
+            requires_review: data.requires_review ?? false,
+          }
+        : null;
     }
 
     let payload = { ...parsed.data } as Record<string, unknown>;
