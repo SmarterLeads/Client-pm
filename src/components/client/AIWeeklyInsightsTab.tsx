@@ -163,10 +163,7 @@ export function AIWeeklyInsightsTab({
       const res = await fetch("/api/ai-weekly-insights/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: clientId,
-          performance_audit: true,
-        }),
+        body: JSON.stringify({ client_id: clientId }),
       });
       const body = (await res.json().catch(() => ({}))) as InsightListItem & {
         error?: string;
@@ -257,8 +254,8 @@ export function AIWeeklyInsightsTab({
         <span className="text-sm font-medium text-muted-foreground">View</span>
         {(
           [
-            ["dashboard", "Performance dashboard"],
-            ["reports", "AI reports"],
+            ["dashboard", "Dashboard"],
+            ["reports", "Weekly AI summary"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -285,7 +282,7 @@ export function AIWeeklyInsightsTab({
     <div className="grid gap-6 lg:grid-cols-[minmax(240px,320px)_1fr]">
       <div className="space-y-3 rounded-lg border border-border p-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">Audits & reports</h3>
+          <h3 className="text-sm font-semibold">Weekly summaries</h3>
           <Button
             size="sm"
             onClick={() => void handleGenerate()}
@@ -294,28 +291,17 @@ export function AIWeeklyInsightsTab({
             {generating ? (
               <Loader2 className="mr-1 size-4 animate-spin" />
             ) : null}
-            Prepare Claude audit
+            Generate summary
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Browser audits use the default **AI Prompts** template with{" "}
-          <code className="text-[11px]">{"{{USE_LIVE_BROWSER_PULLS}}"}</code>.
-          PM sync is supplemental; Claude pulls Google Ads, GHL, and the site in
-          the browser and publishes a Dashboard artifact (see{" "}
-          <a
-            href="https://claude.ai/artifact/6tK83g7dEF82g8QGqs9fSa?sk=MOStq7DIWhZNEWBrAgpovw"
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            sample artifact
-          </a>
-          ).
+          Charts and tables live on the <strong>Dashboard</strong> tab (synced
+          Google Ads + CRM). This optional summary runs Claude on that same PM
+          data for a short narrative — not ad copy or change history.
         </p>
         {!googleAdsCustomerId ? (
-          <p className="text-xs text-amber-700 dark:text-amber-400">
-            No Google Ads customer ID on platform connection — add one so the
-            prompt includes a valid ads.google.com URL.
+          <p className="text-xs text-muted-foreground">
+            Google Ads metrics are tied to this client&apos;s sync record in PM.
           </p>
         ) : null}
         {error ? (
@@ -455,12 +441,9 @@ export function AIWeeklyInsightsTab({
         ) : detail?.report_markdown || detail?.artifact_url ? (
           <div className="space-y-4">
             {detail.report_markdown && !detail.artifact_url ? (
-              <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">
-                This run is a <strong>text report from the PM API</strong>, not the
-                interactive Dashboard artifact. Use{" "}
-                <strong>Prepare Claude audit</strong>, copy the prompt into Claude
-                (with browser), then save the published artifact link. The PM{" "}
-                <strong>Performance dashboard</strong> tab shows synced metrics only.
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                Narrative summary only — open the <strong>Dashboard</strong> tab for
+                charts and tables from sync.
               </p>
             ) : null}
             {detail.artifact_url ? (

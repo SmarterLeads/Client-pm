@@ -1,15 +1,22 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  InsightsCompareBars,
+  InsightsTrendChart,
+} from "@/components/client/ai-insights-charts";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { InsightsDashboardPayload, Verdict } from "@/lib/ai/insights-dashboard/types";
+import type {
+  InsightsDashboardPayload,
+  PeriodMetrics,
+  Verdict,
+} from "@/lib/ai/insights-dashboard/types";
 
 const DASH_TABS = [
   "Overview",
-  "Monthly",
-  "Weekly",
+  "Compare",
   "Search terms",
   "Stop waste",
   "CRM",
@@ -68,6 +75,14 @@ export function AiInsightsDashboard({ clientId }: AiInsightsDashboardProps) {
   const [tableHeight, setTableHeight] = useState<"standard" | "tall" | "full">(
     "standard",
   );
+  const [compareGranularity, setCompareGranularity] = useState<
+    "monthly" | "weekly"
+  >("monthly");
+  const [compareMetric, setCompareMetric] = useState<
+    "spend" | "conversions" | "clicks"
+  >("spend");
+  const [periodA, setPeriodA] = useState("");
+  const [periodB, setPeriodB] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,6 +104,25 @@ export function AiInsightsDashboard({ clientId }: AiInsightsDashboardProps) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const fullMonths = useMemo(
+    () => data?.monthly.filter((m) => !m.isPartial) ?? [],
+    [data?.monthly],
+  );
+
+  useEffect(() => {
+    if (compareGranularity !== "monthly" || fullMonths.length < 2) return;
+    const keys = fullMonths.map((m) => m.month);
+    setPeriodA((prev) => (prev && keys.includes(prev) ? prev : keys.at(-2)!));
+    setPeriodB((prev) => (prev && keys.includes(prev) ? prev : keys.at(-1)!));
+  }, [compareGranularity, fullMonths]);
+
+  useEffect(() => {
+    if (compareGranularity !== "weekly" || !data?.weekly.length) return;
+    const keys = data.weekly.map((w) => w.weekStart);
+    setPeriodA((prev) => (prev && keys.includes(prev) ? prev : keys.at(-2)!));
+    setPeriodB((prev) => (prev && keys.includes(prev) ? prev : keys.at(-1)!));
+  }, [compareGranularity, data?.weekly]);
 
   const tableMaxH =
     tableHeight === "full"
@@ -114,24 +148,43 @@ export function AiInsightsDashboard({ clientId }: AiInsightsDashboardProps) {
   const { header } = data;
   const cur = header.currency;
 
+  const comparePeriods =
+    compareGranularity === "monthly"
+      ? fullMonths.map((m) => ({ key: m.month, label: m.month, metrics: m }))
+      : data.weekly.map((w) => ({
+          key: w.weekStart,
+          label: `${w.weekStart} – ${w.weekEnd}`,
+          metrics: w,
+        }));
+
+  const metricsA = comparePeriods.find((p) => p.key === periodA)?.metrics;
+  const metricsB = comparePeriods.find((p) => p.key === periodB)?.metrics;
+
+  function metricValue(m: PeriodMetrics | undefined): number {
+    if (!m) return 0;
+    if (compareMetric === "spend") return m.spend;
+    if (compareMetric === "conversions") return m.conversions;
+    return m.clicks;
+  }
+
+  function formatMetric(n: number): string {
+    if (compareMetric === "spend") return fmtMoney(n, cur);
+    return n.toLocaleString("en-US");
+  }
+
+  const platformConvTrend = data.platformConversionsByMonth.map((m) => ({
+    label: m.month,
+    value: m.total,
+  }));
+
+  const crmWinsTrend =
+    data.crm?.winsByMonth.map((m) => ({
+      label: m.month,
+      value: m.count,
+    })) ?? [];
+
   return (
     <div className="space-y-4">
-      <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Synced PM metrics only (subset). For the full SmarterLeads diagnosis
-        (change history, ads, landing pages, auction insights, live CRM), use{" "}
-        <strong className="font-medium text-foreground">AI reports</strong> →
-        generate → copy prompt → run in Claude → save the{" "}
-        <a
-          href="https://claude.ai/artifact/6tK83g7dEF82g8QGqs9fSa?sk=MOStq7DIWhZNEWBrAgpovw"
-          target="_blank"
-          rel="noreferrer"
-          className="underline"
-        >
-          Dashboard artifact
-        </a>{" "}
-        link.
-      </p>
-
       <header className="rounded-lg border border-border bg-muted/20 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -220,6 +273,27 @@ export function AiInsightsDashboard({ clientId }: AiInsightsDashboardProps) {
               value={`${data.overview.lastFullMonth.convRate.toFixed(2)}%`}
             />
           </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <InsightsTrendChart
+              title="Spend by month (full months)"
+              data={fullMonths.map((m) => ({
+                label: m.month,
+                value: m.spend,
+              }))}
+              valueLabel="Spend"
+              formatValue={(n) => fmtMoney(n, cur)}
+            />
+            <InsightsTrendChart
+              title="Conversions by month (full months)"
+              data={fullMonths.map((m) => ({
+                label: m.month,
+                value: m.conversions,
+              }))}
+              valueLabel="Conversions"
+              formatValue={(n) => n.toLocaleString("en-US")}
+              color="#10b981"
+            />
+          </div>
           <MetricsTable
             title="Campaigns (full range)"
             maxH={tableMaxH}
@@ -236,36 +310,119 @@ export function AiInsightsDashboard({ clientId }: AiInsightsDashboardProps) {
         </div>
       ) : null}
 
-      {tab === "Monthly" ? (
-        <MetricsTable
-          title="Account by month"
-          maxH={tableMaxH}
-          headers={["Month", "Spend", "Clicks", "Impr.", "Conv.", "CPA", "Partial"]}
-          rows={data.monthly.map((m) => [
-            m.month,
-            fmtMoney(m.spend, cur),
-            String(m.clicks),
-            String(m.impressions),
-            String(m.conversions),
-            m.cpa != null ? fmtMoney(m.cpa, cur) : "—",
-            m.isPartial ? "Yes" : "—",
-          ])}
-        />
-      ) : null}
-
-      {tab === "Weekly" ? (
-        <MetricsTable
-          title="Account by week (Mon–Sun UTC)"
-          maxH={tableMaxH}
-          headers={["Week", "Spend", "Clicks", "Conv.", "CPA"]}
-          rows={data.weekly.map((w) => [
-            `${w.weekStart} – ${w.weekEnd}`,
-            fmtMoney(w.spend, cur),
-            String(w.clicks),
-            String(w.conversions),
-            w.cpa != null ? fmtMoney(w.cpa, cur) : "—",
-          ])}
-        />
+      {tab === "Compare" ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-4">
+            <label className="text-sm">
+              <span className="mb-1 block text-xs text-muted-foreground">
+                Granularity
+              </span>
+              <select
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                value={compareGranularity}
+                onChange={(e) =>
+                  setCompareGranularity(e.target.value as "monthly" | "weekly")
+                }
+              >
+                <option value="monthly">Monthly</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block text-xs text-muted-foreground">
+                Metric
+              </span>
+              <select
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                value={compareMetric}
+                onChange={(e) =>
+                  setCompareMetric(
+                    e.target.value as "spend" | "conversions" | "clicks",
+                  )
+                }
+              >
+                <option value="spend">Spend</option>
+                <option value="conversions">Conversions</option>
+                <option value="clicks">Clicks</option>
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block text-xs text-muted-foreground">
+                Period A
+              </span>
+              <select
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                value={periodA}
+                onChange={(e) => setPeriodA(e.target.value)}
+              >
+                {comparePeriods.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block text-xs text-muted-foreground">
+                Period B
+              </span>
+              <select
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                value={periodB}
+                onChange={(e) => setPeriodB(e.target.value)}
+              >
+                {comparePeriods.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <InsightsCompareBars
+            title={`${compareMetric} — A vs B`}
+            aLabel={
+              comparePeriods.find((p) => p.key === periodA)?.label ?? "A"
+            }
+            bLabel={
+              comparePeriods.find((p) => p.key === periodB)?.label ?? "B"
+            }
+            aValue={metricValue(metricsA)}
+            bValue={metricValue(metricsB)}
+            formatValue={formatMetric}
+          />
+          <MetricsTable
+            title={
+              compareGranularity === "monthly"
+                ? "All months"
+                : "All weeks (Mon–Sun UTC)"
+            }
+            maxH={tableMaxH}
+            headers={
+              compareGranularity === "monthly"
+                ? ["Month", "Spend", "Clicks", "Conv.", "CPA", "Partial"]
+                : ["Week", "Spend", "Clicks", "Conv.", "CPA"]
+            }
+            rows={
+              compareGranularity === "monthly"
+                ? data.monthly.map((m) => [
+                    m.month,
+                    fmtMoney(m.spend, cur),
+                    String(m.clicks),
+                    String(m.conversions),
+                    m.cpa != null ? fmtMoney(m.cpa, cur) : "—",
+                    m.isPartial ? "Yes" : "—",
+                  ])
+                : data.weekly.map((w) => [
+                    `${w.weekStart} – ${w.weekEnd}`,
+                    fmtMoney(w.spend, cur),
+                    String(w.clicks),
+                    String(w.conversions),
+                    w.cpa != null ? fmtMoney(w.cpa, cur) : "—",
+                  ])
+            }
+          />
+        </div>
       ) : null}
 
       {tab === "Search terms" ? (
@@ -349,6 +506,22 @@ export function AiInsightsDashboard({ clientId }: AiInsightsDashboardProps) {
                 String(b.wins),
               ])}
             />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <InsightsTrendChart
+                title="Platform conversions (Google sync)"
+                data={platformConvTrend}
+                valueLabel="Conversions"
+                formatValue={(n) => n.toLocaleString("en-US")}
+                color="#6366f1"
+              />
+              <InsightsTrendChart
+                title="CRM wins (GHL)"
+                data={crmWinsTrend}
+                valueLabel="Wins"
+                formatValue={(n) => n.toLocaleString("en-US")}
+                color="#f59e0b"
+              />
+            </div>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">

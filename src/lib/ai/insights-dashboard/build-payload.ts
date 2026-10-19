@@ -337,11 +337,11 @@ export function buildInsightsDashboardPayload(params: {
       : "All months in range are complete calendar months.";
 
   const limitations = [
-    "Dashboard uses PM database sync (Google Ads daily + search terms + conversion events), not live Google Ads UI exports.",
-    "Auction insights, change history, ad copy ratings, landing page reports, and Google Recommendations tab are not in this dashboard until synced to PM.",
-    "GoHighLevel CRM wins and platform conversions are shown separately — do not treat them as the same metric.",
+    "In-app dashboard from scheduled PM sync (campaign daily, search terms, conversion events, GHL opportunities).",
+    "Out of scope for now: ad copy, change history, auction insights, landing pages, and Google Recommendations.",
+    "GoHighLevel CRM wins and platform conversions are separate charts — not the same metric.",
     "Search term verdicts are rule-based helpers; confirm in Google Ads before pausing.",
-    "Impression share and lost share are not available in this view unless added to sync.",
+    "Impression share and lost share are not in sync yet.",
   ];
 
   return {
