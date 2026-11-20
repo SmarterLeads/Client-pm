@@ -312,6 +312,10 @@ export async function createTask(
         actorName: teamMember.name,
         taskId,
         taskTitle: data.title,
+        emailOnCreate: true,
+        projectId: data.project_id,
+        dueDate: data.due_date ?? null,
+        priority: data.priority ?? "medium",
       });
     }
 
@@ -571,6 +575,10 @@ export async function createTaskDirect(input: {
         actorName: teamMember.name,
         taskId,
         taskTitle: data.title,
+        emailOnCreate: true,
+        projectId: data.project_id,
+        dueDate: data.due_date ?? null,
+        priority: data.priority ?? "medium",
       });
     }
 

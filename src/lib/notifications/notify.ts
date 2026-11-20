@@ -3,6 +3,7 @@ import {
   resolveMentionedTeamMemberIds,
   stripHtmlForMentions,
 } from "@/lib/notifications/mentions";
+import { safeSendTaskAssignedEmail } from "@/lib/email/task-assigned-email";
 import { safeCreateNotification } from "@/lib/notifications/create";
 import { isTaskReviewerEmail } from "@/lib/tasks/reviewers";
 import { pm } from "@/lib/supabase/pm";
@@ -170,6 +171,11 @@ export async function notifyTaskAssigned(params: {
   actorName: string;
   taskId: string;
   taskTitle: string;
+  /** When true, emails the assignee (if creator !== assignee). Use on task create only. */
+  emailOnCreate?: boolean;
+  projectId?: string;
+  dueDate?: string | null;
+  priority?: string | null;
 }) {
   await safeCreateNotification({
     recipientId: params.assigneeId,
@@ -180,6 +186,24 @@ export async function notifyTaskAssigned(params: {
     title: "Task assigned to you",
     body: `${params.actorName} assigned "${params.taskTitle}" to you.`,
   });
+
+  if (
+    params.emailOnCreate &&
+    params.projectId &&
+    params.assigneeId !== params.actorId
+  ) {
+    await safeSendTaskAssignedEmail({
+      assigneeId: params.assigneeId,
+      actorId: params.actorId,
+      actorName: params.actorName,
+      taskId: params.taskId,
+      taskTitle: params.taskTitle,
+      projectId: params.projectId,
+      dueDate: params.dueDate,
+      priority: params.priority,
+    });
+  }
+
   revalidateNotificationBell();
 }
 
